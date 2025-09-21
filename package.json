@@ -1,0 +1,72 @@
+{
+  "name": "@fsegurai/manifest-generator",
+  "version": "0.0.0-alpha.2",
+  "description": "A simple manifest and search-index generator based on project documentation.",
+  "type": "module",
+  "license": "MIT",
+  "author": {
+    "name": "Fabián Segura",
+    "url": "https://fsegurai.com"
+  },
+  "keywords": [
+    "documentation",
+    "manifest",
+    "generator",
+    "search-index",
+    "markdown",
+    "docs",
+    "cli"
+  ],
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "clean:demo": "rimraf --glob ./demo/dist && rimraf --glob ./demo/README.md && rimraf --glob ./demo/LICENSE && rimraf --glob ./demo/*/manifest.json && rimraf --glob ./demo/*/search-index.json",
+    "clean:packages": "rimraf --glob ./packages/*/dist",
+    "clean": "bun run clean:demo && bun run clean:packages",
+    "build:packages": "bun --filter '*' prepare",
+    "test:packages": "jest --verbose",
+    "test-clean:packages": "jest --updateSnapshot",
+    "test-cover:packages": "jest --coverage",
+    "test-types:packages": "bun --filter '*' test:types",
+    "lint": "bun run lint:demo && bun run lint:packages",
+    "lint:demo": "eslint ./demo",
+    "lint:packages": "eslint ./packages/*/src/**",
+    "generate:manifest": "node ./packages/manifest-generator/src/cli.js --docs-root ./docs/ --output ./docs",
+    "generate:manifest-all": "node ./packages/manifest-generator/src/cli.js --all --docs-root ./docs --output ./docs",
+    "generate:manifest-current": "node ./packages/manifest-generator/src/cli.js --docs-root ./docs/$npm_package_version --output ./docs/$npm_package_version"
+  },
+  "dependencies": {
+    "@material/web": "^2.3.0",
+    "clipboard": "^2.0.11",
+    "github-slugger": "^2.0.0",
+    "marked": "^16.1.1",
+    "marked-highlight": "^2.2.2",
+    "prismjs": "^1.30.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.0",
+    "@babel/preset-env": "^7.28.0",
+    "@eslint/js": "^9.31.0",
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-replace": "^6.0.2",
+    "@rollup/plugin-typescript": "^12.1.4",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.1.0",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "cpy-cli": "^5.0.0",
+    "eslint": "^9.31.0",
+    "jest": "^30.0.5",
+    "jest-cli": "^30.0.5",
+    "jest-environment-jsdom": "^30.0.5",
+    "rimraf": "^6.0.1",
+    "rollup": "^4.45.1",
+    "rollup-plugin-dev": "^2.0.5",
+    "ts-node": "^10.9.2",
+    "tsd": "^0.32.0",
+    "typescript": "5.8.3",
+    "typescript-eslint": "^8.38.0"
+  }
+}

@@ -1,0 +1,149 @@
+[
+  {
+    "title": "API Examples",
+    "path": "api/examples",
+    "tags": [
+      "api",
+      "examples",
+      "advanced",
+      "usage",
+      "batch"
+    ]
+  },
+  {
+    "title": "Get Started with API Reference",
+    "path": "api/README",
+    "tags": [
+      "api",
+      "examples",
+      "advanced",
+      "usage",
+      "batch"
+    ]
+  },
+  {
+    "title": "Reference",
+    "path": "api/reference",
+    "tags": []
+  },
+  {
+    "title": "Typescript",
+    "path": "api/typescript",
+    "tags": []
+  },
+  {
+    "title": "Advanced",
+    "path": "examples/advanced",
+    "tags": []
+  },
+  {
+    "title": "Basic Usage",
+    "path": "examples/basic-usage",
+    "tags": []
+  },
+  {
+    "title": "Frameworks",
+    "path": "examples/frameworks",
+    "tags": []
+  },
+  {
+    "title": "README",
+    "path": "examples/README",
+    "tags": []
+  },
+  {
+    "title": "README",
+    "path": "features/README",
+    "tags": []
+  },
+  {
+    "title": "Search Index",
+    "path": "features/search-index",
+    "tags": []
+  },
+  {
+    "title": "First Steps",
+    "path": "getting-started/first-steps",
+    "tags": []
+  },
+  {
+    "title": "Getting Started",
+    "path": "getting-started/getting-started",
+    "tags": []
+  },
+  {
+    "title": "Installation",
+    "path": "getting-started/installation",
+    "tags": []
+  },
+  {
+    "title": "README",
+    "path": "getting-started/README",
+    "tags": []
+  },
+  {
+    "title": "Cli Usage",
+    "path": "guides/cli-usage",
+    "tags": []
+  },
+  {
+    "title": "Configuration",
+    "path": "guides/configuration",
+    "tags": []
+  },
+  {
+    "title": "Frontmatter",
+    "path": "guides/frontmatter",
+    "tags": []
+  },
+  {
+    "title": "Project Structure",
+    "path": "guides/project-structure",
+    "tags": []
+  },
+  {
+    "title": "README",
+    "path": "guides/README",
+    "tags": []
+  },
+  {
+    "title": "Faq",
+    "path": "help/faq",
+    "tags": []
+  },
+  {
+    "title": "README",
+    "path": "help/README",
+    "tags": []
+  },
+  {
+    "title": "Troubleshooting",
+    "path": "help/troubleshooting",
+    "tags": []
+  },
+  {
+    "title": "Build Systems",
+    "path": "integration/build-systems",
+    "tags": []
+  },
+  {
+    "title": "Ci Cd",
+    "path": "integration/ci-cd",
+    "tags": []
+  },
+  {
+    "title": "Frameworks",
+    "path": "integration/frameworks",
+    "tags": []
+  },
+  {
+    "title": "README",
+    "path": "integration/README",
+    "tags": []
+  },
+  {
+    "title": "README",
+    "path": "README",
+    "tags": []
+  }
+]
