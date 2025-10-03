@@ -1,5 +1,5 @@
 ---
-title: Advanced Configuration
+label: Advanced Configuration
 tags: ["configuration", "advanced"]
 ---
 

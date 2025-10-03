@@ -1,5 +1,5 @@
 ---
-title: Getting Started Guide
+label: Getting Started Guide
 tags: ["tutorial", "beginner"]
 ---
 

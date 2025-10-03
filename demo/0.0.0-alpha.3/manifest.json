@@ -1,0 +1,56 @@
+[
+  {
+    "label": "API Reference",
+    "route": "api-reference",
+    "tags": [
+      "api",
+      "reference"
+    ]
+  },
+  {
+    "label": "Getting Started Guide",
+    "route": "getting-started",
+    "tags": [
+      "tutorial",
+      "beginner"
+    ]
+  },
+  {
+    "label": "Guides",
+    "route": "guides",
+    "isParent": true,
+    "children": [
+      {
+        "label": "Advanced Configuration",
+        "route": "guides/advanced-config",
+        "tags": [
+          "configuration",
+          "advanced"
+        ]
+      },
+      {
+        "label": "Setup",
+        "route": "guides/setup",
+        "isParent": true,
+        "children": [
+          {
+            "label": "Advanced Setup",
+            "route": "guides/setup/advanced-setup",
+            "tags": [
+              "configuration",
+              "advanced"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "Sample Project Documentation",
+    "route": "README",
+    "tags": [
+      "documentation",
+      "getting-started"
+    ]
+  }
+]

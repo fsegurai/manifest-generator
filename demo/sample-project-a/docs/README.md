@@ -1,5 +1,5 @@
 ---
-title: Sample Project Documentation
+label: Sample Project Documentation
 tags: ["documentation", "getting-started"]
 ---
 

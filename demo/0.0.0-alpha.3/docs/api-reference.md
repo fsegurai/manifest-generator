@@ -1,5 +1,5 @@
 ---
-title: API Reference
+label: API Reference
 tags: ["api", "reference"]
 ---
 
