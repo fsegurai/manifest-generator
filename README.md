@@ -295,25 +295,25 @@ Extracts YAML frontmatter from Markdown content.
 
 ```javascript
 const frontmatter = parseFrontmatter(`---
-title: My Document
+label: My Document
 tags: ["guide", "tutorial"]
 ---
 # Content here`);
-// Returns: { title: "My Document", tags: ["guide", "tutorial"] }
+// Returns: { label: "My Document", tags: ["guide", "tutorial"] }
 ```
 
 #### TypeScript Interfaces
 
 ```typescript
 interface NavigationItem {
-    title: string;
+    label: string;
     path?: string;
     tags?: string[];
     children?: NavigationItem[];
 }
 
 interface SearchEntry {
-    title: string;
+    label: string;
     path: string;
     tags?: string[];
 }
@@ -448,7 +448,7 @@ Control document processing with frontmatter:
 
 ```markdown
 ---
-title: "Custom Title"           # Override generated title
+label: "Custom Title"           # Override generated title
 tags: ["api", "reference"]     # Add searchable tags
 draft: true                    # Exclude from manifest
 hidden: true                   # Hide from navigation
@@ -535,7 +535,7 @@ Supported frontmatter fields:
 
 ```yaml
 ---
-title: "Document Title"        # Custom title (overrides filename)
+label: "Document Title"        # Custom title (overrides filename)
 tags: [ "api", "guide" ]        # Searchable tags
 draft: true                   # Exclude from processing
 hidden: true                  # Hide from navigation

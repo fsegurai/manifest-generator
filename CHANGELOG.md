@@ -11,7 +11,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
-## [0.0.0-alpha.2] - TBD
+## [0.0.0-alpha.3] - TBD
 
 ### 🚀 Added
 
