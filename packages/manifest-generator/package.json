@@ -1,6 +1,6 @@
 {
   "name": "@fsegurai/manifest-generator",
-  "version": "0.0.0-alpha.2",
+  "version": "0.0.0-alpha.3",
   "description": "A simple manifest and search-index generator based on project documentation.",
   "main": "./dist/index.cjs",
   "module": "./src/index.js",
@@ -43,6 +43,6 @@
   },
   "peerDependencies": {},
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=20.0.0"
   }
 }

@@ -36,7 +36,7 @@ describe('Manifest Generator', () => {
   describe('parseFrontmatter', () => {
     test('should parse basic frontmatter', () => {
       const content = `---
-title: Test Title
+label: Test Title
 tags: ["tag1", "tag2"]
 draft: false
 ---
@@ -44,7 +44,7 @@ draft: false
 
       const result = parseFrontmatter(content);
       expect(result).toEqual({
-        title: 'Test Title',
+        label: 'Test Title',
         tags: ['tag1', 'tag2'],
         draft: false,
       });
@@ -58,7 +58,7 @@ draft: false
 
     test('should handle malformed frontmatter', () => {
       const content = `---
-title: Test Title
+label: Test Title
 malformed line without colon
 tags: ["tag1"]
 ---
@@ -66,14 +66,14 @@ tags: ["tag1"]
 
       const result = parseFrontmatter(content);
       expect(result).toEqual({
-        title: 'Test Title',
+        label: 'Test Title',
         tags: ['tag1'],
       });
     });
 
     test('should parse different data types', () => {
       const content = `---
-title: "Quoted Title"
+label: "Quoted Title"
 count: 42
 published: true
 draft: false
@@ -83,7 +83,7 @@ tags: ["web", "docs"]
 
       const result = parseFrontmatter(content);
       expect(result).toEqual({
-        title: 'Quoted Title',
+        label: 'Quoted Title',
         count: 42,
         published: true,
         draft: false,
@@ -93,28 +93,28 @@ tags: ["web", "docs"]
 
     test('should handle malformed JSON arrays gracefully', () => {
       const content = `---
-title: Test
+label: Test
 tags: [invalid json
 ---
 # Content`;
 
       const result = parseFrontmatter(content);
       expect(result).toEqual({
-        title: 'Test',
+        label: 'Test',
         tags: '[invalid json',
       });
     });
 
     test('should handle colons in values', () => {
       const content = `---
-title: "Time: 12:30 PM"
+label: "Time: 12:30 PM"
 url: "https://example.com:8080"
 ---
 # Content`;
 
       const result = parseFrontmatter(content);
       expect(result).toEqual({
-        title: 'Time: 12:30 PM',
+        label: 'Time: 12:30 PM',
         url: 'https://example.com:8080',
       });
     });
@@ -131,14 +131,14 @@ url: "https://example.com:8080"
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('intro.md')) {
           return `---
-title: Introduction
+label: Introduction
 tags: ["getting-started"]
 ---
 # Introduction content`;
         }
         if (filePath.includes('guide.md')) {
           return `---
-title: User Guide
+label: User Guide
 ---
 # Guide content`;
         }
@@ -150,12 +150,12 @@ title: User Guide
 
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual({
-        title: 'Introduction',
+        label: 'Introduction',
         path: 'intro',
         tags: ['getting-started'],
       });
       expect(result[1]).toEqual({
-        title: 'User Guide',
+        label: 'User Guide',
         path: 'guide',
         tags: [],
       });
@@ -173,20 +173,20 @@ title: User Guide
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('published.md')) {
           return `---
-title: Published Article
+label: Published Article
 ---
 # Content`;
         }
         if (filePath.includes('draft.md')) {
           return `---
-title: Draft Article
+label: Draft Article
 draft: true
 ---
 # Draft content`;
         }
         if (filePath.includes('hidden.md')) {
           return `---
-title: Hidden Article
+label: Hidden Article
 hidden: true
 ---
 # Hidden content`;
@@ -222,13 +222,13 @@ hidden: true
       fs.readFileSync.mockImplementation((filePath) => {
         if (filePath.includes('intro.md')) {
           return `---
-title: Introduction
+label: Introduction
 ---
 # Intro`;
         }
         if (filePath.includes('basic.md')) {
           return `---
-title: Basic Guide
+label: Basic Guide
 ---
 # Basic content`;
         }
@@ -241,9 +241,9 @@ title: Basic Guide
       expect(result).toHaveLength(2);
       expect(result[0].title).toBe('Introduction');
       expect(result[1]).toEqual({
-        title: 'Guides',
+        label: 'Guides',
         children: [{
-          title: 'Basic Guide',
+          label: 'Basic Guide',
           path: 'guides/basic',
           tags: [],
         }],
@@ -260,7 +260,7 @@ title: Basic Guide
 
       fs.readdirSync.mockReturnValue(mockDirents);
       fs.readFileSync.mockReturnValue(`---
-title: Visible File
+label: Visible File
 ---
 # Content`);
 
@@ -278,7 +278,7 @@ title: Visible File
 
       fs.readdirSync.mockReturnValue(mockDirents);
       fs.readFileSync.mockReturnValue(`---
-title: Guide
+label: Guide
 ---
 # Content`);
 
@@ -311,7 +311,7 @@ title: Guide
       });
 
       fs.readFileSync.mockReturnValue(`---
-title: Test File
+label: Test File
 ---
 # Content`);
 
@@ -331,7 +331,7 @@ title: Test File
 
       fs.readdirSync.mockReturnValue(mockDirents);
       fs.readFileSync.mockReturnValue(`---
-title: Introduction
+label: Introduction
 tags: ["basics"]
 ---
 # Introduction`);
@@ -343,12 +343,12 @@ tags: ["basics"]
       expect(result.manifest).toHaveLength(1);
       expect(result.searchIndex).toHaveLength(1);
       expect(result.manifest[0]).toEqual({
-        title: 'Introduction',
+        label: 'Introduction',
         path: 'intro',
         tags: ['basics'],
       });
       expect(result.searchIndex[0]).toEqual({
-        title: 'Introduction',
+        label: 'Introduction',
         path: 'intro',
         tags: ['basics'],
       });
@@ -375,7 +375,7 @@ tags: ["basics"]
       });
 
       fs.readFileSync.mockReturnValue(`---
-title: README
+label: README
 ---
 # Content`);
 

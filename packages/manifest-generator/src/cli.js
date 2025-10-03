@@ -34,17 +34,17 @@ Usage:
 
 Options:
   -a, --all                    Process all projects in the docs root
-  -p, --project <name>         Process a specific project by name
-  -r, --route <path>           Process a specific route/path
-  -d, --docs-root <path>       Specify the root directory for docs (default: current directory)
-  -o, --output <path>          Specify output directory for generated files
-  -s, --docs-subfolder <name>  Name of docs subfolder (default: 'docs')
-  --discover                   Discover and list projects without processing
-  -h, --help                   Show this help message
-  -v, --version                Show version number
+  -p, --project <name>          Process a specific project by name
+  -r, --route <path>            Process a specific route/path
+  -d, --docs-root <path>        Specify the root directory for docs (default: current directory)
+  -o, --output <path>           Specify output directory for generated files
+  -s, --docs-subfolder <name>   Name of doc subfolder (default: 'docs')
+  --discover                    Discover and list projects without processing
+  -h, --help                    Show this help message
+  -v, --version                 Show version number
 
 Examples:
-  # Process all projects in current directory
+  # Process all projects in the current directory
   npx @fsegurai/manifest-generator --all
 
   # Process specific project
@@ -75,7 +75,7 @@ Production Examples:
 }
 
 function showVersion() {
-  // Read version from package.json
+  // Read the version from package.json
   try {
     const packageJson = JSON.parse(
       fs.readFileSync(
@@ -83,7 +83,7 @@ function showVersion() {
         'utf8',
       ),
     );
-    console.log(`@fsegurai/manifest-generator v${packageJson.version}`);
+    console.log(`@fsegurai/manifest-generator v${ packageJson.version }`);
   } catch {
     console.log('@fsegurai/manifest-generator (version unknown)');
   }
@@ -109,7 +109,7 @@ try {
 
   // Discovery mode
   if (flags.discover) {
-    console.log(`🔍 Discovering projects in: ${resolvedRoot}`);
+    console.log(`🔍 Discovering projects in: ${ resolvedRoot }`);
     console.log('='.repeat(50));
 
     const discovered = discoverProjects(resolvedRoot, {
@@ -119,9 +119,9 @@ try {
     if (discovered.length === 0) {
       console.log('⚠️  No documentation projects found.');
     } else {
-      console.log(`📁 Found ${discovered.length} project(s):`);
+      console.log(`📁 Found ${ discovered.length } project(s):`);
       discovered.forEach(proj => {
-        console.log(`  - ${proj.name} (${proj.type}): ${proj.docsPath}`);
+        console.log(`  - ${ proj.name } (${ proj.type }): ${ proj.docsPath }`);
       });
     }
     process.exit(0);
@@ -136,15 +136,15 @@ try {
     autoDetect: flags.all || (!flags.project && !flags.route),
   };
 
-  console.log(`📂 Processing: ${resolvedRoot}`);
+  console.log(`📂 Processing: ${ resolvedRoot }`);
   if (options.project) {
-    console.log(`🎯 Target project: ${options.project}`);
+    console.log(`🎯 Target project: ${ options.project }`);
   }
   if (options.route) {
-    console.log(`🛤️  Target route: ${options.route}`);
+    console.log(`🛤️  Target route: ${ options.route }`);
   }
   if (options.outputDir) {
-    console.log(`📁 Output directory: ${options.outputDir}`);
+    console.log(`📁 Output directory: ${ options.outputDir }`);
   }
   console.log('='.repeat(50));
 
@@ -156,11 +156,11 @@ try {
   const failed = results.filter(r => !r.processed).length;
 
   console.log('\n📊 Summary:');
-  console.log(`✅ Successful: ${successful}`);
+  console.log(`✅ Successful: ${ successful }`);
   if (failed > 0) {
-    console.log(`❌ Failed: ${failed}`);
+    console.log(`❌ Failed: ${ failed }`);
     results.filter(r => !r.processed).forEach(r => {
-      console.log(`   - ${r.name}: ${r.error}`);
+      console.log(`   - ${ r.name }: ${ r.error }`);
     });
   }
 

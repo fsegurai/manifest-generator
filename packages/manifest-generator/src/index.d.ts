@@ -2,18 +2,25 @@
  * Navigation item structure for the manifest
  */
 export interface NavigationItem {
-  title: string;
-  path?: string;
+  label: string;
+  route?: string;
   tags?: string[];
-  children?: NavigationItem[];
+  isParent?: boolean;          // New field to indicate if this is a parent item
+  description?: string;        // Optional description field for more context
+  icon?: string | null;        // Optional icon for visual representation
+  iconType?: string | null;    // Optional icon type could be 'font' or 'image'
+  badge?: string | null;       // Optional badge for extra info, like "New"
+  badgeColor?: string | null;  // Optional color for the badge
+  children?: NavigationItem[]; // Sub-items if it's a parent
 }
 
 /**
  * Search entry structure for the search index
  */
 export interface SearchEntry {
-  title: string;
-  path: string;
+  label: string;               // Changed from 'title' to 'label'
+  description?: string;
+  route: string;
   tags?: string[];
 }
 
@@ -21,45 +28,45 @@ export interface SearchEntry {
  * Result of generating a manifest
  */
 export interface ManifestResult {
-  manifest: NavigationItem[];
-  searchIndex: SearchEntry[];
+  manifest: NavigationItem[];  // Array of navigation items
+  searchIndex: SearchEntry[];  // Array of search index entries
 }
 
 /**
  * Discovered project information
  */
 export interface DiscoveredProject {
-  name: string;
-  projectPath: string;
-  docsPath: string;
-  type: 'subfolder' | 'direct';
+  name: string;                // Name of the project
+  projectPath: string;         // Absolute path of the project
+  docsPath: string;            // Absolute path to the docs folder
+  type: 'subfolder' | 'direct'; // Whether it's a 'subfolder' or 'direct' docs
 }
 
 /**
  * Processing result for each project
  */
 export interface ProcessingResult {
-  name: string;
-  processed: boolean;
-  error?: string;
+  name: string;                // Name of the project
+  processed: boolean;          // Whether the project was processed successfully
+  error?: string;              // Optional error message if processing failed
 }
 
 /**
  * Options for project discovery
  */
 export interface DiscoveryOptions {
-  docsSubfolder?: string;
+  docsSubfolder?: string;      // The name of the docs folder (default: 'docs')
 }
 
 /**
  * Options for manifest generation with discovery
  */
 export interface ManifestGenerationOptions {
-  project?: string | null;
-  route?: string | null;
-  outputDir?: string | null;
-  docsSubfolder?: string;
-  autoDetect?: boolean;
+  project?: string | null;     // The specific project to generate the manifest for (optional)
+  route?: string | null;       // A specific route to process (optional)
+  outputDir?: string | null;   // Directory where the manifest should be saved (optional)
+  docsSubfolder?: string;      // The docs subfolder name (default: 'docs')
+  autoDetect?: boolean;        // Whether to automatically detect projects (default: true)
 }
 
 /**

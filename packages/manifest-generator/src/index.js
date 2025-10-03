@@ -47,6 +47,25 @@ function parseFrontmatter(content) {
 }
 
 /**
+ * Clean up an item, removing null/empty/false keys
+ * @param {Object} item - The menu item object
+ * @returns {Object} Cleaned item
+ */
+function cleanItem(item) {
+  const cleaned = {};
+  for (const key in item) {
+    const value = item[key];
+    if (value !== null && value !== false && value !== '' && value !== undefined) {
+      cleaned[key] = value;
+    }
+  }
+  if (item.children) {
+    cleaned.children = item.children.map(cleanItem);
+  }
+  return cleaned;
+}
+
+/**
  * Walk through docs directory and build navigation structure
  * @param {string} dir - The directory to walk
  * @param {string} relative - The relative path
@@ -66,9 +85,16 @@ function walkDocs(dir, relative = '', searchIndex) {
         const children = walkDocs(fullPath, relPath, searchIndex);
         if (children.length === 0) return null;
 
+        // Folder should still be a menu item with isParent and route
         return {
-          title: formatTitle(entry.name),
-          children,
+          label: formatTitle(entry.name),
+          route: relPath.replace(/\\/g, '/'),
+          isParent: true,
+          icon: null,
+          iconType: null,
+          badge: null,
+          badgeColor: null,
+          children
         };
       }
 
@@ -80,24 +106,40 @@ function walkDocs(dir, relative = '', searchIndex) {
 
         const cleanPath = relPath.replace(/\.md$/, '').replace(/\\/g, '/');
         const item = {
-          title: meta.title || formatTitle(entry.name),
-          path: cleanPath,
+          label: meta.label || formatTitle(entry.name),
+          description: meta.description || '',
+          route: cleanPath,
           tags: meta.tags || [],
+          isTitle: meta.isTitle || false,
+          isParent: meta.isParent || false,
+          icon: meta.icon || null,
+          iconType: meta.iconType || null,
+          badge: meta.badge || null,
+          badgeColor: meta.badgeColor || null
         };
 
+        // If this is a "title" node, set its route to "#"
+        if (meta.isTitle === true) {
+          item.route = "#"; // Set route to "#" for title nodes
+        }
+
         // Add to the search index
-        searchIndex.push({
-          title: item.title,
-          path: cleanPath,
-          tags: item.tags,
-        });
+        if (item.route !== "#" && item.route !== "" && item.route !== null) {
+          searchIndex.push({
+            label: item.label,
+            description: item.description,
+            route: cleanPath,
+            tags: item.tags,
+          });
+        }
 
         return item;
       }
 
       return null;
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .map(cleanItem); // Clean items before returning
 }
 
 /**
@@ -110,10 +152,18 @@ function generateDocsManifests(docsRoot) {
     .filter(entry => entry.isDirectory())
     .map(entry => entry.name);
 
+  const results = []; // To collect the results
+
   projects.forEach(projectName => {
     const projectPath = path.join(docsRoot, projectName);
     const searchIndex = [];
     const manifest = walkDocs(projectPath, '', searchIndex);
+
+    // Ensure we have a valid manifest and search index
+    if (!manifest || !Array.isArray(manifest)) {
+      console.warn(`⚠️ No valid manifest generated for project: ${projectName}`);
+      return; // Skip this project if no valid manifest is generated
+    }
 
     fs.writeFileSync(
       path.join(projectPath, 'manifest.json'),
@@ -127,8 +177,13 @@ function generateDocsManifests(docsRoot) {
       'utf8',
     );
 
-    console.log(`✅ Generated manifest and search index for: ${projectName}`);
+    console.log(`✅ Generated manifest and search index for: ${ projectName }`);
+
+    // Track processed projects for summary
+    results.push({ name: projectName, processed: true });
   });
+
+  return results;
 }
 
 /**
@@ -192,7 +247,7 @@ function discoverProjects(rootDir, options = {}) {
       }
     }
   } catch (error) {
-    console.warn(`Warning: Could not scan directory ${rootDir}: ${error.message}`);
+    console.warn(`Warning: Could not scan directory ${ rootDir }: ${ error.message }`);
   }
 
   return discovered;
@@ -215,7 +270,7 @@ function generateManifestsWithDiscovery(rootDir, options = {}) {
   if (route) {
     // Process-specific route
     if (!fs.existsSync(route)) {
-      throw new Error(`Route not found: ${route}`);
+      throw new Error(`Route not found: ${ route }`);
     }
 
     const result = generateManifest(route);
@@ -233,7 +288,7 @@ function generateManifestsWithDiscovery(rootDir, options = {}) {
       'utf8',
     );
 
-    console.log(`✅ Generated manifest for route: ${route}`);
+    console.log(`✅ Generated manifest for route: ${ route }`);
     return [{ name: path.basename(route), processed: true }];
   }
 
@@ -243,7 +298,7 @@ function generateManifestsWithDiscovery(rootDir, options = {}) {
     const docsPath = path.join(projectPath, docsSubfolder);
 
     if (!fs.existsSync(projectPath)) {
-      throw new Error(`Project not found: ${project}`);
+      throw new Error(`Project not found: ${ project }`);
     }
 
     const targetPath = fs.existsSync(docsPath) ? docsPath : projectPath;
@@ -262,62 +317,19 @@ function generateManifestsWithDiscovery(rootDir, options = {}) {
       'utf8',
     );
 
-    console.log(`✅ Generated manifest for project: ${project}`);
+    console.log(`✅ Generated manifest for project: ${ project }`);
     return [{ name: project, processed: true }];
   }
 
-  // Auto-discover and process all projects
   if (autoDetect) {
-    const discovered = discoverProjects(rootDir, { docsSubfolder });
-    const results = [];
-
-    if (discovered.length === 0) {
-      console.log('⚠️  No documentation projects found.');
-      return results;
-    }
-
-    console.log(`📁 Discovered ${discovered.length} project(s):`);
-    discovered.forEach(proj => {
-      console.log(`  - ${proj.name} (${proj.type}): ${proj.docsPath}`);
-    });
-
-    for (const proj of discovered) {
-      try {
-        const result = generateManifest(proj.docsPath);
-        const outputPath = outputDir || proj.projectPath;
-
-        fs.writeFileSync(
-          path.join(outputPath, 'manifest.json'),
-          JSON.stringify(result.manifest, null, 2),
-          'utf8',
-        );
-
-        fs.writeFileSync(
-          path.join(outputPath, 'search-index.json'),
-          JSON.stringify(result.searchIndex, null, 2),
-          'utf8',
-        );
-
-        console.log(`✅ Generated manifest for: ${proj.name}`);
-        results.push({ name: proj.name, processed: true });
-      } catch (error) {
-        console.error(`❌ Error processing ${proj.name}: ${error.message}`);
-        results.push({ name: proj.name, processed: false, error: error.message });
-      }
-    }
-
-    return results;
+    // Auto-detect all projects
+    return generateDocsManifests(rootDir);
   }
 
-  // Fallback to original behavior
-  generateDocsManifests(rootDir);
   return [];
 }
 
 export {
-  formatTitle,
-  parseFrontmatter,
-  walkDocs,
   generateDocsManifests,
   generateManifest,
   discoverProjects,
