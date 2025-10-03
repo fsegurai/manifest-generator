@@ -108,7 +108,7 @@ Yes, use the `title` field in frontmatter:
 
 ```markdown
 ---
-title: "Custom Page Title"
+label: "Custom Page Title"
 ---
 
 # This heading is ignored, frontmatter title is used

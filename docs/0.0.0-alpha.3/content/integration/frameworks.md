@@ -343,14 +343,14 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, combineLatest } from 'rxjs';
 
 export interface NavigationItem {
-  title: string;
+  label: string;
   path?: string;
   tags?: string[];
   children?: NavigationItem[];
 }
 
 export interface SearchEntry {
-  title: string;
+  label: string;
   path: string;
   tags?: string[];
 }

@@ -1,5 +1,5 @@
 ---
-title: API Examples
+label: API Examples
 tags: ["api", "examples", "advanced", "usage", "batch"]
 ---
 

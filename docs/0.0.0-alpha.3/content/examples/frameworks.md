@@ -466,14 +466,14 @@ import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 
 export interface NavigationItem {
-  title: string;
+  label: string;
   path?: string;
   tags?: string[];
   children?: NavigationItem[];
 }
 
 export interface SearchEntry {
-  title: string;
+  label: string;
   path: string;
   tags?: string[];
 }

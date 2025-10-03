@@ -39,7 +39,7 @@ Represents a single navigation item in the manifest.
 
 ```typescript
 interface NavigationItem {
-  title: string;           // Display title
+  label: string;           // Display title
   path?: string;          // Optional path for navigation
   tags?: string[];        // Optional tags from frontmatter
   children?: NavigationItem[]; // Optional nested items
@@ -51,7 +51,7 @@ Represents an entry in the search index.
 
 ```typescript
 interface SearchEntry {
-  title: string;    // Document title
+  label: string;    // Document title
   path: string;     // Document path
   tags?: string[];  // Document tags
 }

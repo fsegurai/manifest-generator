@@ -123,7 +123,7 @@ Override the automatically generated title:
 
 ```yaml
 ---
-title: "Custom Page Title"
+label: "Custom Page Title"
 ---
 ```
 
@@ -159,7 +159,7 @@ hidden: true
 #### Basic Configuration
 ```yaml
 ---
-title: API Reference
+label: API Reference
 tags: [api, reference]
 ---
 ```
@@ -167,7 +167,7 @@ tags: [api, reference]
 #### Advanced Configuration
 ```yaml
 ---
-title: Advanced Setup Guide
+label: Advanced Setup Guide
 tags: [guide, advanced, setup]
 draft: false
 hidden: false
@@ -177,7 +177,7 @@ hidden: false
 #### Draft Content
 ```yaml
 ---
-title: Work in Progress
+label: Work in Progress
 draft: true
 ---
 ```
@@ -346,7 +346,7 @@ The tool automatically formats filenames to titles, but you can override this wi
 ```markdown
 <!-- File: advanced-api-guide.md -->
 ---
-title: "Advanced API Integration Guide"
+label: "Advanced API Integration Guide"
 ---
 ```
 

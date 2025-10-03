@@ -8,7 +8,7 @@ Frontmatter is YAML metadata placed at the beginning of Markdown files, enclosed
 
 ```markdown
 ---
-title: Custom Page Title
+label: Custom Page Title
 tags: [guide, beginner]
 draft: false
 ---
@@ -26,7 +26,7 @@ Regular markdown content goes here...
 
 ```yaml
 ---
-title: "Advanced API Integration Guide"
+label: "Advanced API Integration Guide"
 ---
 ```
 
@@ -89,7 +89,7 @@ The parser automatically detects and converts data types:
 #### Strings
 ```yaml
 ---
-title: Simple string
+label: Simple string
 description: "Quoted string"
 author: 'Single quoted'
 ---
@@ -143,7 +143,7 @@ malformed: {incomplete object
 ### Basic Page Metadata
 ```yaml
 ---
-title: Getting Started Guide
+label: Getting Started Guide
 tags: [guide, beginner]
 ---
 ```
@@ -151,7 +151,7 @@ tags: [guide, beginner]
 ### API Documentation
 ```yaml
 ---
-title: User Authentication API
+label: User Authentication API
 tags: [api, authentication, reference]
 ---
 ```
@@ -159,7 +159,7 @@ tags: [api, authentication, reference]
 ### Tutorial Content
 ```yaml
 ---
-title: Building Your First App
+label: Building Your First App
 tags: [tutorial, beginner, quickstart]
 ---
 ```
@@ -167,7 +167,7 @@ tags: [tutorial, beginner, quickstart]
 ### Reference Documentation
 ```yaml
 ---
-title: Configuration Reference
+label: Configuration Reference
 tags: [reference, configuration, advanced]
 ---
 ```
@@ -175,7 +175,7 @@ tags: [reference, configuration, advanced]
 ### Work in Progress
 ```yaml
 ---
-title: Advanced Features (Draft)
+label: Advanced Features (Draft)
 draft: true
 tags: [advanced, incomplete]
 ---
@@ -184,7 +184,7 @@ tags: [advanced, incomplete]
 ### Internal Documentation
 ```yaml
 ---
-title: Internal Development Notes
+label: Internal Development Notes
 hidden: true
 tags: [internal, development]
 ---

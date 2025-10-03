@@ -158,7 +158,7 @@ npx @fsegurai/manifest-generator --route ./docs --output ./dist/data
 ```markdown
 <!-- docs/getting-started.md -->
 ---
-title: Getting Started Guide
+label: Getting Started Guide
 tags: [guide, beginner]
 ---
 
@@ -181,7 +181,7 @@ Your content here...
 ```markdown
 <!-- docs/draft-page.md -->
 ---
-title: Work in Progress
+label: Work in Progress
 draft: true
 tags: [internal]
 ---
@@ -192,7 +192,7 @@ tags: [internal]
 ```markdown
 <!-- docs/hidden-page.md -->
 ---
-title: Internal Notes
+label: Internal Notes
 hidden: true
 ---
 
@@ -204,7 +204,7 @@ hidden: true
 ```markdown
 <!-- docs/api/authentication.md -->
 ---
-title: User Authentication API
+label: User Authentication API
 tags: [api, authentication, security, reference]
 ---
 
@@ -315,7 +315,7 @@ npx @fsegurai/manifest-generator --route "$(pwd)/docs"
 mkdir test-docs
 cat > test-docs/README.md << EOF
 ---
-title: Test Documentation
+label: Test Documentation
 tags: [test]
 ---
 
@@ -334,9 +334,9 @@ cat test-docs/search-index.json
 ```bash
 # Create nested structure
 mkdir -p test-docs/{guides,api}
-echo "---\ntitle: Main Page\n---\n# Main" > test-docs/README.md
-echo "---\ntitle: Quick Start\ntags: [guide]\n---\n# Quick Start" > test-docs/guides/quickstart.md
-echo "---\ntitle: API Reference\ntags: [api, reference]\n---\n# API" > test-docs/api/reference.md
+echo "---\nlabel: Main Page\n---\n# Main" > test-docs/README.md
+echo "---\nlabel: Quick Start\ntags: [guide]\n---\n# Quick Start" > test-docs/guides/quickstart.md
+echo "---\nlabel: API Reference\ntags: [api, reference]\n---\n# API" > test-docs/api/reference.md
 
 # Generate and check structure
 npx @fsegurai/manifest-generator --route ./test-docs

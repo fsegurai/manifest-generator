@@ -1,5 +1,5 @@
 ---
-title: Get Started with API Reference
+label: Get Started with API Reference
 tags: ["api", "examples", "advanced", "usage", "batch"]
 ---
 

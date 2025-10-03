@@ -9,7 +9,7 @@ Represents a single navigation item in the manifest structure.
 
 ```typescript
 interface NavigationItem {
-  title: string;                    // Display title for the navigation item
+  label: string;                    // Display title for the navigation item
   path?: string;                   // Optional path for navigation (undefined for folders)
   tags?: string[];                 // Optional tags from frontmatter
   children?: NavigationItem[];     // Optional nested navigation items
@@ -19,16 +19,16 @@ interface NavigationItem {
 **Usage Example:**
 ```typescript
 const navItem: NavigationItem = {
-  title: "Getting Started",
+  label: "Getting Started",
   path: "getting-started",
   tags: ["guide", "beginner"]
 };
 
 const folderItem: NavigationItem = {
-  title: "API",
+  label: "API",
   children: [
     {
-      title: "Reference",
+      label: "Reference",
       path: "api/reference",
       tags: ["api", "reference"]
     }
@@ -41,7 +41,7 @@ Represents an entry in the flat search index.
 
 ```typescript
 interface SearchEntry {
-  title: string;        // Document title
+  label: string;        // Document title
   path: string;         // Document path (required for search)
   tags?: string[];      // Optional document tags
 }
@@ -50,7 +50,7 @@ interface SearchEntry {
 **Usage Example:**
 ```typescript
 const searchEntry: SearchEntry = {
-  title: "User Authentication API",
+  label: "User Authentication API",
   path: "api/authentication",
   tags: ["api", "authentication", "security"]
 };

@@ -135,7 +135,7 @@ node -e "JSON.parse(require('fs').readFileSync('./docs/search-index.json', 'utf8
    tags: [guide, tutorial]
    
    # Good: quoted strings with special characters
-   title: "API: Getting Started"
+   label: "API: Getting Started"
    
    # Good: boolean values
    draft: false
@@ -149,7 +149,7 @@ node -e "JSON.parse(require('fs').readFileSync('./docs/search-index.json', 'utf8
    tags: [guide, tutorial
    
    # Bad: unquoted string with colons
-   title: API: Getting Started
+   label: API: Getting Started
    
    # Bad: invalid boolean
    draft: yes
@@ -189,7 +189,7 @@ node -e "JSON.parse(require('fs').readFileSync('./docs/search-index.json', 'utf8
 1. **Remove exclusion flags**:
    ```markdown
    ---
-   title: "My Page"
+   label: "My Page"
    tags: [guide]
    # Remove or set to false: draft: true
    # Remove or set to false: hidden: true
@@ -390,7 +390,7 @@ npx @fsegurai/manifest-generator --route ./docs > generation.log 2>&1
 # Create minimal test case
 mkdir test-minimal
 echo "# Test" > test-minimal/README.md
-echo "---\ntitle: Test\n---\n# Content" > test-minimal/test.md
+echo "---\nlabel: Test\n---\n# Content" > test-minimal/test.md
 
 # Test generation
 npx @fsegurai/manifest-generator --route ./test-minimal

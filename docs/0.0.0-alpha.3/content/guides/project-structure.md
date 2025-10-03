@@ -177,18 +177,18 @@ npx @fsegurai/manifest-generator --all --docs-subfolder guides
 <!-- Excluded: draft content -->
 ---
 draft: true
-title: Work in Progress
+label: Work in Progress
 ---
 
 <!-- Excluded: hidden content -->
 ---
 hidden: true
-title: Internal Notes
+label: Internal Notes
 ---
 
 <!-- Included: published content -->
 ---
-title: User Guide
+label: User Guide
 tags: [guide, user]
 ---
 ```

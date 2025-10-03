@@ -60,7 +60,7 @@ Add metadata to your Markdown files:
 
 ```markdown
 ---
-title: Getting Started Guide
+label: Getting Started Guide
 tags: [guide, beginner]
 ---
 
