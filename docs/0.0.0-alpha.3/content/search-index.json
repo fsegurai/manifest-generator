@@ -1,0 +1,176 @@
+[
+  {
+    "label": "API Examples",
+    "description": "",
+    "route": "api/examples",
+    "tags": [
+      "api",
+      "examples",
+      "advanced",
+      "usage",
+      "batch"
+    ]
+  },
+  {
+    "label": "Get Started with API Reference",
+    "description": "",
+    "route": "api/README",
+    "tags": [
+      "api",
+      "examples",
+      "advanced",
+      "usage",
+      "batch"
+    ]
+  },
+  {
+    "label": "Reference",
+    "description": "",
+    "route": "api/reference",
+    "tags": []
+  },
+  {
+    "label": "Typescript",
+    "description": "",
+    "route": "api/typescript",
+    "tags": []
+  },
+  {
+    "label": "Advanced",
+    "description": "",
+    "route": "examples/advanced",
+    "tags": []
+  },
+  {
+    "label": "Basic Usage",
+    "description": "",
+    "route": "examples/basic-usage",
+    "tags": []
+  },
+  {
+    "label": "Frameworks",
+    "description": "",
+    "route": "examples/frameworks",
+    "tags": []
+  },
+  {
+    "label": "README",
+    "description": "",
+    "route": "examples/README",
+    "tags": []
+  },
+  {
+    "label": "README",
+    "description": "",
+    "route": "features/README",
+    "tags": []
+  },
+  {
+    "label": "Search Index",
+    "description": "",
+    "route": "features/search-index",
+    "tags": []
+  },
+  {
+    "label": "First Steps",
+    "description": "",
+    "route": "getting-started/first-steps",
+    "tags": []
+  },
+  {
+    "label": "Getting Started",
+    "description": "",
+    "route": "getting-started/getting-started",
+    "tags": []
+  },
+  {
+    "label": "Installation",
+    "description": "",
+    "route": "getting-started/installation",
+    "tags": []
+  },
+  {
+    "label": "README",
+    "description": "",
+    "route": "getting-started/README",
+    "tags": []
+  },
+  {
+    "label": "Cli Usage",
+    "description": "",
+    "route": "guides/cli-usage",
+    "tags": []
+  },
+  {
+    "label": "Configuration",
+    "description": "",
+    "route": "guides/configuration",
+    "tags": []
+  },
+  {
+    "label": "Frontmatter",
+    "description": "",
+    "route": "guides/frontmatter",
+    "tags": []
+  },
+  {
+    "label": "Project Structure",
+    "description": "",
+    "route": "guides/project-structure",
+    "tags": []
+  },
+  {
+    "label": "README",
+    "description": "",
+    "route": "guides/README",
+    "tags": []
+  },
+  {
+    "label": "Faq",
+    "description": "",
+    "route": "help/faq",
+    "tags": []
+  },
+  {
+    "label": "README",
+    "description": "",
+    "route": "help/README",
+    "tags": []
+  },
+  {
+    "label": "Troubleshooting",
+    "description": "",
+    "route": "help/troubleshooting",
+    "tags": []
+  },
+  {
+    "label": "Build Systems",
+    "description": "",
+    "route": "integration/build-systems",
+    "tags": []
+  },
+  {
+    "label": "Ci Cd",
+    "description": "",
+    "route": "integration/ci-cd",
+    "tags": []
+  },
+  {
+    "label": "Frameworks",
+    "description": "",
+    "route": "integration/frameworks",
+    "tags": []
+  },
+  {
+    "label": "README",
+    "description": "",
+    "route": "integration/README",
+    "tags": []
+  },
+  {
+    "label": "README",
+    "description": "",
+    "route": "README",
+    "tags": []
+  }
+]
