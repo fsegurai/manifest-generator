@@ -330,6 +330,10 @@ function generateManifestsWithDiscovery(rootDir, options = {}) {
 }
 
 export {
+  formatTitle,
+  parseFrontmatter,
+  walkDocs,
+  cleanItem,
   generateDocsManifests,
   generateManifest,
   discoverProjects,
