@@ -1,0 +1,48 @@
+{
+  "name": "@fsegurai/manifest-generator",
+  "version": "0.0.0-alpha.3",
+  "description": "A simple manifest and search-index generator based on project documentation.",
+  "main": "./dist/index.cjs",
+  "module": "./src/index.js",
+  "browser": "./dist/index.umd.js",
+  "type": "module",
+  "types": "./src/index.d.ts",
+  "bin": {
+    "manifest-generator": "./src/cli.js"
+  },
+  "files": [
+    "dist/",
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "import": "./src/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./cli": "./src/cli.js"
+  },
+  "keywords": [
+    "documentation",
+    "manifest",
+    "generator",
+    "search-index",
+    "markdown",
+    "docs",
+    "cli"
+  ],
+  "author": {
+    "name": "Fabián Segura",
+    "url": "https://www.fsegurai.com/"
+  },
+  "license": "MIT",
+  "scripts": {
+    "prepare": "rollup -c rollup.config.js",
+    "test:types": "tsd -f spec/index.test-d.ts -t src/index.d.ts"
+  },
+  "peerDependencies": {},
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -1,0 +1,63 @@
+[
+  {
+    "label": "Docs",
+    "route": "docs",
+    "isParent": true,
+    "children": [
+      {
+        "label": "API Reference",
+        "route": "docs/api-reference",
+        "tags": [
+          "api",
+          "reference"
+        ]
+      },
+      {
+        "label": "Getting Started Guide",
+        "route": "docs/getting-started",
+        "tags": [
+          "tutorial",
+          "beginner"
+        ]
+      },
+      {
+        "label": "Guides",
+        "route": "docs/guides",
+        "isParent": true,
+        "children": [
+          {
+            "label": "Advanced Configuration",
+            "route": "docs/guides/advanced-config",
+            "tags": [
+              "configuration",
+              "advanced"
+            ]
+          },
+          {
+            "label": "Setup",
+            "route": "docs/guides/setup",
+            "isParent": true,
+            "children": [
+              {
+                "label": "Advanced Setup",
+                "route": "docs/guides/setup/advanced-setup",
+                "tags": [
+                  "configuration",
+                  "advanced"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "label": "Sample Project Documentation",
+        "route": "docs/README",
+        "tags": [
+          "documentation",
+          "getting-started"
+        ]
+      }
+    ]
+  }
+]
