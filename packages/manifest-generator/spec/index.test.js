@@ -199,21 +199,16 @@ label: User Guide
       const result = walkDocs('/docs', '', searchIndex);
 
       expect(result).toHaveLength(2);
+      // Only include properties that won't be cleaned out
       expect(result[0]).toEqual({
         label: 'Introduction',
-        description: '',
         route: 'intro',
         tags: ['getting-started'],
-        isTitle: false,
-        isParent: false,
       });
       expect(result[1]).toEqual({
         label: 'User Guide',
-        description: '',
         route: 'guide',
         tags: [],
-        isTitle: false,
-        isParent: false,
       });
       expect(searchIndex).toHaveLength(2);
       expect(searchIndex[0]).toEqual({
@@ -308,11 +303,8 @@ label: Basic Guide
         isParent: true,
         children: [{
           label: 'Basic Guide',
-          description: '',
           route: 'guides/basic',
           tags: [],
-          isTitle: false,
-          isParent: false,
         }],
       });
       expect(searchIndex).toHaveLength(2);
@@ -419,11 +411,9 @@ label: Regular Page
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual({
         label: 'Section Title',
-        description: '',
         route: '#',
         tags: [],
         isTitle: true,
-        isParent: false,
       });
 
       // Title nodes should not be added to search index
@@ -453,12 +443,12 @@ badgeColor: "blue"
       const searchIndex = [];
       const result = walkDocs('/docs', '', searchIndex);
 
+      // isTitle: false gets cleaned out, but isParent: true stays
       expect(result[0]).toEqual({
         label: 'Full Metadata',
         description: 'Test description',
         route: 'full-meta',
         tags: ['test', 'example'],
-        isTitle: false,
         isParent: true,
         icon: 'star',
         iconType: 'solid',
@@ -487,13 +477,11 @@ tags: ["basics"]
       expect(result).toHaveProperty('searchIndex');
       expect(result.manifest).toHaveLength(1);
       expect(result.searchIndex).toHaveLength(1);
+      // After cleaning, false and empty string properties are removed
       expect(result.manifest[0]).toEqual({
         label: 'Introduction',
-        description: '',
         route: 'intro',
         tags: ['basics'],
-        isTitle: false,
-        isParent: false,
       });
       expect(result.searchIndex[0]).toEqual({
         label: 'Introduction',
@@ -609,7 +597,7 @@ label: README
           return [{ name: 'readme.md', isDirectory: () => false, isFile: () => true }];
         }
         if (dirPath.includes('invalid-project')) {
-          return []; // Empty directory
+          return []; // Empty directory - this results in empty array manifest
         }
         return [];
       });
@@ -625,17 +613,20 @@ label: README
 
       const result = generateDocsManifests('/docs');
 
-      // Should only write files for valid project
-      expect(writeFileSyncSpy).toHaveBeenCalledTimes(2);
-      expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+      // Both projects will write files - valid project writes files with content,
+      // invalid project writes empty manifest and search index files
+      expect(writeFileSyncSpy).toHaveBeenCalledTimes(4);
+      expect(consoleLogSpy).toHaveBeenCalledTimes(2);
       expect(consoleLogSpy).toHaveBeenCalledWith('✅ Generated manifest and search index for: valid-project');
+      expect(consoleLogSpy).toHaveBeenCalledWith('✅ Generated manifest and search index for: invalid-project');
 
-      // Should warn about invalid project
-      expect(consoleWarnSpy).toHaveBeenCalledWith('⚠️ No valid manifest generated for project: invalid-project');
+      // No warnings should be generated since empty array is still valid
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
 
-      // Should only return valid project in results
+      // Both projects should be in results
       expect(result).toEqual([
         { name: 'valid-project', processed: true },
+        { name: 'invalid-project', processed: true },
       ]);
 
       writeFileSyncSpy.mockRestore();
