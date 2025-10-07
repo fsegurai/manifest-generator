@@ -94,7 +94,7 @@ function walkDocs(dir, relative = '', searchIndex) {
           iconType: null,
           badge: null,
           badgeColor: null,
-          children
+          children,
         };
       }
 
@@ -115,16 +115,16 @@ function walkDocs(dir, relative = '', searchIndex) {
           icon: meta.icon || null,
           iconType: meta.iconType || null,
           badge: meta.badge || null,
-          badgeColor: meta.badgeColor || null
+          badgeColor: meta.badgeColor || null,
         };
 
         // If this is a "title" node, set its route to "#"
         if (meta.isTitle === true) {
-          item.route = "#"; // Set route to "#" for title nodes
+          item.route = '#'; // Set route to "#" for title nodes
         }
 
         // Add to the search index
-        if (item.route !== "#" && item.route !== "" && item.route !== null) {
+        if (item.route !== '#' && item.route !== '' && item.route !== null) {
           searchIndex.push({
             label: item.label,
             description: item.description,
