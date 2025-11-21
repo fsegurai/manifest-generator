@@ -62,7 +62,7 @@ function showVersion() {
   try {
     // Prefer a simple, cwd-relative read so tests can mock fs.readFileSync easily
     const packageJson = JSON.parse(
-      fs.readFileSync('package.json', 'utf8')
+      fs.readFileSync('package.json', 'utf8'),
     );
     console.log(`@fsegurai/manifest-generator v${ packageJson.version }`);
   } catch {
