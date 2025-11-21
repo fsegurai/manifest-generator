@@ -1,5 +1,5 @@
 {
-  "name": "@fsegurai/manifest-generator",
+  "name": "@fsegurai/manifest-generator-monorepo",
   "version": "0.0.0-alpha.3",
   "description": "A simple manifest and search-index generator based on project documentation.",
   "type": "module",
