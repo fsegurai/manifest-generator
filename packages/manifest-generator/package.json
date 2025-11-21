@@ -24,13 +24,20 @@
     "./cli": "./src/cli.js"
   },
   "keywords": [
-    "documentation",
-    "manifest",
-    "generator",
-    "search-index",
-    "markdown",
+    "cli",
     "docs",
-    "cli"
+    "documentation",
+    "generator",
+    "javascript",
+    "javascript-library",
+    "lightweight",
+    "library",
+    "manifest",
+    "manifest-generator",
+    "markdown",
+    "search-index",
+    "typescript",
+    "typescript-library"
   ],
   "author": {
     "name": "Fabián Segura",
