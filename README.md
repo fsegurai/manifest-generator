@@ -549,22 +549,7 @@ description: "Brief summary"   # Future: meta description
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to
 discuss what you would like to change.
 
-### Development Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/fsegurai/manifest-generator.git
-cd manifest-generator
-
-# Install dependencies
-npm install
-
-# Run tests
-npm test:packages
-
-# Build the package
-npm run build:packages
-```
+For more information, check out the [Contributing Guide](CONTRIBUTING.md).
 
 ## 🧼 License
 
