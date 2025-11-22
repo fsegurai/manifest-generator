@@ -72,8 +72,13 @@
     "children": [
       {
         "label": "README",
+        "description": "Complete overview of all Manifest Generator features and capabilities",
         "route": "features/README",
-        "tags": []
+        "tags": [
+          "features",
+          "capabilities",
+          "overview"
+        ]
       },
       {
         "label": "Search Index",
@@ -94,8 +99,14 @@
       },
       {
         "label": "Getting Started",
+        "description": "Complete guide to getting started with the Manifest Generator library",
         "route": "getting-started/getting-started",
-        "tags": []
+        "tags": [
+          "getting-started",
+          "installation",
+          "tutorial",
+          "quickstart"
+        ]
       },
       {
         "label": "Installation",
@@ -104,8 +115,13 @@
       },
       {
         "label": "README",
+        "description": "Introduction to the Manifest Generator and quick start guide",
         "route": "getting-started/README",
-        "tags": []
+        "tags": [
+          "getting-started",
+          "overview",
+          "introduction"
+        ]
       }
     ]
   },
