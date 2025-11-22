@@ -1,0 +1,214 @@
+[
+  {
+    "label": "Api",
+    "route": "api",
+    "isParent": true,
+    "children": [
+      {
+        "label": "API Examples",
+        "route": "api/examples",
+        "tags": [
+          "api",
+          "examples",
+          "advanced",
+          "usage",
+          "batch"
+        ]
+      },
+      {
+        "label": "Get Started with API Reference",
+        "route": "api/README",
+        "tags": [
+          "api",
+          "examples",
+          "advanced",
+          "usage",
+          "batch"
+        ]
+      },
+      {
+        "label": "Reference",
+        "route": "api/reference",
+        "tags": []
+      },
+      {
+        "label": "Typescript",
+        "route": "api/typescript",
+        "tags": []
+      }
+    ]
+  },
+  {
+    "label": "Examples",
+    "route": "examples",
+    "isParent": true,
+    "children": [
+      {
+        "label": "Advanced",
+        "route": "examples/advanced",
+        "tags": []
+      },
+      {
+        "label": "Basic Usage",
+        "route": "examples/basic-usage",
+        "tags": []
+      },
+      {
+        "label": "Frameworks",
+        "route": "examples/frameworks",
+        "tags": []
+      },
+      {
+        "label": "README",
+        "route": "examples/README",
+        "tags": []
+      }
+    ]
+  },
+  {
+    "label": "Features",
+    "route": "features",
+    "isParent": true,
+    "children": [
+      {
+        "label": "README",
+        "description": "Complete overview of all Manifest Generator features and capabilities",
+        "route": "features/README",
+        "tags": [
+          "features",
+          "capabilities",
+          "overview"
+        ]
+      },
+      {
+        "label": "Search Index",
+        "route": "features/search-index",
+        "tags": []
+      }
+    ]
+  },
+  {
+    "label": "Getting Started",
+    "route": "getting-started",
+    "isParent": true,
+    "children": [
+      {
+        "label": "First Steps",
+        "route": "getting-started/first-steps",
+        "tags": []
+      },
+      {
+        "label": "Getting Started",
+        "description": "Complete guide to getting started with the Manifest Generator library",
+        "route": "getting-started/getting-started",
+        "tags": [
+          "getting-started",
+          "installation",
+          "tutorial",
+          "quickstart"
+        ]
+      },
+      {
+        "label": "Installation",
+        "route": "getting-started/installation",
+        "tags": []
+      },
+      {
+        "label": "README",
+        "description": "Introduction to the Manifest Generator and quick start guide",
+        "route": "getting-started/README",
+        "tags": [
+          "getting-started",
+          "overview",
+          "introduction"
+        ]
+      }
+    ]
+  },
+  {
+    "label": "Guides",
+    "route": "guides",
+    "isParent": true,
+    "children": [
+      {
+        "label": "Cli Usage",
+        "route": "guides/cli-usage",
+        "tags": []
+      },
+      {
+        "label": "Configuration",
+        "route": "guides/configuration",
+        "tags": []
+      },
+      {
+        "label": "Frontmatter",
+        "route": "guides/frontmatter",
+        "tags": []
+      },
+      {
+        "label": "Project Structure",
+        "route": "guides/project-structure",
+        "tags": []
+      },
+      {
+        "label": "README",
+        "route": "guides/README",
+        "tags": []
+      }
+    ]
+  },
+  {
+    "label": "Help",
+    "route": "help",
+    "isParent": true,
+    "children": [
+      {
+        "label": "Faq",
+        "route": "help/faq",
+        "tags": []
+      },
+      {
+        "label": "README",
+        "route": "help/README",
+        "tags": []
+      },
+      {
+        "label": "Troubleshooting",
+        "route": "help/troubleshooting",
+        "tags": []
+      }
+    ]
+  },
+  {
+    "label": "Integration",
+    "route": "integration",
+    "isParent": true,
+    "children": [
+      {
+        "label": "Build Systems",
+        "route": "integration/build-systems",
+        "tags": []
+      },
+      {
+        "label": "Ci Cd",
+        "route": "integration/ci-cd",
+        "tags": []
+      },
+      {
+        "label": "Frameworks",
+        "route": "integration/frameworks",
+        "tags": []
+      },
+      {
+        "label": "README",
+        "route": "integration/README",
+        "tags": []
+      }
+    ]
+  },
+  {
+    "label": "README",
+    "route": "README",
+    "tags": []
+  }
+]
