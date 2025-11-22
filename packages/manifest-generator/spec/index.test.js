@@ -1,7 +1,17 @@
 import fs from 'fs';
 import path from 'path';
 import { jest } from '@jest/globals';
-import { formatTitle, generateDocsManifests, generateManifest, parseFrontmatter, walkDocs, cleanItem } from '../src/index.js';
+import {
+  formatTitle,
+  generateDocsManifests,
+  generateManifest,
+  parseFrontmatter,
+  walkDocs,
+  cleanItem,
+  discoverProjects,
+  generateManifestsWithDiscovery
+} from '../src/index.js';
+import * as indexModule from '../src/index.js';
 
 // Mock fs module
 jest.mock('fs');
@@ -50,6 +60,22 @@ draft: false
       });
     });
 
+    test('should handle malformed JSON arrays by falling back in catch', () => {
+      const content = `---
+label: Test
+tags: [invalid json]
+---
+# Content`;
+
+      const result = parseFrontmatter(content);
+      // JSON.parse will throw for the malformed contents inside the brackets,
+      // so the implementation should fall back to the raw string value
+      expect(result).toEqual({
+        label: 'Test',
+        tags: '[invalid json]',
+      });
+    });
+
     test('should handle empty frontmatter', () => {
       const content = '# No frontmatter here';
       const result = parseFrontmatter(content);
@@ -91,20 +117,6 @@ tags: ["web", "docs"]
       });
     });
 
-    test('should handle malformed JSON arrays gracefully', () => {
-      const content = `---
-label: Test
-tags: [invalid json
----
-# Content`;
-
-      const result = parseFrontmatter(content);
-      expect(result).toEqual({
-        label: 'Test',
-        tags: '[invalid json',
-      });
-    });
-
     test('should handle colons in values', () => {
       const content = `---
 label: "Time: 12:30 PM"
@@ -117,6 +129,19 @@ url: "https://example.com:8080"
         label: 'Time: 12:30 PM',
         url: 'https://example.com:8080',
       });
+    });
+
+    test('should correctly parse numbers and booleans', () => {
+      const content = `---
+count: 10
+enabled: true
+draft: false
+---\n# Content`;
+
+      const result = parseFrontmatter(content);
+      expect(result.count).toBe(10);
+      expect(result.enabled).toBe(true);
+      expect(result.draft).toBe(false);
     });
   });
 
@@ -328,6 +353,29 @@ label: Visible File
 
       expect(result).toHaveLength(1);
       expect(result[0].label).toBe('Visible File');
+    });
+
+    test('should ignore non-markdown files and only include .md files', () => {
+      const mockDirents = [
+        { name: 'note.txt', isDirectory: () => false, isFile: () => true },
+        { name: 'readme.md', isDirectory: () => false, isFile: () => true },
+      ];
+
+      fs.readdirSync.mockReturnValue(mockDirents);
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath.includes('readme.md')) {
+          return `---\nlabel: Readme\n---\n# Content`;
+        }
+        return '';
+      });
+
+      const searchIndex = [];
+      const result = walkDocs('/docs', '', searchIndex);
+
+      // note.txt should be ignored; only readme.md processed
+      expect(result).toHaveLength(1);
+      expect(result[0].label).toBe('Readme');
+      expect(searchIndex).toHaveLength(1);
     });
 
     test('should handle Windows paths correctly', () => {
@@ -632,6 +680,608 @@ label: README
       writeFileSyncSpy.mockRestore();
       consoleLogSpy.mockRestore();
       consoleWarnSpy.mockRestore();
+    });
+
+    test('should warn and skip project when manifest generation returns non-array', () => {
+      const mockProjects = [
+        { name: 'badproj', isDirectory: () => true },
+      ];
+
+      // readdirSync should return projects for the root docs folder
+      fs.readdirSync.mockImplementation((dirPath) => {
+        if (dirPath === '/docs') return mockProjects;
+        return [];
+      });
+
+      // Make walkDocs return null to simulate an invalid manifest
+      const walkSpy = jest.spyOn(indexModule, 'walkDocs').mockReturnValue(null);
+
+      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation();
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const result = indexModule.generateDocsManifests('/docs', indexModule.walkDocs);
+
+      // Should warn and not write any files
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('No valid manifest generated for project: badproj'));
+      expect(writeFileSyncSpy).not.toHaveBeenCalled();
+      expect(result).toEqual([]);
+
+      // Restore spies
+      walkSpy.mockRestore();
+      writeFileSyncSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
+    });
+  });
+
+  describe('discoverProjects', () => {
+    test('should discover projects with docs subfolder', () => {
+      const mockRootDirents = [
+        { name: 'project1', isDirectory: () => true, isFile: () => false },
+        { name: 'project2', isDirectory: () => true, isFile: () => false },
+        { name: '.hidden', isDirectory: () => true, isFile: () => false },
+        { name: 'file.txt', isDirectory: () => false, isFile: () => true },
+      ];
+
+      const mockEmptyDirents = [];
+
+      fs.readdirSync.mockImplementation((dirPath) => {
+        if (dirPath === '/root') {
+          return mockRootDirents;
+        }
+        // Return empty for project subdirectories (no .md files in project root)
+        return mockEmptyDirents;
+      });
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('project1/docs') || filePath.includes('project2/docs');
+      });
+      fs.statSync.mockReturnValue({ isDirectory: () => true });
+
+      const result = discoverProjects('/root', { docsSubfolder: 'docs' });
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({
+        name: 'project1',
+        projectPath: expect.stringContaining('project1'),
+        docsPath: expect.stringContaining('project1'),
+        type: 'subfolder',
+      });
+      expect(result[1]).toEqual({
+        name: 'project2',
+        projectPath: expect.stringContaining('project2'),
+        docsPath: expect.stringContaining('project2'),
+        type: 'subfolder',
+      });
+    });
+
+    test('should discover projects with direct markdown files', () => {
+      const mockRootDirents = [
+        { name: 'project1', isDirectory: () => true, isFile: () => false },
+      ];
+
+      const mockProjectDirents = [
+        { name: 'readme.md', isDirectory: () => false, isFile: () => true },
+        { name: 'guide.md', isDirectory: () => false, isFile: () => true },
+      ];
+
+      fs.readdirSync.mockImplementation((dirPath) => {
+        if (dirPath === '/root') {
+          return mockRootDirents;
+        }
+        // Return .md files for project directory
+        if (dirPath.includes('project1')) {
+          return mockProjectDirents;
+        }
+        return [];
+      });
+
+      fs.existsSync.mockReturnValue(false); // No docs subfolder
+
+      const result = discoverProjects('/root', { docsSubfolder: 'docs' });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        name: 'project1',
+        projectPath: expect.stringContaining('project1'),
+        docsPath: expect.stringContaining('project1'),
+        type: 'direct',
+      });
+    });
+
+    test('should discover projects with both types', () => {
+      const mockRootDirents = [
+        { name: 'project-with-subfolder', isDirectory: () => true, isFile: () => false },
+        { name: 'project-direct', isDirectory: () => true, isFile: () => false },
+      ];
+
+      fs.readdirSync.mockImplementation((dirPath) => {
+        if (dirPath === '/root') {
+          return mockRootDirents;
+        }
+        if (dirPath.includes('project-direct')) {
+          return [
+            { name: 'readme.md', isDirectory: () => false, isFile: () => true },
+          ];
+        }
+        if (dirPath.includes('project-with-subfolder')) {
+          return []; // No .md files in project root
+        }
+        return [];
+      });
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('project-with-subfolder/docs');
+      });
+
+      fs.statSync.mockReturnValue({ isDirectory: () => true });
+
+      const result = discoverProjects('/root', { docsSubfolder: 'docs' });
+
+      expect(result.length).toBeGreaterThanOrEqual(1);
+      expect(result.some(r => r.type === 'subfolder')).toBe(true);
+    });
+
+    test('should skip hidden directories', () => {
+      const mockRootDirents = [
+        { name: '.hidden', isDirectory: () => true, isFile: () => false },
+        { name: 'visible', isDirectory: () => true, isFile: () => false },
+      ];
+
+      const mockVisibleDirents = [
+        { name: 'readme.md', isDirectory: () => false, isFile: () => true },
+      ];
+
+      fs.readdirSync.mockImplementation((dirPath) => {
+        if (dirPath === '/root') {
+          return mockRootDirents;
+        }
+        if (dirPath.includes('visible')) {
+          return mockVisibleDirents;
+        }
+        return [];
+      });
+
+      fs.existsSync.mockReturnValue(false);
+
+      const result = discoverProjects('/root');
+
+      expect(result.every(r => !r.name.startsWith('.'))).toBe(true);
+    });
+
+    test('should handle errors gracefully', () => {
+      fs.readdirSync.mockImplementation(() => {
+        throw new Error('Permission denied');
+      });
+
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const result = discoverProjects('/root');
+
+      expect(result).toEqual([]);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Could not scan directory')
+      );
+
+      consoleWarnSpy.mockRestore();
+    });
+
+    test('should use custom docs subfolder name', () => {
+      const mockRootDirents = [
+        { name: 'project1', isDirectory: () => true, isFile: () => false },
+      ];
+
+      fs.readdirSync.mockImplementation((dirPath) => {
+        if (dirPath === '/root') {
+          return mockRootDirents;
+        }
+        return []; // No .md files in project root
+      });
+
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('documentation');
+      });
+      fs.statSync.mockReturnValue({ isDirectory: () => true });
+
+      const result = discoverProjects('/root', { docsSubfolder: 'documentation' });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].docsPath).toContain('documentation');
+    });
+
+    test('should return empty array when no projects found', () => {
+      const mockRootDirents = [
+        { name: 'file.txt', isDirectory: () => false, isFile: () => true },
+      ];
+
+      fs.readdirSync.mockReturnValue(mockRootDirents);
+
+      const result = discoverProjects('/root');
+
+      expect(result).toEqual([]);
+    });
+
+    test('should recognize docsPathNormalized (Windows paths)', () => {
+      const mockRootDirents = [
+        { name: 'winproj', isDirectory: () => true, isFile: () => false },
+      ];
+
+      fs.readdirSync.mockImplementation((dirPath) => {
+        if (dirPath === '/root') return mockRootDirents;
+        return []; // No files in project
+      });
+
+      // Simulate existsSync true when path contains backslashes (normalized form)
+      fs.existsSync.mockImplementation((filePath) => {
+        // return true for either form to mimic Windows normalization
+        return filePath.includes('winproj\\docs') || filePath.includes('winproj/docs');
+      });
+
+      fs.statSync.mockReturnValue({ isDirectory: () => true });
+
+      const result = discoverProjects('/root', { docsSubfolder: 'docs' });
+      expect(result).toHaveLength(1);
+      expect(result[0].docsPath).toContain('winproj');
+    });
+
+    test('should fall back to filename when frontmatter label missing', () => {
+      const mockDirents = [
+        { name: 'nolabel.md', isDirectory: () => false, isFile: () => true },
+      ];
+
+      fs.readdirSync.mockReturnValue(mockDirents);
+      fs.readFileSync.mockReturnValue(`# No frontmatter here`);
+
+      const searchIndex = [];
+      const result = walkDocs('/docs', '', searchIndex);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].label).toBe('Nolabel');
+      expect(searchIndex[0].label).toBe('Nolabel');
+    });
+
+    // discoverProjects branch: docs path exists but is not a directory
+    test('discoverProjects should ignore docs path if not a directory', () => {
+      const mockRootDirents = [
+        { name: 'maybe', isDirectory: () => true, isFile: () => false },
+      ];
+
+      fs.readdirSync.mockImplementation((dirPath) => {
+        if (dirPath === '/root') return mockRootDirents;
+        if (dirPath.includes('maybe')) return []; // project dir has no md files
+        return [];
+      });
+
+      // existsSync returns true for docs path, but statSync indicates not a directory
+      fs.existsSync.mockImplementation((filePath) => filePath.includes('maybe/docs'));
+      fs.statSync.mockReturnValue({ isDirectory: () => false });
+
+      const result = discoverProjects('/root', { docsSubfolder: 'docs' });
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('generateManifestsWithDiscovery', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    test('should process specific route when route option provided', () => {
+      const mockDirents = [
+        { name: 'readme.md', isDirectory: () => false, isFile: () => true },
+      ];
+
+      fs.readdirSync.mockReturnValue(mockDirents);
+      fs.readFileSync.mockReturnValue(`---
+label: README
+---
+# Content`);
+      fs.existsSync.mockReturnValue(true);
+
+      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const result = generateManifestsWithDiscovery('/root', {
+        route: '/specific/route',
+      });
+
+      expect(writeFileSyncSpy).toHaveBeenCalledTimes(2);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Generated manifest for route:')
+      );
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        name: 'route',
+        processed: true,
+      });
+
+      writeFileSyncSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+    });
+
+    test('should throw error when route does not exist', () => {
+      fs.existsSync.mockReturnValue(false);
+
+      expect(() => {
+        generateManifestsWithDiscovery('/root', {
+          route: '/nonexistent/route',
+        });
+      }).toThrow('Route not found');
+    });
+
+    test('should process specific project when project option provided', () => {
+      const mockDirents = [
+        { name: 'readme.md', isDirectory: () => false, isFile: () => true },
+      ];
+
+      fs.readdirSync.mockReturnValue(mockDirents);
+      fs.readFileSync.mockReturnValue(`---
+label: README
+---
+# Content`);
+      fs.existsSync.mockReturnValue(true);
+
+      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const result = generateManifestsWithDiscovery('/root', {
+        project: 'myproject',
+        docsSubfolder: 'docs',
+      });
+
+      expect(writeFileSyncSpy).toHaveBeenCalledTimes(2);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Generated manifest for project:')
+      );
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        name: 'myproject',
+        processed: true,
+      });
+
+      writeFileSyncSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+    });
+
+    test('should throw error when project does not exist', () => {
+      fs.existsSync.mockReturnValue(false);
+
+      expect(() => {
+        generateManifestsWithDiscovery('/root', {
+          project: 'nonexistent',
+        });
+      }).toThrow('Project not found');
+    });
+
+    test('should use docs subfolder when it exists for project', () => {
+      const mockDirents = [
+        { name: 'readme.md', isDirectory: () => false, isFile: () => true },
+      ];
+
+      fs.readdirSync.mockReturnValue(mockDirents);
+      fs.readFileSync.mockReturnValue(`---
+label: README
+---
+# Content`);
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('docs') || filePath.includes('myproject');
+      });
+
+      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const result = generateManifestsWithDiscovery('/root', {
+        project: 'myproject',
+        docsSubfolder: 'docs',
+      });
+
+      expect(result).toHaveLength(1);
+
+      writeFileSyncSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+    });
+
+    test('should use project path when docs subfolder does not exist', () => {
+      const mockDirents = [
+        { name: 'readme.md', isDirectory: () => false, isFile: () => true },
+      ];
+
+      fs.readdirSync.mockReturnValue(mockDirents);
+      fs.readFileSync.mockReturnValue(`---
+label: README
+---
+# Content`);
+      fs.existsSync.mockImplementation((filePath) => {
+        return filePath.includes('myproject') && !filePath.includes('docs');
+      });
+
+      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const result = generateManifestsWithDiscovery('/root', {
+        project: 'myproject',
+        docsSubfolder: 'docs',
+      });
+
+      expect(result).toHaveLength(1);
+
+      writeFileSyncSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+    });
+
+    test('should write to custom output directory when outputDir provided', () => {
+      const mockDirents = [
+        { name: 'readme.md', isDirectory: () => false, isFile: () => true },
+      ];
+
+      fs.readdirSync.mockReturnValue(mockDirents);
+      fs.readFileSync.mockReturnValue(`---
+label: README
+---
+# Content`);
+      fs.existsSync.mockReturnValue(true);
+
+      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      generateManifestsWithDiscovery('/root', {
+        route: '/specific/route',
+        outputDir: '/custom/output',
+      });
+
+      // Check that files are written to custom output directory
+      const manifestCall = writeFileSyncSpy.mock.calls.find(call =>
+        call[0].includes('manifest.json')
+      );
+      expect(manifestCall[0]).toContain('custom');
+
+      writeFileSyncSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+    });
+
+    test('should auto-detect all projects when autoDetect is true', () => {
+      const mockProjects = [
+        { name: 'project1', isDirectory: () => true },
+        { name: 'project2', isDirectory: () => true },
+      ];
+
+      const mockFileDirents = [
+        { name: 'readme.md', isDirectory: () => false, isFile: () => true },
+      ];
+
+      fs.readdirSync.mockImplementation((dirPath) => {
+        if (dirPath === '/root') {
+          return mockProjects;
+        }
+        return mockFileDirents;
+      });
+
+      fs.readFileSync.mockReturnValue(`---
+label: README
+---
+# Content`);
+
+      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const result = generateManifestsWithDiscovery('/root', {
+        autoDetect: true,
+      });
+
+      expect(writeFileSyncSpy).toHaveBeenCalledTimes(4); // 2 projects × 2 files
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({
+        name: 'project1',
+        processed: true,
+      });
+      expect(result[1]).toEqual({
+        name: 'project2',
+        processed: true,
+      });
+
+      writeFileSyncSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+    });
+
+    test('should return empty array when autoDetect is false and no options provided', () => {
+      const result = generateManifestsWithDiscovery('/root', {
+        autoDetect: false,
+      });
+
+      expect(result).toEqual([]);
+    });
+
+    test('should handle route with custom outputDir', () => {
+      const mockDirents = [
+        { name: 'readme.md', isDirectory: () => false, isFile: () => true },
+      ];
+
+      fs.readdirSync.mockReturnValue(mockDirents);
+      fs.readFileSync.mockReturnValue(`---
+label: README
+---
+# Content`);
+      fs.existsSync.mockReturnValue(true);
+
+      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const result = generateManifestsWithDiscovery('/root', {
+        route: '/specific/route',
+        outputDir: '/custom/output',
+      });
+
+      // Verify files are written to custom output
+      const calls = writeFileSyncSpy.mock.calls;
+      calls.forEach(call => {
+        expect(call[0]).toContain('custom');
+      });
+
+      expect(result).toHaveLength(1);
+
+      writeFileSyncSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+    });
+
+    test('should handle project with custom outputDir', () => {
+      const mockDirents = [
+        { name: 'readme.md', isDirectory: () => false, isFile: () => true },
+      ];
+
+      fs.readdirSync.mockReturnValue(mockDirents);
+      fs.readFileSync.mockReturnValue(`---
+label: README
+---
+# Content`);
+      fs.existsSync.mockReturnValue(true);
+
+      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const result = generateManifestsWithDiscovery('/root', {
+        project: 'myproject',
+        outputDir: '/custom/output',
+      });
+
+      // Verify files are written to custom output
+      const calls = writeFileSyncSpy.mock.calls;
+      calls.forEach(call => {
+        expect(call[0]).toContain('custom');
+      });
+
+      expect(result).toHaveLength(1);
+
+      writeFileSyncSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+    });
+
+    test('should allow injecting a custom walker function into generateDocsManifests', () => {
+      const mockProjects = [
+        { name: 'projA', isDirectory: () => true },
+      ];
+
+      fs.readdirSync.mockImplementation((dirPath) => {
+        if (dirPath === '/docs') return mockProjects;
+        // For project path, return empty as walker will handle
+        return [];
+      });
+
+      const customWalker = jest.fn((projectPath, relative, searchIndex) => {
+        // Return a simple manifest array to simulate a valid manifest
+        return [{ label: 'Custom', route: 'custom', tags: [] }];
+      });
+
+      const writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const result = generateDocsManifests('/docs', customWalker);
+
+      expect(customWalker).toHaveBeenCalled();
+      expect(writeFileSyncSpy).toHaveBeenCalledTimes(2);
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('✅ Generated manifest and search index for: projA'));
+      expect(result).toEqual([{ name: 'projA', processed: true }]);
+
+      writeFileSyncSpy.mockRestore();
+      consoleLogSpy.mockRestore();
     });
   });
 });

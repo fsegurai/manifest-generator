@@ -1,6 +1,6 @@
 {
   "name": "@fsegurai/manifest-generator",
-  "version": "0.0.0-alpha.3",
+  "version": "1.0.0-beta.1",
   "description": "A simple manifest and search-index generator based on project documentation.",
   "main": "./dist/index.cjs",
   "module": "./src/index.js",
@@ -24,13 +24,20 @@
     "./cli": "./src/cli.js"
   },
   "keywords": [
-    "documentation",
-    "manifest",
-    "generator",
-    "search-index",
-    "markdown",
+    "cli",
     "docs",
-    "cli"
+    "documentation",
+    "generator",
+    "javascript",
+    "javascript-library",
+    "lightweight",
+    "library",
+    "manifest",
+    "manifest-generator",
+    "markdown",
+    "search-index",
+    "typescript",
+    "typescript-library"
   ],
   "author": {
     "name": "Fabián Segura",

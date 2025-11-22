@@ -18,7 +18,7 @@
     <img alt="GitHub License" src="https://img.shields.io/github/license/fsegurai/manifest-generator">
   </a>
   <br>
-  <img alt="Stars" src="https://img.shields.io/github/stars/fsegurai/manifest-generator?style=square&labelColor=343b41"/> 
+  <img alt="Stars" src="https://img.shields.io/github/stars/fsegurai/manifest-generator?style=square&labelColor=343b41"/>
   <img alt="Forks" src="https://img.shields.io/github/forks/fsegurai/manifest-generator?style=square&labelColor=343b41"/>
 </p>
 
@@ -549,22 +549,7 @@ description: "Brief summary"   # Future: meta description
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to
 discuss what you would like to change.
 
-### Development Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/fsegurai/manifest-generator.git
-cd manifest-generator
-
-# Install dependencies
-npm install
-
-# Run tests
-npm test:packages
-
-# Build the package
-npm run build:packages
-```
+For more information, check out the [Contributing Guide](CONTRIBUTING.md).
 
 ## 🧼 License
 

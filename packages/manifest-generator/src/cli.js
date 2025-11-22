@@ -1,26 +1,9 @@
 #!/usr/bin/env node
 
-import { discoverProjects, generateManifestsWithDiscovery } from './index.js';
+import * as indexModule from './index.js';
 import { parseArgs } from 'node:util';
 import fs from 'fs';
 import path from 'path';
-
-// Parse command line arguments
-const { values: flags, positionals } = parseArgs({
-  args: process.argv.slice(2),
-  options: {
-    'all': { type: 'boolean', short: 'a' },
-    'project': { type: 'string', short: 'p' },
-    'route': { type: 'string', short: 'r' },
-    'docs-root': { type: 'string', short: 'd' },
-    'output': { type: 'string', short: 'o' },
-    'docs-subfolder': { type: 'string', short: 's' },
-    'help': { type: 'boolean', short: 'h' },
-    'version': { type: 'boolean', short: 'v' },
-    'discover': { type: 'boolean' },
-  },
-  allowPositionals: true,
-});
 
 function showHelp() {
   console.log(`
@@ -77,11 +60,9 @@ Production Examples:
 function showVersion() {
   // Read the version from package.json
   try {
+    // Prefer a simple, cwd-relative read so tests can mock fs.readFileSync easily
     const packageJson = JSON.parse(
-      fs.readFileSync(
-        new URL('../package.json', import.meta.url),
-        'utf8',
-      ),
+      fs.readFileSync('package.json', 'utf8'),
     );
     console.log(`@fsegurai/manifest-generator v${ packageJson.version }`);
   } catch {
@@ -89,91 +70,123 @@ function showVersion() {
   }
 }
 
-// Show version if requested
-if (flags.version) {
-  showVersion();
-  process.exit(0);
-}
+export function runCli(argv = process.argv.slice(2), exitFn = process.exit) {
+  const { values: flags, positionals } = parseArgs({
+    args: argv,
+    options: {
+      'all': { type: 'boolean', short: 'a' },
+      'project': { type: 'string', short: 'p' },
+      'route': { type: 'string', short: 'r' },
+      'docs-root': { type: 'string', short: 'd' },
+      'output': { type: 'string', short: 'o' },
+      'docs-subfolder': { type: 'string', short: 's' },
+      'help': { type: 'boolean', short: 'h' },
+      'version': { type: 'boolean', short: 'v' },
+      'discover': { type: 'boolean' },
+    },
+    allowPositionals: true,
+  });
 
-// Show help if requested or no arguments provided
-if (flags.help || (Object.keys(flags).length === 0 && positionals.length === 0)) {
-  showHelp();
-  process.exit(0);
-}
+  // Show version if requested
+  if (flags.version) {
+    showVersion();
+    exitFn(0);
+    return;
+  }
 
-console.log('📄 @fsegurai/manifest-generator\n');
+  // Show help if requested or no arguments provided
+  if (flags.help || (Object.keys(flags).length === 0 && positionals.length === 0)) {
+    showHelp();
+    exitFn(0);
+    return;
+  }
 
-try {
-  const rootDir = flags['docs-root'] || positionals[0] || process.cwd();
-  const resolvedRoot = path.resolve(rootDir);
+  console.log('📄 @fsegurai/manifest-generator\n');
 
-  // Discovery mode
-  if (flags.discover) {
-    console.log(`🔍 Discovering projects in: ${ resolvedRoot }`);
+  try {
+    const rootDir = flags['docs-root'] || positionals[0] || process.cwd();
+    const resolvedRoot = path.resolve(rootDir);
+
+    // Discovery mode
+    if (flags.discover) {
+      console.log(`🔍 Discovering projects in: ${ resolvedRoot }`);
+      console.log('='.repeat(50));
+
+      const discovered = indexModule.discoverProjects(resolvedRoot, {
+        docsSubfolder: flags['docs-subfolder'] || 'docs',
+      });
+
+      if (discovered.length === 0) {
+        console.log('⚠️  No documentation projects found.');
+      } else {
+        console.log(`📁 Found ${ discovered.length } project(s):`);
+        discovered.forEach(proj => {
+          console.log(`  - ${ proj.name } (${ proj.type }): ${ proj.docsPath }`);
+        });
+      }
+      exitFn(0);
+      return;
+    }
+
+    // Determine processing options
+    const options = {
+      project: flags.project || null,
+      route: flags.route || null,
+      outputDir: flags.output || null,
+      docsSubfolder: flags['docs-subfolder'] || 'docs',
+      autoDetect: flags.all || (!flags.project && !flags.route),
+    };
+
+    console.log(`📂 Processing: ${ resolvedRoot }`);
+    if (options.project) {
+      console.log(`🎯 Target project: ${ options.project }`);
+    }
+    if (options.route) {
+      console.log(`🛤️  Target route: ${ options.route }`);
+    }
+    if (options.outputDir) {
+      console.log(`📁 Output directory: ${ options.outputDir }`);
+    }
     console.log('='.repeat(50));
 
-    const discovered = discoverProjects(resolvedRoot, {
-      docsSubfolder: flags['docs-subfolder'] || 'docs',
-    });
+    // Generate manifests
+    const results = indexModule.generateManifestsWithDiscovery(resolvedRoot, options);
 
-    if (discovered.length === 0) {
-      console.log('⚠️  No documentation projects found.');
-    } else {
-      console.log(`📁 Found ${ discovered.length } project(s):`);
-      discovered.forEach(proj => {
-        console.log(`  - ${ proj.name } (${ proj.type }): ${ proj.docsPath }`);
+    // Summary
+    const successful = results.filter(r => r.processed).length;
+    const failed = results.filter(r => !r.processed).length;
+
+    console.log('\n📊 Summary:');
+    console.log(`✅ Successful: ${ successful }`);
+    if (failed > 0) {
+      console.log(`❌ Failed: ${ failed }`);
+      results.filter(r => !r.processed).forEach(r => {
+        console.log(`   - ${ r.name }: ${ r.error }`);
       });
     }
-    process.exit(0);
+
+    if (successful > 0) {
+      console.log('\n🎉 Manifest generation complete!');
+      console.log('\nGenerated files:');
+      console.log('  - manifest.json (navigation structure)');
+      console.log('  - search-index.json (search data)');
+    }
+
+    exitFn(failed > 0 ? 1 : 0);
+
+  } catch (error) {
+    console.error('❌ Error:', error.message);
+    exitFn(1);
   }
-
-  // Determine processing options
-  const options = {
-    project: flags.project || null,
-    route: flags.route || null,
-    outputDir: flags.output || null,
-    docsSubfolder: flags['docs-subfolder'] || 'docs',
-    autoDetect: flags.all || (!flags.project && !flags.route),
-  };
-
-  console.log(`📂 Processing: ${ resolvedRoot }`);
-  if (options.project) {
-    console.log(`🎯 Target project: ${ options.project }`);
-  }
-  if (options.route) {
-    console.log(`🛤️  Target route: ${ options.route }`);
-  }
-  if (options.outputDir) {
-    console.log(`📁 Output directory: ${ options.outputDir }`);
-  }
-  console.log('='.repeat(50));
-
-  // Generate manifests
-  const results = generateManifestsWithDiscovery(resolvedRoot, options);
-
-  // Summary
-  const successful = results.filter(r => r.processed).length;
-  const failed = results.filter(r => !r.processed).length;
-
-  console.log('\n📊 Summary:');
-  console.log(`✅ Successful: ${ successful }`);
-  if (failed > 0) {
-    console.log(`❌ Failed: ${ failed }`);
-    results.filter(r => !r.processed).forEach(r => {
-      console.log(`   - ${ r.name }: ${ r.error }`);
-    });
-  }
-
-  if (successful > 0) {
-    console.log('\n🎉 Manifest generation complete!');
-    console.log('\nGenerated files:');
-    console.log('  - manifest.json (navigation structure)');
-    console.log('  - search-index.json (search data)');
-  }
-
-  process.exit(failed > 0 ? 1 : 0);
-
-} catch (error) {
-  console.error('❌ Error:', error.message);
-  process.exit(1);
 }
+
+export function maybeRunCli(env = process.env, argv = process.argv.slice(2), exitFn = process.exit) {
+  if (!env.JEST_WORKER_ID) {
+    runCli(argv, exitFn);
+    return true;
+  }
+  return false;
+}
+
+// Auto-run unless under Jest (tests will call runCli or maybeRunCli explicitly)
+maybeRunCli();

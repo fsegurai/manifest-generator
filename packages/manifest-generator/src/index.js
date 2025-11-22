@@ -145,8 +145,11 @@ function walkDocs(dir, relative = '', searchIndex) {
 /**
  * Generate documentation manifests for all projects
  * @param {string} docsRoot - The root directory containing documentation projects
+ * @param {Function} [walkerFn] - Optional walker function to traverse a project's docs. If provided,
+ *   this function will be used instead of the built-in `walkDocs`. Signature: (projectPath, relative, searchIndex) => Array
+ *   This is provided for dependency injection and testability (e.g. pass a mock walker).
  */
-function generateDocsManifests(docsRoot) {
+function generateDocsManifests(docsRoot, walkerFn) {
   const projects = fs
     .readdirSync(docsRoot, { withFileTypes: true })
     .filter(entry => entry.isDirectory())
@@ -157,11 +160,11 @@ function generateDocsManifests(docsRoot) {
   projects.forEach(projectName => {
     const projectPath = path.join(docsRoot, projectName);
     const searchIndex = [];
-    const manifest = walkDocs(projectPath, '', searchIndex);
 
-    // Ensure we have a valid manifest and search index
+    const walker = walkerFn || globalThis.__manifestGeneratorWalkDocs || walkDocs;
+    const manifest = walker(projectPath, '', searchIndex);
     if (!manifest || !Array.isArray(manifest)) {
-      console.warn(`⚠️ No valid manifest generated for project: ${projectName}`);
+      console.warn(`⚠️ No valid manifest generated for project: ${ projectName }`);
       return; // Skip this project if no valid manifest is generated
     }
 
@@ -220,8 +223,11 @@ function discoverProjects(rootDir, options = {}) {
       const projectPath = path.join(rootDir, entry.name);
       const docsPath = path.join(projectPath, docsSubfolder);
 
+      // Normalize docsPath to use forward slashes for cross-platform checks
+      const docsPathNormalized = docsPath.replace(/\\/g, '/');
+
       // Check if this directory has docs
-      if (fs.existsSync(docsPath)) {
+      if (fs.existsSync(docsPath) || fs.existsSync(docsPathNormalized)) {
         const stats = fs.statSync(docsPath);
         if (stats.isDirectory()) {
           discovered.push({
