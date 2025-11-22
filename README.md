@@ -18,7 +18,7 @@
     <img alt="GitHub License" src="https://img.shields.io/github/license/fsegurai/manifest-generator">
   </a>
   <br>
-  <img alt="Stars" src="https://img.shields.io/github/stars/fsegurai/manifest-generator?style=square&labelColor=343b41"/> 
+  <img alt="Stars" src="https://img.shields.io/github/stars/fsegurai/manifest-generator?style=square&labelColor=343b41"/>
   <img alt="Forks" src="https://img.shields.io/github/forks/fsegurai/manifest-generator?style=square&labelColor=343b41"/>
 </p>
 

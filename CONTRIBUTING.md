@@ -1,20 +1,24 @@
-# 🙌 Contributing to ScrollSpy
+# Contributing to manifest-generator
 
-Thanks for your interest in improving the **Manifest Generator** project! Whether it's fixing bugs, improving documentation, or
-suggesting new features—your help is welcome 🙏
+Thanks for your interest in improving the **manifest-generator** project! This document describes the recommended local development setup, how to run tests, and the PR workflow. It is intentionally focused and cross-platform with PowerShell notes for Windows.
+
+---
+
+## Requirements
+
+- Node.js LTS (recommended v18 or v20)
+- npm (or pnpm/yarn). Bun is optional for contributors who prefer it.
 
 ---
 
 ## 🚀 Getting Started
 
-> **Requirements**  
-> Ensure you're using **Node.js v20.x** and **Bun v1.1.x** or higher.
-
 ### 1. Clone the Repository
 
-```bash
+```powershell
+# PowerShell
 git clone https://github.com/fsegurai/manifest-generator.git
-cd scrollspy
+cd manifest-generator
 ```
 
 ### 2. Install Dependencies
@@ -30,15 +34,14 @@ bun install
 To run the full test suite:
 
 ```bash
-bun test:packages
+bun run test:packages
 ```
 
-### 🐞 Debug Mode
+# Update snapshots
+bun run test-clean:packages
 
-If you encounter issues, run tests in verbose mode for detailed output:
-
-```bash
-bun test:packages
+# Run coverage report
+bun run test-cover:packages
 ```
 
 ---
@@ -47,8 +50,8 @@ bun test:packages
 
 > Linting is enforced as part of the CI pipeline. Please ensure your code is clean before pushing:
 
-```bash
-bun lint
+```powershell
+bun run lint
 ```
 
 ---
