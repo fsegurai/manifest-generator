@@ -123,3 +123,5 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 [unreleased]: https://github.com/fsegurai/scrollspy/compare/v1.0.0-beta.1...HEAD
 
 [1.0.0-beta.1]: https://github.com/fsegurai/scrollspy/compare/v0.0.0-alpha.3...v1.0.0-beta.1
+
+[0.0.0-alpha.3]: https://github.com/fsegurai/scrollspy/releases/tag/v0.0.0-alpha.3
