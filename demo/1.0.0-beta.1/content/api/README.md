@@ -17,12 +17,13 @@ Complete programmatic interface for the Manifest Generator. Use these APIs to in
 ## Quick Start
 
 ### ES Modules
+
 ```javascript
-import { 
-  generateManifest, 
-  generateManifestsWithDiscovery, 
-  discoverProjects 
-} from '@fsegurai/manifest-generator';
+import {
+    generateManifest,
+    generateManifestsWithDiscovery,
+    discoverProjects
+} from '@fsegurai/manifest-generator/dist';
 ```
 
 ### CommonJS

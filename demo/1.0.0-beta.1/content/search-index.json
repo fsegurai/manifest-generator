@@ -1,78 +1,8 @@
 [
   {
-    "label": "API Examples",
+    "label": "Installation",
     "description": "",
-    "route": "api/examples",
-    "tags": [
-      "api",
-      "examples",
-      "advanced",
-      "usage",
-      "batch"
-    ]
-  },
-  {
-    "label": "Get Started with API Reference",
-    "description": "",
-    "route": "api/README",
-    "tags": [
-      "api",
-      "examples",
-      "advanced",
-      "usage",
-      "batch"
-    ]
-  },
-  {
-    "label": "Reference",
-    "description": "",
-    "route": "api/reference",
-    "tags": []
-  },
-  {
-    "label": "Typescript",
-    "description": "",
-    "route": "api/typescript",
-    "tags": []
-  },
-  {
-    "label": "Advanced",
-    "description": "",
-    "route": "examples/advanced",
-    "tags": []
-  },
-  {
-    "label": "Basic Usage",
-    "description": "",
-    "route": "examples/basic-usage",
-    "tags": []
-  },
-  {
-    "label": "Frameworks",
-    "description": "",
-    "route": "examples/frameworks",
-    "tags": []
-  },
-  {
-    "label": "README",
-    "description": "",
-    "route": "examples/README",
-    "tags": []
-  },
-  {
-    "label": "README",
-    "description": "Complete overview of all Manifest Generator features and capabilities",
-    "route": "features/README",
-    "tags": [
-      "features",
-      "capabilities",
-      "overview"
-    ]
-  },
-  {
-    "label": "Search Index",
-    "description": "",
-    "route": "features/search-index",
+    "route": "getting-started/installation",
     "tags": []
   },
   {
@@ -93,12 +23,6 @@
     ]
   },
   {
-    "label": "Installation",
-    "description": "",
-    "route": "getting-started/installation",
-    "tags": []
-  },
-  {
     "label": "README",
     "description": "Introduction to the Manifest Generator and quick start guide",
     "route": "getting-started/README",
@@ -109,33 +33,9 @@
     ]
   },
   {
-    "label": "Cli Usage",
+    "label": "Troubleshooting",
     "description": "",
-    "route": "guides/cli-usage",
-    "tags": []
-  },
-  {
-    "label": "Configuration",
-    "description": "",
-    "route": "guides/configuration",
-    "tags": []
-  },
-  {
-    "label": "Frontmatter",
-    "description": "",
-    "route": "guides/frontmatter",
-    "tags": []
-  },
-  {
-    "label": "Project Structure",
-    "description": "",
-    "route": "guides/project-structure",
-    "tags": []
-  },
-  {
-    "label": "README",
-    "description": "",
-    "route": "guides/README",
+    "route": "help/troubleshooting",
     "tags": []
   },
   {
@@ -151,10 +51,20 @@
     "tags": []
   },
   {
-    "label": "Troubleshooting",
+    "label": "Search Index",
     "description": "",
-    "route": "help/troubleshooting",
+    "route": "features/search-index",
     "tags": []
+  },
+  {
+    "label": "README",
+    "description": "Complete overview of all Manifest Generator features and capabilities",
+    "route": "features/README",
+    "tags": [
+      "features",
+      "capabilities",
+      "overview"
+    ]
   },
   {
     "label": "Build Systems",
@@ -179,6 +89,96 @@
     "description": "",
     "route": "integration/README",
     "tags": []
+  },
+  {
+    "label": "Basic Usage",
+    "description": "",
+    "route": "examples/basic-usage",
+    "tags": []
+  },
+  {
+    "label": "Advanced",
+    "description": "",
+    "route": "examples/advanced",
+    "tags": []
+  },
+  {
+    "label": "Frameworks",
+    "description": "",
+    "route": "examples/frameworks",
+    "tags": []
+  },
+  {
+    "label": "README",
+    "description": "",
+    "route": "examples/README",
+    "tags": []
+  },
+  {
+    "label": "Frontmatter",
+    "description": "",
+    "route": "guides/frontmatter",
+    "tags": []
+  },
+  {
+    "label": "Cli Usage",
+    "description": "",
+    "route": "guides/cli-usage",
+    "tags": []
+  },
+  {
+    "label": "Project Structure",
+    "description": "",
+    "route": "guides/project-structure",
+    "tags": []
+  },
+  {
+    "label": "Configuration",
+    "description": "",
+    "route": "guides/configuration",
+    "tags": []
+  },
+  {
+    "label": "README",
+    "description": "",
+    "route": "guides/README",
+    "tags": []
+  },
+  {
+    "label": "API Examples",
+    "description": "",
+    "route": "api/examples",
+    "tags": [
+      "api",
+      "examples",
+      "advanced",
+      "usage",
+      "batch"
+    ]
+  },
+  {
+    "label": "Typescript",
+    "description": "",
+    "route": "api/typescript",
+    "tags": []
+  },
+  {
+    "label": "Reference",
+    "description": "",
+    "route": "api/reference",
+    "tags": []
+  },
+  {
+    "label": "Get Started with API Reference",
+    "description": "",
+    "route": "api/README",
+    "tags": [
+      "api",
+      "examples",
+      "advanced",
+      "usage",
+      "batch"
+    ]
   },
   {
     "label": "README",

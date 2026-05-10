@@ -24,533 +24,98 @@
 
 # @fsegurai/manifest-generator
 
-**A library and CLI tool for generating documentation manifests and search indexes from Markdown files.**
+Monorepo for the Manifest Generator ecosystem.
 
-A powerful and flexible documentation manifest generator that automatically creates
-navigation structures and search indexes for your Markdown documentation.
+This repository contains:
 
-### 📋 Table of Contents
+- the published package (`@fsegurai/manifest-generator`)
+- versioned product documentation (`docs/*`)
+- a demo app that consumes generated artifacts
 
-- [🚀 Features](#-features)
-- [📦 Installation](#-installation)
-- [🖥️ CLI Usage](#️-cli-usage)
-    - [Global Installation](#global-installation)
-    - [Using npx (Recommended)](#using-npx-recommended)
-    - [CLI Commands](#cli-commands)
-    - [Production Examples](#production-examples)
-- [📚 API Usage](#-api-usage)
-    - [ES Modules](#es-modules)
-    - [CommonJS](#commonjs)
-    - [API Reference](#api-reference)
-- [📁 Project Structure Detection](#-project-structure-detection)
-- [📄 Output Files](#-output-files)
-- [⚙️ Configuration](#️-configuration)
-- [🔧 Integration Examples](#-integration-examples)
-- [📝 Frontmatter Support](#-frontmatter-support)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
+## What the package does
 
----
+The package scans Markdown documentation and generates:
 
-## 🚀 Features
+- `manifest.json` (hierarchical navigation)
+- `search-index.json` (flat search entries)
 
-- **Automatic Discovery**: Intelligently finds documentation projects in various folder structures
-- **Flexible Input**: Supports both direct markdown files and docs subfolders
-- **CLI & API**: Use via command line or programmatically in your code
-- **Frontmatter Parsing**: Extracts metadata from YAML frontmatter
-- **Search Index Generation**: Creates searchable indexes for your documentation
-- **TypeScript Support**: Full TypeScript definitions included
-- **Cross-Platform**: Works on Windows, macOS, and Linux
-- **Multiple Output Formats**: Generates both navigation manifests and search indexes
+It can be used via CLI or programmatic API.
 
-## 📦 Installation
+## Repository structure
 
-### Global Installation
-
-```bash
-npm install -g @fsegurai/manifest-generator
+```text
+manifest-generator/
+├── docs/
+│   └── 1.0.0-beta.2/
+│       └── content/
+├── packages/
+│   └── manifest-generator/
+│       ├── src/
+│       │   ├── cli.ts
+│       │   ├── index.ts
+│       │   └── types.ts
+│       └── spec/
+├── demo/
+└── scripts/
 ```
 
-### Project Dependency
+## Run locally (contributors)
+
+### Requirements
+
+- Node.js 22+
+- Bun 1.3+
+
+### Setup
 
 ```bash
-# As a dev dependency
-npm install --save-dev @fsegurai/manifest-generator
-
-# As a regular dependency
-npm install @fsegurai/manifest-generator
+bun install
 ```
 
-## 🖥️ CLI Usage
-
-### Using npx (Recommended)
-
-No installation required—run directly:
+### Development workflow
 
 ```bash
-# Process all projects in current directory
-npx @fsegurai/manifest-generator --all
+# run tests
+bun test
 
-# Process specific project
-npx @fsegurai/manifest-generator --project my-docs
+# build all workspaces and demo
+bun run build
 
-# Get help
+# build only the package
+bun run --filter '@fsegurai/manifest-generator' pkg:build
+
+# run package tests only
+bun run --filter '@fsegurai/manifest-generator' pkg:test
+```
+
+### Run the CLI locally
+
+```bash
+bun ./packages/manifest-generator/src/cli.ts --help
+bun ./packages/manifest-generator/src/cli.ts --discover --docs-root ./docs
+```
+
+### Regenerate versioned docs artifacts
+
+```bash
+bun ./packages/manifest-generator/src/cli.ts \
+  --docs-root ./docs/1.0.0-beta.2 \
+  --output ./docs/1.0.0-beta.2
+```
+
+## Use as an external user
+
+If you only want to consume the package, start with the versioned docs:
+
+- `docs/1.0.0-beta.2/content/README.md`
+
+Or run directly from npm:
+
+```bash
 npx @fsegurai/manifest-generator --help
-```
-
-### Global Installation
-
-If installed globally, use the `manifest-generator` command:
-
-```bash
-manifest-generator --all
-manifest-generator --project my-docs
-```
-
-### CLI Commands
-
-#### Basic Usage
-
-```bash
-# Process all projects automatically
-npx @fsegurai/manifest-generator --all
-
-# Process a specific project by name
-npx @fsegurai/manifest-generator --project sample-project
-
-# Process a specific documentation path
 npx @fsegurai/manifest-generator --route ./docs
-
-# Discover projects without processing
-npx @fsegurai/manifest-generator --discover
 ```
 
-#### Advanced Options
+## License
 
-```bash
-# Specify custom docs root directory
-npx @fsegurai/manifest-generator --all --docs-root ./my-projects
-
-# Custom output directory
-npx @fsegurai/manifest-generator --route ./docs --output ./dist
-
-# Custom docs subfolder name (default: 'docs')
-npx @fsegurai/manifest-generator --all --docs-subfolder documentation
-
-# Process positional path argument
-npx @fsegurai/manifest-generator ./path/to/documentation
-```
-
-#### Help and Information
-
-```bash
-# Show help
-npx @fsegurai/manifest-generator --help
-
-# Show version
-npx @fsegurai/manifest-generator --version
-```
-
-### Production Examples
-
-#### CI/CD Pipeline (GitHub Actions)
-
-```yaml
--   name: Generate Documentation Manifests
-    run: npx @fsegurai/manifest-generator --all --docs-root ./projects
-```
-
-#### Monorepo Processing
-
-```bash
-# Process all packages in a monorepo
-npx @fsegurai/manifest-generator --all --docs-root ./packages
-
-# Process specific package
-npx @fsegurai/manifest-generator --project my-package --docs-root ./packages
-```
-
-#### Build Pipeline Integration
-
-```bash
-# Generate manifests for built documentation
-npx @fsegurai/manifest-generator --route ./dist/docs --output ./public
-```
-
-#### Package.json Scripts
-
-```json
-{
-    "scripts": {
-        "build:docs": "manifest-generator --all",
-        "docs:manifest": "manifest-generator --route ./documentation",
-        "docs:discover": "manifest-generator --discover"
-    }
-}
-```
-
-## 📚 API Usage
-
-### ES Modules
-
-```javascript
-import {
-    generateManifest,
-    generateDocsManifests,
-    generateManifestsWithDiscovery,
-    discoverProjects
-} from '@fsegurai/manifest-generator';
-
-// Generate manifest for a single project
-const result = generateManifest('./docs');
-console.log('Generated:', result.manifest);
-console.log('Search Index:', result.searchIndex);
-
-// Process all projects with auto-discovery
-const results = generateManifestsWithDiscovery('./projects', {
-    autoDetect: true,
-    docsSubfolder: 'docs'
-});
-
-// Discover projects without processing
-const projects = discoverProjects('./projects');
-console.log('Found projects:', projects);
-```
-
-### CommonJS
-
-```javascript
-const {
-    generateManifest,
-    generateManifestsWithDiscovery
-} = require('@fsegurai/manifest-generator');
-
-// Process specific project
-generateManifestsWithDiscovery('./projects', {
-    project: 'my-app',
-    outputDir: './dist'
-});
-```
-
-### API Reference
-
-#### Core Functions
-
-##### `generateManifest(projectPath: string): ManifestResult`
-
-Generates a manifest for a single documentation project.
-
-```javascript
-const result = generateManifest('./my-docs');
-// Returns: { manifest: NavigationItem[], searchIndex: SearchEntry[] }
-```
-
-##### `generateDocsManifests(docsRoot: string): void`
-
-Processes all subdirectories as separate projects.
-
-```javascript
-generateDocsManifests('./projects');
-// Generates manifest.json and search-index.json in each subdirectory
-```
-
-##### `generateManifestsWithDiscovery(rootDir: string, options?: GenerationOptions): ProcessingResult[]`
-
-Advanced function with flexible options and auto-discovery.
-
-```javascript
-const results = generateManifestsWithDiscovery('./projects', {
-    project: 'specific-project',     // Process specific project
-    route: './custom/path',          // Process specific path
-    outputDir: './output',           // Custom output directory
-    docsSubfolder: 'documentation',  // Custom docs folder name
-    autoDetect: true                 // Auto-discover projects
-});
-```
-
-##### `discoverProjects(rootDir: string, options?: DiscoveryOptions): DiscoveredProject[]`
-
-Discovers documentation projects without processing them.
-
-```javascript
-const projects = discoverProjects('./projects', {
-    docsSubfolder: 'docs',  // Folder name to look for
-    pattern: null           // Future: regex pattern support
-});
-```
-
-#### Utility Functions
-
-##### `formatTitle(name: string): string`
-
-Converts filenames to readable titles.
-
-```javascript
-formatTitle('getting-started-guide.md'); // "Getting Started Guide"
-```
-
-##### `parseFrontmatter(content: string): Record<string, any>`
-
-Extracts YAML frontmatter from Markdown content.
-
-```javascript
-const frontmatter = parseFrontmatter(`---
-label: My Document
-tags: ["guide", "tutorial"]
----
-# Content here`);
-// Returns: { label: "My Document", tags: ["guide", "tutorial"] }
-```
-
-#### TypeScript Interfaces
-
-```typescript
-interface NavigationItem {
-    label: string;
-    path?: string;
-    tags?: string[];
-    children?: NavigationItem[];
-}
-
-interface SearchEntry {
-    label: string;
-    path: string;
-    tags?: string[];
-}
-
-interface ManifestResult {
-    manifest: NavigationItem[];
-    searchIndex: SearchEntry[];
-}
-
-interface DiscoveredProject {
-    name: string;
-    projectPath: string;
-    docsPath: string;
-    type: 'subfolder' | 'direct';
-}
-
-interface GenerationOptions {
-    project?: string | null;
-    route?: string | null;
-    outputDir?: string | null;
-    docsSubfolder?: string;
-    autoDetect?: boolean;
-}
-```
-
-## 📁 Project Structure Detection
-
-The generator automatically detects different documentation structures:
-
-### Structure 1: Docs Subfolders
-
-```
-projects/
-├── project-a/
-│   ├── docs/           ← Documentation here
-│   │   ├── README.md
-│   │   ├── guide.md
-│   │   └── api/
-│   ├── manifest.json   ← Generated here
-│   └── search-index.json
-└── project-b/
-    └── docs/
-        └── *.md files
-```
-
-### Structure 2: Direct Markdown Files
-
-```
-projects/
-├── project-a/
-│   ├── README.md       ← Documentation here
-│   ├── guide.md
-│   ├── manifest.json   ← Generated here
-│   └── search-index.json
-└── project-b/
-    └── *.md files
-```
-
-### Structure 3: Custom Documentation Folders
-
-```
-projects/
-├── project-a/
-│   ├── documentation/  ← Custom folder name
-│   │   └── *.md files
-│   ├── manifest.json
-│   └── search-index.json
-```
-
-## 📄 Output Files
-
-### manifest.json
-
-Contains the hierarchical navigation structure:
-
-```json
-[
-    {
-        "title": "Getting Started",
-        "path": "getting-started",
-        "tags": [
-            "tutorial",
-            "beginner"
-        ]
-    },
-    {
-        "title": "API Reference",
-        "children": [
-            {
-                "title": "Authentication",
-                "path": "api/auth",
-                "tags": [
-                    "api",
-                    "security"
-                ]
-            }
-        ]
-    }
-]
-```
-
-### search-index.json
-
-Contains flattened search data:
-
-```json
-[
-    {
-        "title": "Getting Started",
-        "path": "getting-started",
-        "tags": [
-            "tutorial",
-            "beginner"
-        ]
-    },
-    {
-        "title": "Authentication",
-        "path": "api/auth",
-        "tags": [
-            "api",
-            "security"
-        ]
-    }
-]
-```
-
-## ⚙️ Configuration
-
-### Frontmatter Options
-
-Control document processing with frontmatter:
-
-```markdown
----
-label: "Custom Title"           # Override generated title
-tags: ["api", "reference"]     # Add searchable tags
-draft: true                    # Exclude from manifest
-hidden: true                   # Hide from navigation
----
-
-# Your content here
-```
-
-### CLI Options Reference
-
-| Option                    | Short | Description                      | Default           |
-|---------------------------|-------|----------------------------------|-------------------|
-| `--all`                   | `-a`  | Process all projects             | `false`           |
-| `--project <name>`        | `-p`  | Process specific project         | `null`            |
-| `--route <path>`          | `-r`  | Process specific path            | `null`            |
-| `--docs-root <path>`      | `-d`  | Root directory for docs          | Current directory |
-| `--output <path>`         | `-o`  | Output directory                 | Project directory |
-| `--docs-subfolder <name>` | `-s`  | Docs folder name                 | `'docs'`          |
-| `--discover`              |       | List projects without processing | `false`           |
-| `--help`                  | `-h`  | Show help                        |                   |
-| `--version`               | `-v`  | Show version                     |                   |
-
-## 🔧 Integration Examples
-
-### Webpack Integration
-
-```javascript
-// webpack.config.js
-const {generateManifest} = require('@fsegurai/manifest-generator');
-
-module.exports = {
-    // ...existing config
-    plugins: [
-        {
-            apply: (compiler) => {
-                compiler.hooks.afterEmit.tap('ManifestGenerator', () => {
-                    generateManifest('./src/docs');
-                });
-            }
-        }
-    ]
-};
-```
-
-### Gulp Integration
-
-```javascript
-// gulpfile.js
-const {generateManifestsWithDiscovery} = require('@fsegurai/manifest-generator');
-
-gulp.task('docs:manifest', () => {
-    return generateManifestsWithDiscovery('./src/projects', {
-        autoDetect: true,
-        outputDir: './dist'
-    });
-});
-```
-
-### Node.js Script
-
-```javascript
-#!/usr/bin/env node
-import {generateManifestsWithDiscovery} from '@fsegurai/manifest-generator';
-
-async function buildDocs() {
-    try {
-        const results = generateManifestsWithDiscovery(process.cwd(), {
-            autoDetect: true
-        });
-
-        console.log(`✅ Processed ${results.length} projects`);
-    } catch (error) {
-        console.error('❌ Error:', error.message);
-        process.exit(1);
-    }
-}
-
-buildDocs();
-```
-
-## 📝 Frontmatter Support
-
-Supported frontmatter fields:
-
-```yaml
----
-label: "Document Title"        # Custom title (overrides filename)
-tags: [ "api", "guide" ]        # Searchable tags
-draft: true                   # Exclude from processing
-hidden: true                  # Hide from navigation
-weight: 10                    # Future: custom ordering
-description: "Brief summary"   # Future: meta description
----
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to
-discuss what you would like to change.
-
-For more information, check out the [Contributing Guide](CONTRIBUTING.md).
-
-## 🧼 License
-
-Licensed under [MIT](https://opensource.org/licenses/MIT).
+MIT

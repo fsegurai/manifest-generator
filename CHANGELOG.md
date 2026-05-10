@@ -1,15 +1,37 @@
 # 📦 Changelog
 
 All notable changes to this project will be documented in this file.  
-This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
 ## [Unreleased]
 
+- Documentation work in progress for the current release line.
+
 ---
 
 ## [1.0.0-beta.2] - 2026-xx-xx
+
+### Changed
+
+- Moved public type definitions into `packages/manifest-generator/src/types.ts` and re-exported them from the package
+  entrypoint.
+- Updated the CLI and core generator flow to use Bun-friendly tests and clearer runtime behavior.
+- Improved project discovery so docs subfolders are preferred before falling back to direct markdown roots.
+- Updated the package README, release docs, and versioned documentation structure to match the current monorepo layout.
+
+### Fixed
+
+- The CLI now creates missing output directories before writing `manifest.json` and `search-index.json`.
+- The CLI now fails fast when the docs root does not exist instead of silently returning success.
+- The UMD build is configured with explicit globals for Node.js externals.
+- Bun test execution no longer auto-runs the CLI during test runs.
+
+### Testing
+
+- Added Bun test coverage for frontmatter parsing, discovery, manifest generation, and CLI behavior.
+- Verified the package build continues to succeed across ESM, CJS, and UMD outputs.
 
 ### 🔐 Security
 
@@ -56,6 +78,11 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
         - 'ts-node'
         - 'tsd'
         - `semantic-release`
+
+### Documentation
+
+- Refreshed the root README to explain the monorepo layout and current workflows.
+- Updated the `docs/1.0.0-beta.2` release documentation to align with the current API and CLI behavior.
 
 ---
 

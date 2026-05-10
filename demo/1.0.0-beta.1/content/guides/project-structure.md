@@ -263,16 +263,17 @@ Found 3 documentation projects:
 ```
 
 ### Programmatic Discovery
+
 ```javascript
-import { discoverProjects } from '@fsegurai/manifest-generator';
+import {discoverProjects} from '@fsegurai/manifest-generator/dist';
 
 const projects = discoverProjects('./workspace', {
-  docsSubfolder: 'documentation'
+    docsSubfolder: 'documentation'
 });
 
 projects.forEach(project => {
-  console.log(`${project.name}: ${project.type}`);
-  console.log(`  Docs: ${project.docsPath}`);
+    console.log(`${project.name}: ${project.type}`);
+    console.log(`  Docs: ${project.docsPath}`);
 });
 ```
 

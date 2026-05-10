@@ -175,7 +175,7 @@ const searchIndex = await fetch('/search-index.json').then(r => r.json());
 // Simple search function
 function search(query) {
   return searchIndex.filter(item => 
-    item.title.toLowerCase().includes(query.toLowerCase()) ||
+    item.label.toLowerCase().includes(query.toLowerCase()) ||
     item.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
   );
 }
@@ -200,13 +200,13 @@ Yes! It works with:
 The current version generates a fixed structure, but you can post-process the JSON:
 
 ```javascript
-const { generateManifest } = require('@fsegurai/manifest-generator');
+const {generateManifest} = require('@fsegurai/manifest-generator/dist');
 
 const result = generateManifest('./docs');
 // Customize the result object before saving
 const customManifest = result.manifest.map(item => ({
-  ...item,
-  customField: 'custom value'
+    ...item,
+    customField: 'custom value'
 }));
 ```
 

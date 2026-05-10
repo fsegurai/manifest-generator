@@ -84,9 +84,10 @@ docs/
 ```
 
 **Version Processing Script:**
+
 ```javascript
 // scripts/build-versioned-docs.js
-import { generateManifest } from '@fsegurai/manifest-generator';
+import {generateManifest} from '@fsegurai/manifest-generator/dist';
 import fs from 'fs';
 import path from 'path';
 
@@ -95,50 +96,50 @@ const docsRoot = './docs';
 const outputRoot = './public/versions';
 
 async function buildVersionedDocs() {
-  const versionInfo = {};
-  
-  for (const version of versions) {
-    console.log(`Building documentation for ${version}...`);
-    
-    try {
-      const versionPath = path.join(docsRoot, version);
-      const result = generateManifest(versionPath);
-      
-      // Create version-specific output directory
-      const outputDir = path.join(outputRoot, version);
-      fs.mkdirSync(outputDir, { recursive: true });
-      
-      // Save manifests
-      fs.writeFileSync(
-        path.join(outputDir, 'manifest.json'),
-        JSON.stringify(result.manifest, null, 2)
-      );
-      
-      fs.writeFileSync(
-        path.join(outputDir, 'search-index.json'),
-        JSON.stringify(result.searchIndex, null, 2)
-      );
-      
-      // Collect version metadata
-      versionInfo[version] = {
-        pages: result.manifest.length,
-        searchEntries: result.searchIndex.length,
-        lastUpdated: new Date().toISOString()
-      };
-      
-      console.log(`✅ ${version}: ${result.manifest.length} pages`);
-    } catch (error) {
-      console.error(`❌ Failed to build ${version}:`, error.message);
+    const versionInfo = {};
+
+    for (const version of versions) {
+        console.log(`Building documentation for ${version}...`);
+
+        try {
+            const versionPath = path.join(docsRoot, version);
+            const result = generateManifest(versionPath);
+
+            // Create version-specific output directory
+            const outputDir = path.join(outputRoot, version);
+            fs.mkdirSync(outputDir, {recursive: true});
+
+            // Save manifests
+            fs.writeFileSync(
+                path.join(outputDir, 'manifest.json'),
+                JSON.stringify(result.manifest, null, 2)
+            );
+
+            fs.writeFileSync(
+                path.join(outputDir, 'search-index.json'),
+                JSON.stringify(result.searchIndex, null, 2)
+            );
+
+            // Collect version metadata
+            versionInfo[version] = {
+                pages: result.manifest.length,
+                searchEntries: result.searchIndex.length,
+                lastUpdated: new Date().toISOString()
+            };
+
+            console.log(`✅ ${version}: ${result.manifest.length} pages`);
+        } catch (error) {
+            console.error(`❌ Failed to build ${version}:`, error.message);
+        }
     }
-  }
-  
-  // Save version index
-  fs.writeFileSync(
-    path.join(outputRoot, 'versions.json'),
-    JSON.stringify(versionInfo, null, 2)
-  );
-  
-  console.log('🚀 Versioned documentation build complete!');
+
+    // Save version index
+    fs.writeFileSync(
+        path.join(outputRoot, 'versions.json'),
+        JSON.stringify(versionInfo, null, 2)
+    );
+
+    console.log('🚀 Versioned documentation build complete!');
 }
 
 buildVersionedDocs();
@@ -238,12 +239,12 @@ class AdvancedManifestProcessor {
     
     const traverse = (items, basePath = '') => {
       items.forEach(item => {
-        if (item.path) {
+        if (item.route) {
           urls.push({
-            loc: `${basePath}/${item.path}`,
+            loc: `${basePath}/${item.route}`,
             lastmod: new Date().toISOString(),
             changefreq: 'weekly',
-            priority: item.path === 'README' ? '1.0' : '0.8'
+            priority: item.route === 'README' ? '1.0' : '0.8'
           });
         }
         
@@ -261,13 +262,13 @@ class AdvancedManifestProcessor {
     const issues = [];
     
     for (const item of result.searchIndex) {
-      const filePath = path.join(docsPath, `${item.path}.md`);
+      const filePath = path.join(docsPath, `${item.route}.md`);
       
       if (!fs.existsSync(filePath)) {
         issues.push({
           type: 'missing-file',
-          item: item.title,
-          path: item.path
+          item: item.label,
+          route: item.route
         });
       }
     }
@@ -606,10 +607,10 @@ class MultiFormatGenerator {
   }
 
   toCSV(searchIndex) {
-    const headers = ['Title', 'Path', 'Tags'];
+    const headers = ['Label', 'Route', 'Tags'];
     const rows = searchIndex.map(item => [
-      `"${item.title.replace(/"/g, '""')}"`,
-      `"${item.path}"`,
+      `"${item.label.replace(/"/g, '""')}"`,
+      `"${item.route}"`,
       `"${(item.tags || []).join(', ')}"`
     ]);
 
@@ -620,10 +621,10 @@ class MultiFormatGenerator {
     const traverse = (items) => {
       return '<ul>' + items.map(item => {
         let html = '<li>';
-        if (item.path) {
-          html += `<a href="/docs/${item.path}">${item.title}</a>`;
+        if (item.route) {
+          html += `<a href="/docs/${item.route}">${item.label}</a>`;
         } else {
-          html += `<span class="folder">${item.title}</span>`;
+          html += `<span class="folder">${item.label}</span>`;
         }
         if (item.children) {
           html += traverse(item.children);

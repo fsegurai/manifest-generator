@@ -12,7 +12,7 @@ Practical examples showing how to use the Manifest Generator API in different sc
 ### Generate Single Project Manifest
 
 ```javascript
-import { generateManifest } from '@fsegurai/manifest-generator';
+import {generateManifest} from '@fsegurai/manifest-generator/dist';
 import fs from 'fs';
 
 // Generate manifest for specific documentation path
@@ -385,7 +385,7 @@ function DocumentationApp() {
     <div>
       <nav>
         {manifest.map(item => (
-          <NavItem key={item.title} item={item} />
+          <NavItem key={item.label} item={item} />
         ))}
       </nav>
       <SearchBox searchIndex={searchIndex} />

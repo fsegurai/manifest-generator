@@ -15,22 +15,14 @@ npx @fsegurai/manifest-generator --docs-subfolder documentation --output ./dist
 Pass options when using the API:
 
 ```javascript
-import { generateManifestsWithDiscovery } from '@fsegurai/manifest-generator';
+import {generateManifestsWithDiscovery} from '@fsegurai/manifest-generator/dist';
 
 generateManifestsWithDiscovery('./projects', {
-  docsSubfolder: 'documentation',
-  outputDir: './dist'
+    docsSubfolder: 'documentation',
+    outputDir: './dist'
 });
 ```
 
-### 3. Environment Variables
-Set common configurations via environment:
-
-```bash
-export MANIFEST_DOCS_SUBFOLDER=documentation
-export MANIFEST_OUTPUT_DIR=./dist
-npx @fsegurai/manifest-generator --all
-```
 
 ## Configuration Options
 
@@ -308,16 +300,12 @@ Add common configurations to your build scripts:
 
 #### Development
 ```bash
-export NODE_ENV=development
-export MANIFEST_OUTPUT_DIR=./src/data
-npm run docs:build
+npx @fsegurai/manifest-generator --route ./docs --output ./src/data
 ```
 
 #### Production
 ```bash
-export NODE_ENV=production
-export MANIFEST_OUTPUT_DIR=./dist/manifests
-npm run docs:build
+npx @fsegurai/manifest-generator --all --output ./dist/manifests
 ```
 
 ### CI/CD Configuration

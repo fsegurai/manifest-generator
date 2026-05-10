@@ -98,7 +98,7 @@ Creates searchable indexes with full content metadata for implementing search fu
 ]
 ```
 
-👉 [Deep dive into Search Index](./search-index.md)
+👉 [Deep dive into Search Index](search-index.md)
 
 ---
 
@@ -252,8 +252,9 @@ Works with all JavaScript module systems:
 - ✅ **UMD** - Universal module definition
 
 **ESM:**
+
 ```javascript
-import { generateManifest } from '@fsegurai/manifest-generator';
+import {generateManifest} from '@fsegurai/manifest-generator/dist';
 ```
 
 **CommonJS:**
