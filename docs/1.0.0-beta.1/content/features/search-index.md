@@ -11,8 +11,8 @@ A search index is a flat, structured data file that contains all searchable cont
 ### Basic Search Entry
 ```json
 {
-  "title": "Getting Started Guide",
-  "path": "getting-started",
+  "label": "Getting Started Guide",
+  "route": "getting-started",
   "tags": ["guide", "beginner"]
 }
 ```
@@ -21,23 +21,23 @@ A search index is a flat, structured data file that contains all searchable cont
 ```json
 [
   {
-    "title": "README",
-    "path": "README",
+    "label": "README",
+    "route": "README",
     "tags": []
   },
   {
-    "title": "Getting Started Guide",
-    "path": "getting-started", 
+    "label": "Getting Started Guide",
+    "route": "getting-started", 
     "tags": ["guide", "beginner"]
   },
   {
-    "title": "API Reference",
-    "path": "api/reference",
+    "label": "API Reference",
+    "route": "api/reference",
     "tags": ["api", "reference"]
   },
   {
-    "title": "Configuration Options",
-    "path": "config/options",
+    "label": "Configuration Options",
+    "route": "config/options",
     "tags": ["configuration", "advanced"]
   }
 ]
@@ -49,16 +49,16 @@ A search index is a flat, structured data file that contains all searchable cont
 ```json
 [
   {
-    "title": "Getting Started",
-    "path": "getting-started",
+    "label": "Getting Started",
+    "route": "getting-started",
     "tags": ["guide"]
   },
   {
-    "title": "API",
+    "label": "API",
     "children": [
       {
-        "title": "Reference",
-        "path": "api/reference", 
+        "label": "Reference",
+        "route": "api/reference", 
         "tags": ["api"]
       }
     ]
@@ -70,13 +70,13 @@ A search index is a flat, structured data file that contains all searchable cont
 ```json
 [
   {
-    "title": "Getting Started",
-    "path": "getting-started",
+    "label": "Getting Started",
+    "route": "getting-started",
     "tags": ["guide"]
   },
   {
-    "title": "Reference", 
-    "path": "api/reference",
+    "label": "Reference", 
+    "route": "api/reference",
     "tags": ["api"]
   }
 ]
@@ -104,7 +104,7 @@ function searchDocs(query, searchIndex) {
   const lowercaseQuery = query.toLowerCase();
   
   return searchIndex.filter(entry => 
-    entry.title.toLowerCase().includes(lowercaseQuery) ||
+    entry.label.toLowerCase().includes(lowercaseQuery) ||
     entry.tags.some(tag => tag.toLowerCase().includes(lowercaseQuery))
   );
 }

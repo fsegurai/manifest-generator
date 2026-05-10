@@ -278,7 +278,7 @@ tags: [guide, beginner]
 #### VitePress
 ```yaml
 ---
-title: Getting Started
+label: Getting Started
 editLink: true
 tags: [guide]
 prev: ./introduction
@@ -289,7 +289,7 @@ next: ./installation
 #### GitBook
 ```yaml
 ---
-title: Getting Started
+label: Getting Started
 description: Quick start guide
 tags: [guide, beginner]
 ---
@@ -304,7 +304,7 @@ Frontmatter affects manifest structure:
 ```markdown
 <!-- File: api/authentication.md -->
 ---
-title: User Authentication
+label: User Authentication
 tags: [api, auth]
 ---
 ```
@@ -312,8 +312,8 @@ tags: [api, auth]
 **Generates:**
 ```json
 {
-  "title": "User Authentication",
-  "path": "api/authentication",
+  "label": "User Authentication",
+  "route": "api/authentication",
   "tags": ["api", "auth"]
 }
 ```
@@ -324,8 +324,8 @@ All frontmatter metadata is included in search indexes:
 
 ```json
 {
-  "title": "User Authentication",
-  "path": "api/authentication", 
+  "label": "User Authentication",
+  "route": "api/authentication", 
   "tags": ["api", "auth"]
 }
 ```
@@ -336,23 +336,23 @@ Frontmatter titles are used in navigation hierarchies:
 
 ```
 api/
-├── authentication.md (title: "User Authentication")
-└── endpoints.md (title: "API Endpoints")
+├── authentication.md (label: "User Authentication")
+└── endpoints.md (label: "API Endpoints")
 ```
 
 **Results in:**
 ```json
 {
-  "title": "Api",
+  "label": "Api",
   "children": [
     {
-      "title": "User Authentication",
-      "path": "api/authentication",
+      "label": "User Authentication",
+      "route": "api/authentication",
       "tags": ["api", "auth"]
     },
     {
-      "title": "API Endpoints", 
-      "path": "api/endpoints",
+      "label": "API Endpoints", 
+      "route": "api/endpoints",
       "tags": ["api", "reference"]
     }
   ]
@@ -368,7 +368,7 @@ api/
 tags: [guide, beginner]
 
 # Good: quoted strings with special characters
-title: "API: Getting Started"
+label: "API: Getting Started"
 
 # Good: boolean values
 draft: false
@@ -382,7 +382,7 @@ draft: false
 tags: [guide, beginner
 
 # Bad: unquoted string with colons
-title: API: Getting Started
+label: API: Getting Started
 
 # Bad: invalid boolean
 draft: yes

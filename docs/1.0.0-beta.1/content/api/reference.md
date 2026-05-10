@@ -40,7 +40,7 @@ Represents a single navigation item in the manifest.
 ```typescript
 interface NavigationItem {
   label: string;           // Display title
-  path?: string;          // Optional path for navigation
+  route?: string;         // Optional route for navigation
   tags?: string[];        // Optional tags from frontmatter
   children?: NavigationItem[]; // Optional nested items
 }
@@ -52,7 +52,7 @@ Represents an entry in the search index.
 ```typescript
 interface SearchEntry {
   label: string;    // Document title
-  path: string;     // Document path
+  route: string;    // Document route
   tags?: string[];  // Document tags
 }
 ```
@@ -390,16 +390,16 @@ The generated manifest is an array of navigation items:
 ```json
 [
   {
-    "title": "Getting Started",
-    "path": "getting-started",
+    "label": "Getting Started",
+    "route": "getting-started",
     "tags": ["guide", "beginner"]
   },
   {
-    "title": "API",
+    "label": "API",
     "children": [
       {
-        "title": "Reference",
-        "path": "api/reference",
+        "label": "Reference",
+        "route": "api/reference",
         "tags": ["api", "reference"]
       }
     ]
@@ -413,13 +413,13 @@ The search index is a flat array of all documents:
 ```json
 [
   {
-    "title": "Getting Started",
-    "path": "getting-started",
+    "label": "Getting Started",
+    "route": "getting-started",
     "tags": ["guide", "beginner"]
   },
   {
-    "title": "Reference",
-    "path": "api/reference",
+    "label": "Reference",
+    "route": "api/reference",
     "tags": ["api", "reference"]
   }
 ]

@@ -385,7 +385,7 @@ function DocumentationApp() {
     <div>
       <nav>
         {manifest.map(item => (
-          <NavItem key={item.title} item={item} />
+          <NavItem key={item.label} item={item} />
         ))}
       </nav>
       <SearchBox searchIndex={searchIndex} />

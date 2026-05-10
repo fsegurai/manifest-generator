@@ -238,12 +238,12 @@ class AdvancedManifestProcessor {
     
     const traverse = (items, basePath = '') => {
       items.forEach(item => {
-        if (item.path) {
+        if (item.route) {
           urls.push({
-            loc: `${basePath}/${item.path}`,
+            loc: `${basePath}/${item.route}`,
             lastmod: new Date().toISOString(),
             changefreq: 'weekly',
-            priority: item.path === 'README' ? '1.0' : '0.8'
+            priority: item.route === 'README' ? '1.0' : '0.8'
           });
         }
         
@@ -261,13 +261,13 @@ class AdvancedManifestProcessor {
     const issues = [];
     
     for (const item of result.searchIndex) {
-      const filePath = path.join(docsPath, `${item.path}.md`);
+      const filePath = path.join(docsPath, `${item.route}.md`);
       
       if (!fs.existsSync(filePath)) {
         issues.push({
           type: 'missing-file',
-          item: item.title,
-          path: item.path
+          item: item.label,
+          route: item.route
         });
       }
     }
@@ -606,10 +606,10 @@ class MultiFormatGenerator {
   }
 
   toCSV(searchIndex) {
-    const headers = ['Title', 'Path', 'Tags'];
+    const headers = ['Label', 'Route', 'Tags'];
     const rows = searchIndex.map(item => [
-      `"${item.title.replace(/"/g, '""')}"`,
-      `"${item.path}"`,
+      `"${item.label.replace(/"/g, '""')}"`,
+      `"${item.route}"`,
       `"${(item.tags || []).join(', ')}"`
     ]);
 
@@ -620,10 +620,10 @@ class MultiFormatGenerator {
     const traverse = (items) => {
       return '<ul>' + items.map(item => {
         let html = '<li>';
-        if (item.path) {
-          html += `<a href="/docs/${item.path}">${item.title}</a>`;
+        if (item.route) {
+          html += `<a href="/docs/${item.route}">${item.label}</a>`;
         } else {
-          html += `<span class="folder">${item.title}</span>`;
+          html += `<span class="folder">${item.label}</span>`;
         }
         if (item.children) {
           html += traverse(item.children);

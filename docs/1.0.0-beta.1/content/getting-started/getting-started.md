@@ -32,21 +32,21 @@ Choose the installation method that best fits your workflow:
 No installation required! Perfect for trying out the tool or one-time use:
 
 ```bash
-# Show help and available commands
-npx @fsegurai/manifest-generator --help
+    "label": "README",
+    "route": "README",
 
 # Process your documentation immediately
 npx @fsegurai/manifest-generator --route ./docs
-
-# Process all projects in your workspace
+    "label": "Getting Started",
+    "route": "getting-started",
 npx @fsegurai/manifest-generator --all
 ```
 
-**Advantages:**
+    "label": "Api",
 - ✅ No installation needed
 - ✅ Always uses the latest version
-- ✅ Perfect for CI/CD pipelines
-
+        "label": "Reference",
+        "route": "api/reference",
 ### Global Installation (Recommended for Frequent Use)
 
 Install once and use anywhere on your system:
@@ -346,18 +346,18 @@ Create folder hierarchies for nested navigation:
 
 ```
 docs/
-├── getting-started/
-│   ├── README.md
+    "label": "README",
+    "route": "README",
 │   └── installation.md
 └── guides/
     ├── README.md
-    ├── basic.md
-    └── advanced.md
+    "label": "Getting Started",
+    "route": "getting-started",
 ```
 
 ### Tip 3: Hide Draft Content
-Mark content as draft to exclude from production:
-
+    "label": "Reference",
+    "route": "api/reference",
 ```markdown
 ---
 draft: true
@@ -409,21 +409,21 @@ The tool creates two files in your documentation directory:
 ```json
 [
   {
-    "title": "README",
-    "path": "README",
+    "label": "README",
+    "route": "README",
     "tags": []
   },
   {
-    "title": "Getting Started",
-    "path": "getting-started",
+    "label": "Getting Started",
+    "route": "getting-started",
     "tags": ["guide", "beginner"]
   },
   {
-    "title": "Api",
+    "label": "Api",
     "children": [
       {
-        "title": "Reference",
-        "path": "api/reference",
+        "label": "Reference",
+        "route": "api/reference",
         "tags": []
       }
     ]
@@ -435,18 +435,18 @@ The tool creates two files in your documentation directory:
 ```json
 [
   {
-    "title": "README",
-    "path": "README",
+    "label": "README",
+    "route": "README",
     "tags": []
   },
   {
-    "title": "Getting Started",
-    "path": "getting-started",
+    "label": "Getting Started",
+    "route": "getting-started",
     "tags": ["guide", "beginner"]
   },
   {
-    "title": "Reference",
-    "path": "api/reference",
+    "label": "Reference",
+    "route": "api/reference",
     "tags": []
   }
 ]

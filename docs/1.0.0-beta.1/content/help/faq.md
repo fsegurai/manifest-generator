@@ -175,7 +175,7 @@ const searchIndex = await fetch('/search-index.json').then(r => r.json());
 // Simple search function
 function search(query) {
   return searchIndex.filter(item => 
-    item.title.toLowerCase().includes(query.toLowerCase()) ||
+    item.label.toLowerCase().includes(query.toLowerCase()) ||
     item.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
   );
 }

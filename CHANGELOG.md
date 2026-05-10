@@ -43,6 +43,10 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
         - `rollup` from `4.52.3` to `4.53.3`
         - `typescript-eslint` from `8.45.0` to `8.47.0`
 
+- [Full Changelog](https://github.com/fsegurai/manifest-generator/compare/v0.0.0-alpha.3...v1.0.0-beta.1)
+
+---
+
 ## [0.0.0-alpha.3] - 2025-10-07
 
 ### 🚀 Added
