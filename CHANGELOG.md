@@ -9,6 +9,56 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [1.0.0-beta.2] - 2026-xx-xx
+
+### 🔐 Security
+
+- Added `Trivy Security Scanner` to the project to automatically scan for vulnerabilities in dependencies and container
+  images as part of the CI/CD pipeline.
+- **Added dependencies**.
+    - Dev Dependencies
+        - `bun-types` - `1.3.13` - needed for testing purposes only.
+        - `portless` - `0.13.0` - needed for local development. Replace port numbers with stable names.
+        - `terser` - `5.47.1` - needed for production builds as part of Vite.
+        - `vite` - `8.0.11` - needed for development and build processes. Replacement of Rollup.
+- **Update dependencies** — address potential vulnerabilities and/or improvements in development dependencies.
+    - Dependencies
+        - `@material/web` from `2.4.1` to `xx`
+        - `marked` from `17.0.1` to `18.0.3`
+        - `marked-highlight` from `2.2.3` to `2.2.4`
+    - Dev Dependencies
+        - `@eslint/js` from `9.39.1` to `10.0.1`
+        - `@types/node` from `24.10.1` to `25.6.2`
+        - `@typescript-eslint/eslint-plugin` from `8.47.0` to `8.59.2`
+        - `@typescript-eslint/parser` from `8.47.0` to `8.59.2`
+        - `eslint` from `9.39.1` to `10.3.0`
+        - `rimraf` from `6.1.2` to `6.1.3`
+        - `typescript` from `5.8.3` to `6.0.3`
+        - `typescript-eslint` from `8.47.0` to `8.59.2`
+- **Removed dependencies** — eliminated unused dependencies to reduce potential security risks and improve project
+  maintainability.
+    - Removed Dependencies
+        - `@babel/core`
+        - '@babel/preset-env'
+        - `@rollup/plugin-commonjs`
+        - `@rollup/plugin-node-resolve`
+        - `@rollup/plugin-replace`
+        - `@rollup/plugin-typescript`
+        - `@types/jest`
+        - `cpy-cli`
+        - `github-slugger`
+        - `globals`
+        - 'jest'
+        - `jest-cli`
+        - 'jest-environment-jsdom'
+        - `rollup`
+        - `rollup-plugin-dev`
+        - 'ts-node'
+        - 'tsd'
+        - `semantic-release`
+
+---
+
 ## [1.0.0-beta.1] - 2025-11-21
 
 ### 🚀 Added
