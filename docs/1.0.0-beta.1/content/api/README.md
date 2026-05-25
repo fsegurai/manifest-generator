@@ -23,7 +23,7 @@ import {
     generateManifest,
     generateManifestsWithDiscovery,
     discoverProjects
-} from '@fsegurai/manifest-generator/dist';
+} from '@fsegurai/manifest-generator';
 ```
 
 ### CommonJS

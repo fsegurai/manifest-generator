@@ -254,7 +254,7 @@ Works with all JavaScript module systems:
 **ESM:**
 
 ```javascript
-import {generateManifest} from '@fsegurai/manifest-generator/dist';
+import {generateManifest} from '@fsegurai/manifest-generator';
 ```
 
 **CommonJS:**

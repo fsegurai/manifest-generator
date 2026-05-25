@@ -265,7 +265,7 @@ Found 3 documentation projects:
 ### Programmatic Discovery
 
 ```javascript
-import {discoverProjects} from '@fsegurai/manifest-generator/dist';
+import {discoverProjects} from '@fsegurai/manifest-generator';
 
 const projects = discoverProjects('./workspace', {
     docsSubfolder: 'documentation'

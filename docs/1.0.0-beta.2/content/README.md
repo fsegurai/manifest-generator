@@ -1,12 +1,12 @@
 ---
 label: Documentation Home
 description: External-user documentation for @fsegurai/manifest-generator 1.0.0-beta.2.
-tags: ["documentation", "overview", "manifest-generator"]
+tags: [ "documentation", "overview", "manifest-generator" ]
 ---
 
 # @fsegurai/manifest-generator Docs
 
-`@fsegurai/manifest-generator` generates two JSON files from Markdown documentation:
+`@fsegurai/manifest-generator` generates two JSON files from Markdown and MDX documentation:
 
 - `manifest.json` for hierarchical navigation
 - `search-index.json` for search data
@@ -25,6 +25,9 @@ npx @fsegurai/manifest-generator --route ./docs
 
 # process all discoverable projects under a root
 npx @fsegurai/manifest-generator --all --docs-root ./projects
+
+# validate frontmatter first
+npx @fsegurai/manifest-generator --validate --docs-root ./docs
 ```
 
 ## Who this is for
@@ -48,7 +51,13 @@ npx @fsegurai/manifest-generator --all --docs-root ./projects
 
 This `1.0.0-beta.2` docs set reflects:
 
-- Bun-based tests (no Jest)
-- Shared types split into `types.ts`
-- Better discovery behavior (prefer docs subfolder)
-- Better CLI behavior for missing docs roots and output directory creation
+- **Sorting**: items sorted by `order` frontmatter, then alphabetically
+- **New frontmatter**: `order`, `redirect`, `externalUrl`, `breadcrumbTitle`, `layout`, `deprecated`,
+  `deprecatedAlternative`, `publishedAt`, `updatedAt`, `keywords`
+- **Recursive discovery**: `--recursive` flag for nested project trees
+- **Validation**: `--validate` mode checks frontmatter without writing files
+- **Watch mode**: `--watch` polls for file changes and regenerates
+- **MDX support**: `.mdx` files are processed alongside `.md`
+- **Cleaner output**: `cleanItem()` removes null/false fields from JSON
+- **Improved parser**: multiline values, quoted strings, null support
+- **New API**: `validateDocs()`, `watchDocs()`, `sortItems()` exported

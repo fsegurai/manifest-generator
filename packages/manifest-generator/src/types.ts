@@ -9,6 +9,16 @@ export interface NavigationItem {
   iconType?: string | null;
   badge?: string | null;
   badgeColor?: string | null;
+  order?: number;
+  redirect?: string;
+  externalUrl?: string;
+  breadcrumbTitle?: string;
+  layout?: string;
+  deprecated?: boolean;
+  deprecatedAlternative?: string;
+  publishedAt?: string;
+  updatedAt?: string;
+  keywords?: string[];
   children?: NavigationItem[];
 }
 
@@ -17,6 +27,8 @@ export interface SearchEntry {
   description?: string;
   route: string;
   tags?: string[];
+  keywords?: string[];
+  breadcrumbTitle?: string;
 }
 
 export interface ManifestResult {
@@ -28,7 +40,7 @@ export interface DiscoveredProject {
   name: string;
   projectPath: string;
   docsPath: string;
-  type: 'subfolder' | 'direct';
+  type: 'subfolder' | 'direct' | 'recursive';
 }
 
 export interface ProcessingResult {
@@ -39,6 +51,7 @@ export interface ProcessingResult {
 
 export interface DiscoveryOptions {
   docsSubfolder?: string;
+  recursive?: boolean;
 }
 
 export interface ManifestGenerationOptions {
@@ -47,6 +60,7 @@ export interface ManifestGenerationOptions {
   outputDir?: string | null;
   docsSubfolder?: string;
   autoDetect?: boolean;
+  recursive?: boolean;
 }
 
 export interface Frontmatter {
@@ -61,5 +75,22 @@ export interface Frontmatter {
   badgeColor?: string | null;
   draft?: boolean;
   hidden?: boolean;
+  order?: number;
+  redirect?: string;
+  externalUrl?: string;
+  breadcrumbTitle?: string;
+  layout?: string;
+  deprecated?: boolean;
+  deprecatedAlternative?: string;
+  publishedAt?: string;
+  updatedAt?: string;
+  keywords?: string[];
 }
 
+export interface ValidateResult {
+  file: string;
+  valid: boolean;
+  warnings: string[];
+  errors: string[];
+  frontmatter?: Frontmatter;
+}

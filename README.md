@@ -34,12 +34,13 @@ This repository contains:
 
 ## What the package does
 
-The package scans Markdown documentation and generates:
+The package scans Markdown and MDX documentation and generates:
 
-- `manifest.json` (hierarchical navigation)
-- `search-index.json` (flat search entries)
+- `manifest.json` (hierarchical navigation with sorting)
+- `search-index.json` (flat search entries with keywords)
 
-It can be used via CLI or programmatic API.
+It can be used via CLI or programmatic API. Supports 20+ frontmatter fields,
+frontmatter validation, recursive project discovery, file watching, and sorting.
 
 ## Repository structure
 

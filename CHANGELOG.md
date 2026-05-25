@@ -7,31 +7,62 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
-- Documentation work in progress for the current release line.
+
 
 ---
 
 ## [1.0.0-beta.2] - 2026-xx-xx
 
-### Changed
+### 🚀 Added
+
+- **Frontmatter expansion** — 10 new metadata fields: `order`, `redirect`, `externalUrl`, `breadcrumbTitle`, `layout`,
+  `deprecated`, `deprecatedAlternative`, `publishedAt`, `updatedAt`, `keywords`. Full support in both `NavigationItem`
+  and `SearchEntry` output types.
+- **Item sorting** — navigation items are now sorted by `order` (ascending, default 999), then alphabetically by
+  `label`.
+  Exported as `sortItems()` for programmatic use.
+- **Recursive discovery** — new `--recursive` flag / `recursive: true` option discovers projects nested beyond one
+  level.
+  Recursion stops at project roots (directories that match as documentation projects).
+- **Frontmatter validation** — new `--validate` CLI mode and `validateDocs()` API that checks date validity, conflicting
+  flags (`draft`+`hidden`, `isTitle`+`isParent`), missing `deprecatedAlternative`, and more.
+- **File watching** — new `--watch` CLI mode and `watchDocs()` API for polling-based live regeneration on file changes.
+- **MDX support** — `.mdx` files are now processed alongside `.md` files.
+- **Improved frontmatter parser** — now handles multiline values (`|`, `>`), quoted strings (single and double),
+  explicit `null`, and numeric values without regression.
+- **New API exports** — `validateDocs()`, `watchDocs()`, `sortItems()` are now exported from the package entrypoint.
+
+### 🔧 Changed
 
 - Moved public type definitions into `packages/manifest-generator/src/types.ts` and re-exported them from the package
   entrypoint.
 - Updated the CLI and core generator flow to use Bun-friendly tests and clearer runtime behavior.
-- Improved project discovery so docs subfolders are preferred before falling back to direct markdown roots.
+- Improved project discovery so docs subfolders are preferred before falling back to direct Markdown roots.
 - Updated the package README, release docs, and versioned documentation structure to match the current monorepo layout.
+- `--route` now writes output files to the route directory itself (not `path.dirname(route)`), matching user
+  expectations. Use `--output` to redirect.
+- Output files (`manifest.json`) now go through `cleanItem()` — null, false, and empty-string fields are stripped,
+  producing smaller, cleaner JSON.
+- `generateDocsManifests()` now accepts `recursive` in its options object and passes it to `discoverProjects()`.
+- Frontmatter types (`Frontmatter`, `NavigationItem`, `SearchEntry`, `DiscoveryOptions`, `ManifestGenerationOptions`)
+  expanded with all new fields.
+- The `DiscoverdProject.type` field now includes `'recursive'` for projects found via recursive discovery.
+- The `globalThis.__manifestGeneratorWalkDocs` DI hack has been removed. Use `walkerFn` instead.
 
-### Fixed
+### 🐛 Fixed
 
 - The CLI now creates missing output directories before writing `manifest.json` and `search-index.json`.
 - The CLI now fails fast when the docs root does not exist instead of silently returning success.
 - The UMD build is configured with explicit globals for Node.js externals.
 - Bun test execution no longer auto-runs the CLI during test runs.
 
-### Testing
+### 🧪 Testing
 
 - Added Bun test coverage for frontmatter parsing, discovery, manifest generation, and CLI behavior.
 - Verified the package build continues to succeed across ESM, CJS, and UMD outputs.
+- Expanded test suite from 12 to 32 tests covering: frontmatter parsing (quoted, null, numeric, empty), `.mdx` support,
+  item sorting, `cleanItem`, recursive discovery, `validateDocs` warnings/errors, CLI `--validate` and
+  `--recursive` flags, route generation output paths, and cleaned output format verification.
 
 ### 🔐 Security
 
@@ -79,10 +110,14 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
         - 'tsd'
         - `semantic-release`
 
-### Documentation
+### 📃 Documentation
 
 - Refreshed the root README to explain the monorepo layout and current workflows.
-- Updated the `docs/1.0.0-beta.2` release documentation to align with the current API and CLI behavior.
+- Updated all files under `docs/1.0.0-beta.2/content/` with full feature documentation, examples, and code samples.
+- Updated `AGENTS.md` with new CLI flags, frontmatter keys, and behavior notes.
+- Updated root `CHANGELOG.md` and `README.md` with feature summaries.
+
+- [Full Changelog](https://github.com/fsegurai/manifest-generator/compare/v1.0.0-beta.1...v1.0.0-beta.2)
 
 ---
 

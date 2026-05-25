@@ -12,7 +12,7 @@ Practical examples showing how to use the Manifest Generator API in different sc
 ### Generate Single Project Manifest
 
 ```javascript
-import {generateManifest} from '@fsegurai/manifest-generator/dist';
+import {generateManifest} from '@fsegurai/manifest-generator';
 import fs from 'fs';
 
 // Generate manifest for specific documentation path

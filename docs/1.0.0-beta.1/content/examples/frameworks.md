@@ -261,7 +261,7 @@ export async function getStaticPaths() {
 
 ```javascript
 // pages/api/docs/regenerate.js
-import {generateManifest} from '@fsegurai/manifest-generator/dist';
+import {generateManifest} from '@fsegurai/manifest-generator';
 import fs from 'fs';
 import path from 'path';
 

@@ -314,7 +314,7 @@ Automate manifest generation in your build pipeline:
 Integrate directly into your Node.js application:
 
 ```javascript
-import {generateManifest} from '@fsegurai/manifest-generator/dist';
+import {generateManifest} from '@fsegurai/manifest-generator';
 
 const {manifest, searchIndex} = generateManifest('./docs');
 console.log('Generated manifest:', manifest);

@@ -104,7 +104,7 @@ module.exports = {
 
 ```javascript
 // webpack.config.js
-const {generateManifest} = require('@fsegurai/manifest-generator/dist');
+const {generateManifest} = require('@fsegurai/manifest-generator');
 const fs = require('fs');
 const path = require('path');
 

@@ -15,7 +15,7 @@ npx @fsegurai/manifest-generator --docs-subfolder documentation --output ./dist
 Pass options when using the API:
 
 ```javascript
-import {generateManifestsWithDiscovery} from '@fsegurai/manifest-generator/dist';
+import {generateManifestsWithDiscovery} from '@fsegurai/manifest-generator';
 
 generateManifestsWithDiscovery('./projects', {
     docsSubfolder: 'documentation',

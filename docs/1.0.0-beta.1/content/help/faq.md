@@ -200,7 +200,7 @@ Yes! It works with:
 The current version generates a fixed structure, but you can post-process the JSON:
 
 ```javascript
-const {generateManifest} = require('@fsegurai/manifest-generator/dist');
+const {generateManifest} = require('@fsegurai/manifest-generator');
 
 const result = generateManifest('./docs');
 // Customize the result object before saving

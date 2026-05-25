@@ -18,6 +18,16 @@ interface NavigationItem {
   iconType?: string | null;
   badge?: string | null;
   badgeColor?: string | null;
+  order?: number;
+  redirect?: string;
+  externalUrl?: string;
+  breadcrumbTitle?: string;
+  layout?: string;
+  deprecated?: boolean;
+  deprecatedAlternative?: string;
+  publishedAt?: string;
+  updatedAt?: string;
+  keywords?: string[];
   children?: NavigationItem[];
 }
 ```
@@ -30,6 +40,8 @@ interface SearchEntry {
   description?: string;
   route: string;
   tags?: string[];
+  keywords?: string[];
+  breadcrumbTitle?: string;
 }
 ```
 
@@ -49,9 +61,11 @@ interface DiscoveredProject {
   name: string;
   projectPath: string;
   docsPath: string;
-  type: 'subfolder' | 'direct';
+  type: 'subfolder' | 'direct' | 'recursive';
 }
 ```
+
+The `type` field now includes `'recursive'` when the project was found via recursive discovery.
 
 ### `ProcessingResult`
 
@@ -68,6 +82,7 @@ interface ProcessingResult {
 ```ts
 interface DiscoveryOptions {
   docsSubfolder?: string;
+  recursive?: boolean;
 }
 ```
 
@@ -80,6 +95,7 @@ interface ManifestGenerationOptions {
   outputDir?: string | null;
   docsSubfolder?: string;
   autoDetect?: boolean;
+  recursive?: boolean;
 }
 ```
 
@@ -98,13 +114,35 @@ interface Frontmatter {
   badgeColor?: string | null;
   draft?: boolean;
   hidden?: boolean;
+  order?: number;
+  redirect?: string;
+  externalUrl?: string;
+  breadcrumbTitle?: string;
+  layout?: string;
+  deprecated?: boolean;
+  deprecatedAlternative?: string;
+  publishedAt?: string;
+  updatedAt?: string;
+  keywords?: string[];
+}
+```
+
+### `ValidateResult`
+
+```ts
+interface ValidateResult {
+  file: string;
+  valid: boolean;
+  warnings: string[];
+  errors: string[];
+  frontmatter?: Frontmatter;
 }
 ```
 
 ## Usage example
 
 ```ts
-import type { ManifestResult, NavigationItem } from '@fsegurai/manifest-generator';
+import type { ManifestResult, NavigationItem, ValidateResult } from '@fsegurai/manifest-generator';
 
 function render(items: NavigationItem[]) {
   return items.map(item => item.label);

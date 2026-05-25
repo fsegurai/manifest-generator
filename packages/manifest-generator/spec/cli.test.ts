@@ -87,4 +87,104 @@ describe('runCli', () => {
     expect(errors.join('\n')).toContain('Documentation directory not found');
     expect(errors.join('\n')).toContain('Directory structure should be one of');
   });
+
+  test('--validate reports valid docs', () => {
+    const docsRoot = path.join(tempDir, 'docs');
+    writeFile(path.join(docsRoot, 'good.md'), '---\nlabel: Good\n---\nContent');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--validate', '--docs-root', docsRoot], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(logs.join('\n')).toContain('valid');
+  });
+
+  test('--validate exits 1 on invalid frontmatter', () => {
+    const docsRoot = path.join(tempDir, 'docs');
+    writeFile(path.join(docsRoot, 'bad.md'), '---\npublishedAt: not-a-date\n---\nContent');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--validate', '--docs-root', docsRoot], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(1);
+  });
+
+  test('--recursive discover finds nested projects', () => {
+    const root = path.join(tempDir, 'root');
+    const nested = path.join(root, 'group', 'project');
+    writeFile(path.join(nested, 'docs', 'README.md'), '# Nested');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--discover', '--recursive', '--docs-root', root], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(logs.join('\n')).toContain('project');
+  });
+
+  test('--all generates for all projects', () => {
+    const root = path.join(tempDir, 'projects');
+    const projectA = path.join(root, 'project-a');
+    writeFile(path.join(projectA, 'docs', 'README.md'), '# A');
+    const projectB = path.join(root, 'project-b');
+    writeFile(path.join(projectB, 'README.md'), '# B');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--all', '--docs-root', root], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(fs.existsSync(path.join(projectA, 'manifest.json'))).toBe(true);
+    expect(fs.existsSync(path.join(projectB, 'manifest.json'))).toBe(true);
+  });
 });

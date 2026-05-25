@@ -87,7 +87,7 @@ docs/
 
 ```javascript
 // scripts/build-versioned-docs.js
-import {generateManifest} from '@fsegurai/manifest-generator/dist';
+import {generateManifest} from '@fsegurai/manifest-generator';
 import fs from 'fs';
 import path from 'path';
 
