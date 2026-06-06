@@ -4,6 +4,8 @@ import { parseArgs } from 'node:util';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as indexModule from './index.js';
+import { loadConfig, mergeConfig } from './config.js';
+import { scaffoldInit } from './init.js';
 
 function showHelp(): void {
   console.log(`
@@ -24,8 +26,10 @@ Options:
   -s, --docs-subfolder <name>  Name of doc subfolder (default: 'docs')
   --discover                   Discover and list projects without processing
   --recursive                  Recursively discover projects in nested directories
+  --init                       Initialize a documentation structure in the current directory
   --validate                   Validate frontmatter in docs without generating files
   --watch                      Watch for file changes and regenerate
+  --config <path>              Path to config file (default: auto-detect)
   -h, --help                   Show this help message
   -v, --version                Show version number
 
@@ -51,8 +55,15 @@ Examples:
   # Validate frontmatter
   npx @fsegurai/manifest-generator --validate --docs-root ./docs
 
+  # Initialize a new documentation structure
+  npx @fsegurai/manifest-generator --init
+  npx @fsegurai/manifest-generator --init ./my-docs-project
+
   # Watch mode
   npx @fsegurai/manifest-generator --watch --route ./docs --output ./public
+
+  # With config file
+  npx @fsegurai/manifest-generator --config ./config/manifest-generator.config.json
 `);
 }
 
@@ -79,10 +90,12 @@ export function runCli(argv: string[] = process.argv.slice(2), exitFn: (code?: n
       'docs-subfolder': { type: 'string', short: 's' },
       'help': { type: 'boolean', short: 'h' },
       'version': { type: 'boolean', short: 'v' },
+      'init': { type: 'boolean' },
       'discover': { type: 'boolean' },
       'recursive': { type: 'boolean' },
       'validate': { type: 'boolean' },
       'watch': { type: 'boolean' },
+      'config': { type: 'string' },
     },
     allowPositionals: true,
   });
@@ -99,10 +112,35 @@ export function runCli(argv: string[] = process.argv.slice(2), exitFn: (code?: n
     return;
   }
 
+  if (flags.init) {
+    const initDir = positionals[0] ? path.resolve(positionals[0]) : process.cwd();
+    scaffoldInit(initDir);
+    exitFn(0);
+    return;
+  }
+
   console.log('@fsegurai/manifest-generator\n');
 
   const rootDir = flags['docs-root'] || positionals[0] || process.cwd();
   const resolvedRoot = path.resolve(rootDir);
+
+  const configFile = flags.config
+    ? loadConfig(path.dirname(path.resolve(flags.config)))
+    : loadConfig(resolvedRoot);
+
+  const cfg = mergeConfig({
+    docsSubfolder: flags['docs-subfolder'],
+    recursive: flags.recursive,
+    output: flags.output,
+  }, {
+    docsSubfolder: configFile.docsSubfolder,
+    recursive: configFile.recursive,
+    output: configFile.outputDir,
+  }, {
+    docsSubfolder: 'docs',
+    recursive: false,
+    output: null as string | null,
+  });
 
   if (!fs.existsSync(resolvedRoot)) {
     console.error(`Error: Documentation directory not found: ${ resolvedRoot }`);
@@ -157,13 +195,12 @@ export function runCli(argv: string[] = process.argv.slice(2), exitFn: (code?: n
 
   // Discover mode
   if (flags.discover) {
-    const recursive = flags.recursive || false;
-    console.log(`Discovering projects in: ${ resolvedRoot }${ recursive ? ' (recursive)' : '' }`);
+    console.log(`Discovering projects in: ${ resolvedRoot }${ cfg.recursive ? ' (recursive)' : '' }`);
     console.log('='.repeat(50));
 
     const discovered = indexModule.discoverProjects(resolvedRoot, {
-      docsSubfolder: flags['docs-subfolder'] || 'docs',
-      recursive,
+      docsSubfolder: cfg.docsSubfolder,
+      recursive: cfg.recursive,
     });
 
     if (discovered.length === 0) {
@@ -186,8 +223,8 @@ export function runCli(argv: string[] = process.argv.slice(2), exitFn: (code?: n
     const options = {
       project: flags.project || null,
       route: flags.route || null,
-      outputDir: flags.output || null,
-      docsSubfolder: flags['docs-subfolder'] || 'docs',
+      outputDir: cfg.output,
+      docsSubfolder: cfg.docsSubfolder,
       autoDetect: flags.all || (!flags.project && !flags.route),
     };
 
@@ -228,10 +265,10 @@ export function runCli(argv: string[] = process.argv.slice(2), exitFn: (code?: n
     const options = {
       project: flags.project || null,
       route: flags.route || null,
-      outputDir: flags.output || null,
-      docsSubfolder: flags['docs-subfolder'] || 'docs',
+      outputDir: cfg.output,
+      docsSubfolder: cfg.docsSubfolder,
       autoDetect: flags.all || (!flags.project && !flags.route),
-      recursive: flags.recursive || false,
+      recursive: cfg.recursive,
     };
 
     console.log(`Processing: ${ resolvedRoot }`);

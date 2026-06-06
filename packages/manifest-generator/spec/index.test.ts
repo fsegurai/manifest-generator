@@ -3,12 +3,19 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import {
+  ALLOWED_FRONTMATTER_KEYS,
   cleanItem,
+  dedupeHeadings,
+  defineConfig,
+  diceSimilarity,
   discoverProjects,
+  extractHeadings,
   formatTitle,
   generateDocsManifests,
   generateManifest,
   generateManifestsWithDiscovery,
+  makeBreadcrumb,
+  makeExcerpt,
   parseFrontmatter,
   sortItems,
   validateDocs,
@@ -92,10 +99,10 @@ describe('parseFrontmatter', () => {
 
   test('handles key with empty value', () => {
     const content = '---\nlabel:\norder: 1\n---\n# Content';
-    const parsed = parseFrontmatter<{ label?: string; order: number }>(content);
+    const parsed = parseFrontmatter<{ label?: string | null; order: number }>(content);
 
     expect(parsed.order).toBe(1);
-    expect(parsed.label).toBeUndefined();
+    expect(parsed.label).toBeNull();
   });
 });
 
@@ -210,6 +217,51 @@ describe('walkDocs', () => {
     expect(section?.iconType).toBe('filled');
   });
 
+  test('includes headings, excerpt, and breadcrumb in search index', () => {
+    const docsRoot = path.join(tempDir, 'docs-search');
+
+    writeFile(path.join(docsRoot, 'guides', 'advanced.md'), `---
+label: Advanced Guide
+tags: ["guide"]
+---
+
+## Getting Started
+
+Some **bold** text here.
+
+### Configuration
+
+More content with a [link](https://example.com) and \`inline code\`.
+
+### Deployment
+
+Final section with a list:
+
+- item one
+- item two
+`);
+
+    const searchIndex: { label: string; route: string; headings?: string[]; excerpt?: string; breadcrumb?: string }[] = [];
+    walkDocs(docsRoot, '', searchIndex);
+
+    expect(searchIndex[0].headings).toEqual(['Getting Started', 'Configuration', 'Deployment']);
+    expect(searchIndex[0].breadcrumb).toBe('Guides');
+    expect(searchIndex[0].excerpt).toBeTruthy();
+    expect(searchIndex[0].excerpt?.toLowerCase()).toContain('bold');
+    expect(searchIndex[0].tags).toEqual(['guide']);
+  });
+
+  test('omits excerpt for file with only frontmatter', () => {
+    const docsRoot = path.join(tempDir, 'docs-empty-body');
+
+    writeFile(path.join(docsRoot, 'page.md'), '---\nlabel: Empty\n---\n   \n\n  ');
+
+    const searchIndex: { label: string; route: string; excerpt?: string }[] = [];
+    walkDocs(docsRoot, '', searchIndex);
+
+    expect(searchIndex[0].excerpt).toBeUndefined();
+  });
+
   test('reads new frontmatter fields', () => {
     const docsRoot = path.join(tempDir, 'docs');
 
@@ -246,8 +298,9 @@ keywords: ["key1", "key2"]
     expect(item.updatedAt).toBe('2024-06-01');
     expect(item.keywords).toEqual(['key1', 'key2']);
 
-    expect(searchIndex[0].keywords).toEqual(['key1', 'key2']);
-    expect(searchIndex[0].breadcrumbTitle).toBe('Bread');
+    expect(searchIndex[0].headings).toBeUndefined();
+    expect(searchIndex[0].excerpt).toBeUndefined();
+    expect(searchIndex[0].breadcrumb).toBeUndefined();
   });
 });
 
@@ -438,7 +491,7 @@ describe('validateDocs', () => {
     const root = path.join(tempDir, 'docs-redir');
     writeFile(path.join(root, 'both.md'), '---\nredirect: /new\nroute: /old\n---\nContent');
     const results = validateDocs(root);
-    expect(results[0].warnings.some(w => w.includes('redirect set with route'))).toBe(true);
+    expect(results[0].warnings.some(e => e.includes('Unknown frontmatter key') && e.includes('route'))).toBe(true);
   });
 
   test('handles parse errors gracefully', () => {
@@ -455,6 +508,115 @@ describe('validateDocs', () => {
     const results = validateDocs(root);
     expect(results[0].valid).toBe(false);
     expect(results[0].errors.some(e => e.includes('not a valid date'))).toBe(true);
+  });
+
+  test('warns when no label is set', () => {
+    const root = path.join(tempDir, 'docs-nolabel');
+    writeFile(path.join(root, 'no-label.md'), '---\ndescription: No label\n---\nContent');
+    const results = validateDocs(root);
+    expect(results[0].warnings.some(w => w.includes('No label set'))).toBe(true);
+  });
+
+  test('warns when publishedAt is after updatedAt', () => {
+    const root = path.join(tempDir, 'docs-reversed');
+    writeFile(path.join(root, 'reversed.md'), '---\npublishedAt: 2024-06-01\nupdatedAt: 2024-01-15\n---\nContent');
+    const results = validateDocs(root);
+    expect(results[0].warnings.some(w => w.includes('dates may be reversed'))).toBe(true);
+  });
+
+  test('warns when publishedAt is in the future', () => {
+    const root = path.join(tempDir, 'docs-future');
+    writeFile(path.join(root, 'future.md'), '---\npublishedAt: 2099-01-01\n---\nContent');
+    const results = validateDocs(root);
+    expect(results[0].warnings.some(w => w.includes('future'))).toBe(true);
+  });
+
+  test('warns when order is not an integer', () => {
+    const root = path.join(tempDir, 'docs-order-float');
+    writeFile(path.join(root, 'float.md'), '---\norder: 1.5\n---\nContent');
+    const results = validateDocs(root);
+    expect(results[0].warnings.some(w => w.includes('not an integer'))).toBe(true);
+  });
+
+  test('errors when order is negative', () => {
+    const root = path.join(tempDir, 'docs-order-neg');
+    writeFile(path.join(root, 'neg.md'), '---\norder: -1\n---\nContent');
+    const results = validateDocs(root);
+    expect(results[0].valid).toBe(false);
+    expect(results[0].errors.some(e => e.includes('negative'))).toBe(true);
+  });
+
+  test('warns when tags and keywords overlap', () => {
+    const root = path.join(tempDir, 'docs-overlap');
+    writeFile(path.join(root, 'overlap.md'), '---\ntags: ["guide", "api"]\nkeywords: ["api", "reference"]\n---\nContent');
+    const results = validateDocs(root);
+    expect(results[0].warnings.some(w => w.includes('tags and keywords overlap'))).toBe(true);
+  });
+
+  test('warns when iconType set without icon', () => {
+    const root = path.join(tempDir, 'docs-icon');
+    writeFile(path.join(root, 'icon.md'), '---\niconType: filled\n---\nContent');
+    const results = validateDocs(root);
+    expect(results[0].warnings.some(w => w.includes('iconType set without icon'))).toBe(true);
+  });
+
+  test('warns when badgeColor set without badge', () => {
+    const root = path.join(tempDir, 'docs-badgecolor');
+    writeFile(path.join(root, 'bc.md'), '---\nbadgeColor: red\n---\nContent');
+    const results = validateDocs(root);
+    expect(results[0].warnings.some(w => w.includes('badgeColor set without badge'))).toBe(true);
+  });
+
+  test('warns on malformed externalUrl', () => {
+    const root = path.join(tempDir, 'docs-url');
+    writeFile(path.join(root, 'url.md'), '---\nexternalUrl: not-a-url\n---\nContent');
+    const results = validateDocs(root);
+    expect(results[0].warnings.some(w => w.includes('expected a URL with scheme'))).toBe(true);
+  });
+
+  test('warns on redirect without leading slash', () => {
+    const root = path.join(tempDir, 'docs-redir2');
+    writeFile(path.join(root, 'redir.md'), '---\nredirect: old-path\n---\nContent');
+    const results = validateDocs(root);
+    expect(results[0].warnings.some(w => w.includes('does not start with "/"'))).toBe(true);
+  });
+
+  test('warns on unknown frontmatter keys (typos)', () => {
+    const root = path.join(tempDir, 'docs-typo');
+    writeFile(path.join(root, 'typo.md'), '---\nlable: My Page\ndescripton: A typo\n---\nContent');
+    const results = validateDocs(root);
+    expect(results[0].warnings.some(w => w.includes('"lable"'))).toBe(true);
+    expect(results[0].warnings.some(w => w.includes('"descripton"'))).toBe(true);
+  });
+
+  test('passes on valid frontmatter with all non-conflicting keys', () => {
+    const root = path.join(tempDir, 'docs-all-valid');
+    writeFile(path.join(root, 'full.md'), `---
+label: Full Page
+description: All keys present
+tags: ["a"]
+keywords: ["b"]
+order: 1
+isTitle: false
+isParent: false
+icon: home
+iconType: filled
+badge: New
+badgeColor: green
+breadcrumbTitle: Bread
+layout: default
+externalUrl: https://example.com
+deprecated: false
+publishedAt: 2024-01-15
+updatedAt: 2024-06-01
+draft: false
+hidden: false
+---
+Content`);
+    const results = validateDocs(root);
+    expect(results[0].valid).toBe(true);
+    expect(results[0].warnings.length).toBe(0);
+    expect(results[0].errors.length).toBe(0);
   });
 });
 
@@ -670,5 +832,132 @@ describe('watchDocs', () => {
     await Bun.sleep(50);
 
     expect(callCount).toBe(0);
+  });
+});
+
+describe('extractHeadings', () => {
+  test('extracts h2 and h3 headings from body text', () => {
+    const body = `Some intro text.
+
+## Getting Started
+
+Installation steps.
+
+### Configuration
+
+Details here.
+
+## Deployment
+
+Final section.`;
+    expect(extractHeadings(body)).toEqual(['Getting Started', 'Configuration', 'Deployment']);
+  });
+
+  test('ignores h1 headings', () => {
+    const body = `# Title
+
+## Introduction
+
+### Configuration`;
+    expect(extractHeadings(body)).toEqual(['Introduction', 'Configuration']);
+  });
+
+  test('returns empty array when no headings', () => {
+    expect(extractHeadings('Just plain text without headings.')).toEqual([]);
+  });
+
+  test('deduplicates similar headings', () => {
+    const body = `## Installation
+
+Content
+
+### Installation Guide
+
+More content
+
+## Quick Start
+
+Content
+
+### Quick Start Guide
+
+More`;
+    const result = extractHeadings(body);
+    expect(result).toEqual(['Installation', 'Quick Start']);
+  });
+});
+
+describe('diceSimilarity', () => {
+  test('identical strings return 1.0', () => {
+    expect(diceSimilarity('Installation', 'Installation')).toBe(1);
+  });
+
+  test('similar strings return > 0.7', () => {
+    expect(diceSimilarity('Installation', 'Installation Guide')).toBeGreaterThan(0.7);
+  });
+
+  test('different strings return < 0.3', () => {
+    expect(diceSimilarity('Installation', 'Deployment')).toBeLessThan(0.3);
+  });
+});
+
+describe('dedupeHeadings', () => {
+  test('removes duplicates above threshold', () => {
+    const input = ['Installation', 'Installation Guide', 'Quick Start', 'Quick Start Guide'];
+    expect(dedupeHeadings(input)).toEqual(['Installation', 'Quick Start']);
+  });
+
+  test('preserves distinct headings', () => {
+    const input = ['Getting Started', 'Configuration', 'Deployment'];
+    expect(dedupeHeadings(input)).toEqual(['Getting Started', 'Configuration', 'Deployment']);
+  });
+});
+
+describe('makeExcerpt', () => {
+  test('strips markdown and truncates to 150 chars', () => {
+    const body = '## Intro\n\nThis is a **long** document with [a link](https://example.com). ' +
+      'It has multiple sentences that should all be captured in the excerpt. ' +
+      'And more text to push past the 150 char limit.';
+    const excerpt = makeExcerpt(body);
+    expect(excerpt).toBeTruthy();
+    expect(excerpt!.length).toBeLessThanOrEqual(155);
+    expect(excerpt).not.toContain('**');
+    expect(excerpt).not.toContain('[');
+    expect(excerpt?.toLowerCase()).toContain('link');
+  });
+
+  test('returns full text when shorter than max length', () => {
+    const body = 'Short text without markdown.';
+    expect(makeExcerpt(body)).toBe('Short text without markdown.');
+  });
+
+  test('returns empty string for empty body', () => {
+    expect(makeExcerpt('')).toBe('');
+  });
+});
+
+describe('makeBreadcrumb', () => {
+  test('derives from route path', () => {
+    expect(makeBreadcrumb('guides/frontmatter')).toBe('Guides');
+  });
+
+  test('handles deep nesting', () => {
+    expect(makeBreadcrumb('api/v2/reference')).toBe('Api > V2');
+  });
+
+  test('handles multi-word segments', () => {
+    expect(makeBreadcrumb('getting-started/first-steps')).toBe('Getting Started');
+  });
+
+  test('returns undefined for root-level files', () => {
+    expect(makeBreadcrumb('README')).toBeUndefined();
+  });
+});
+
+describe('defineConfig', () => {
+  test('is exported from package entry', () => {
+    const config = defineConfig({ docsSubfolder: 'guides', recursive: true });
+    expect(config.docsSubfolder).toBe('guides');
+    expect(config.recursive).toBe(true);
   });
 });

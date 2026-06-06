@@ -27,8 +27,9 @@ export interface SearchEntry {
   description?: string;
   route: string;
   tags?: string[];
-  keywords?: string[];
-  breadcrumbTitle?: string;
+  headings?: string[];
+  excerpt?: string;
+  breadcrumb?: string;
 }
 
 export interface ManifestResult {
@@ -85,6 +86,20 @@ export interface Frontmatter {
   publishedAt?: string;
   updatedAt?: string;
   keywords?: string[];
+}
+
+export interface ProjectConfig {
+  docsSubfolder?: string;
+  outputDir?: string;
+}
+
+export interface ConfigFile {
+  docsRoot?: string;
+  docsSubfolder?: string;
+  outputDir?: string;
+  recursive?: boolean;
+  exclude?: string[];
+  projects?: Record<string, ProjectConfig>;
 }
 
 export interface ValidateResult {

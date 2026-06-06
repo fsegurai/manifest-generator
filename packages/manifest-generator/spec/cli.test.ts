@@ -566,6 +566,94 @@ describe('runCli', () => {
     }
   });
 
+  test('--init scaffolds docs structure in current dir', () => {
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--init', tempDir], exitFn);
+      expect(exitCode).toBe(0);
+
+      expect(fs.existsSync(path.join(tempDir, 'manifest-generator.config.ts'))).toBe(true);
+      expect(fs.existsSync(path.join(tempDir, 'docs', 'README.md'))).toBe(true);
+      expect(fs.existsSync(path.join(tempDir, 'docs', 'getting-started.md'))).toBe(true);
+      expect(fs.existsSync(path.join(tempDir, 'docs', 'api', 'reference.md'))).toBe(true);
+      expect(fs.existsSync(path.join(tempDir, 'docs', 'guides', 'README.md'))).toBe(true);
+      expect(fs.existsSync(path.join(tempDir, 'docs', 'guides', 'setup.md'))).toBe(true);
+      expect(fs.existsSync(path.join(tempDir, 'docs', 'guides', 'advanced.md'))).toBe(true);
+
+      expect(logs.join('\n')).toContain('Initialized documentation structure');
+    } finally {
+      console.log = originalLog;
+    }
+  });
+
+  test('--config loads JSON config and applies defaults', () => {
+    const root = path.join(tempDir, 'config-test');
+    const projectA = path.join(root, 'project-a');
+    writeFile(path.join(projectA, 'documents', 'README.md'), '# A');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    const configPath = path.join(tempDir, 'manifest-generator.config.json');
+    fs.writeFileSync(configPath, JSON.stringify({
+      docsSubfolder: 'documents',
+    }), 'utf8');
+
+    try {
+      runCli(['--all', '--docs-root', root, '--config', configPath], exitFn);
+      expect(exitCode).toBe(0);
+      expect(fs.existsSync(path.join(projectA, 'manifest.json'))).toBe(true);
+    } finally {
+      console.log = originalLog;
+    }
+  });
+
+  test('--config loads config and CLI flags override it', () => {
+    const root = path.join(tempDir, 'config-override');
+    const projectA = path.join(root, 'custom-docs');
+    writeFile(path.join(projectA, 'custom-docs', 'README.md'), '# A');
+    writeFile(path.join(root, 'other-project', 'custom-docs', 'README.md'), '# B');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    const configPath = path.join(tempDir, 'manifest-generator.config.json');
+    fs.writeFileSync(configPath, JSON.stringify({
+      docsSubfolder: 'wrong-folder',
+    }), 'utf8');
+
+    try {
+      runCli(['--all', '--docs-root', root, '--config', configPath, '--docs-subfolder', 'custom-docs'], exitFn);
+      expect(exitCode).toBe(0);
+      expect(fs.existsSync(path.join(projectA, 'manifest.json'))).toBe(true);
+    } finally {
+      console.log = originalLog;
+    }
+  });
+
   test('--all --recursive logs recursive discovery', () => {
     const root = path.join(tempDir, 'all-recursive');
     writeFile(path.join(root, 'group', 'proj', 'docs', 'README.md'), '# A');
