@@ -74,6 +74,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
         - `portless` - `0.14.0` - needed for local development. Replace port numbers with stable names.
         - `terser` - `5.48.0` - needed for production builds as part of Vite.
         - `vite` - `8.0.16` - needed for development and build processes. Replacement of Rollup.
+        - `globals` - `17.5.0` - needed for eslint configuration file.
 - **Update dependencies** — address potential vulnerabilities and/or improvements in development dependencies.
     - Dependencies
         - `@material/web` from `2.4.1` to `xx`
@@ -100,7 +101,6 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
         - `@types/jest`
         - `cpy-cli`
         - `github-slugger`
-        - `globals`
         - 'jest'
         - `jest-cli`
         - 'jest-environment-jsdom'
