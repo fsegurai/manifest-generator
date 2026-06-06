@@ -67,7 +67,7 @@ No changes yet.
 - **AGENTS.md**: updated with output location, route prefix behavior, test counts, and build scripts.
 - All `.github/` files rewritten to reference manifest-generator.
 
-- [Full Changelog](https://github.com/fsegurai/manifest-generator/compare/v1.0.0-beta.2...v1.0.0-beta.3)
+- [Full Changelog](https://github.com/fsegurai/manifest-generator/commits/1.0.0-beta.3)
 
 ---
 
@@ -177,7 +177,7 @@ No changes yet.
 - Updated `AGENTS.md` with new CLI flags, frontmatter keys, and behavior notes.
 - Updated root `CHANGELOG.md` and `README.md` with feature summaries.
 
-- [Full Changelog](https://github.com/fsegurai/manifest-generator/compare/v1.0.0-beta.1...v1.0.0-beta.2)
+- [Full Changelog](https://github.com/fsegurai/manifest-generator/commits/v1.0.0-beta.2)
 
 ---
 
@@ -215,7 +215,7 @@ No changes yet.
         - `rollup` from `4.52.3` to `4.53.3`
         - `typescript-eslint` from `8.45.0` to `8.47.0`
 
-- [Full Changelog](https://github.com/fsegurai/manifest-generator/compare/v0.0.0-alpha.3...v1.0.0-beta.1)
+- [Full Changelog](https://github.com/fsegurai/manifest-generator/commits/v1.0.0-beta.1)
 
 ---
 
@@ -251,6 +251,8 @@ No changes yet.
 ### 🗑️ Removed
 
 - N/A (initial release)
+
+- [Full Changelog](https://github.com/fsegurai/manifest-generator/commits/v0.0.0-alpha.3)
 
 ---
 
