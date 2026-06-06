@@ -1,6 +1,6 @@
 {
   "name": "@fsegurai/manifest-generator-monorepo",
-  "version": "1.0.0-beta.2",
+  "version": "1.0.0-beta.3",
   "description": "A simple manifest and search-index generator based on project documentation.",
   "type": "module",
   "license": "MIT",
@@ -60,9 +60,9 @@
     "lint:fix": "bun run lint:packages --fix && bun run lint:demo --fix",
     "lint:packages": "eslint ./packages/*/src/**",
     "lint:demo": "eslint ./demo",
-    "generate:manifest": "bun ./packages/manifest-generator/src/cli.ts --docs-root ./docs/ --output ./docs",
-    "generate:manifest-all": "bun ./packages/manifest-generator/src/cli.ts --all --docs-root ./docs --output ./docs",
-    "generate:manifest-current": "bun ./packages/manifest-generator/src/cli.ts --docs-root ./docs/$npm_package_version --output ./docs/$npm_package_version"
+    "generate:manifest": "bun ./packages/manifest-generator/src/cli.ts --route ./docs/1.0.0-beta.3/content --output ./docs/1.0.0-beta.3",
+    "generate:manifest-all": "bun run generate:manifest",
+    "generate:manifest-current": "bun ./packages/manifest-generator/src/cli.ts --route ./docs/$npm_package_version/content --output ./docs/$npm_package_version"
   },
   "dependencies": {
     "@material/web": "^2.4.1",
