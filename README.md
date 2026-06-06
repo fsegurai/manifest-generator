@@ -1,5 +1,5 @@
 <p align="center" class="intro">
-  <img alt="Manifest Generator Logo" src="https://raw.githubusercontent.com/fsegurai/manifest-generator/main/public/manifest-generator.svg">
+  <img alt="Manifest Generator Logo" src="https://raw.githubusercontent.com/fsegurai/manifest-generator/main/demo/public/manifest-generator.svg">
 </p>
 
 <p align="center" class="intro">
