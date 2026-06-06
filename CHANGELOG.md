@@ -11,7 +11,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
-## [1.0.0-beta.2] - 2026-xx-xx
+## [1.0.0-beta.2] - 2026-06-05
 
 ### 🚀 Added
 
@@ -70,24 +70,24 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   images as part of the CI/CD pipeline.
 - **Added dependencies**.
     - Dev Dependencies
-        - `bun-types` - `1.3.13` - needed for testing purposes only.
-        - `portless` - `0.13.0` - needed for local development. Replace port numbers with stable names.
-        - `terser` - `5.47.1` - needed for production builds as part of Vite.
-        - `vite` - `8.0.11` - needed for development and build processes. Replacement of Rollup.
+        - `bun-types` - `1.3.14` - needed for testing purposes only.
+        - `portless` - `0.14.0` - needed for local development. Replace port numbers with stable names.
+        - `terser` - `5.48.0` - needed for production builds as part of Vite.
+        - `vite` - `8.0.16` - needed for development and build processes. Replacement of Rollup.
 - **Update dependencies** — address potential vulnerabilities and/or improvements in development dependencies.
     - Dependencies
         - `@material/web` from `2.4.1` to `xx`
-        - `marked` from `17.0.1` to `18.0.3`
+        - `marked` from `17.0.1` to `18.0.5`
         - `marked-highlight` from `2.2.3` to `2.2.4`
     - Dev Dependencies
         - `@eslint/js` from `9.39.1` to `10.0.1`
-        - `@types/node` from `24.10.1` to `25.6.2`
-        - `@typescript-eslint/eslint-plugin` from `8.47.0` to `8.59.2`
-        - `@typescript-eslint/parser` from `8.47.0` to `8.59.2`
-        - `eslint` from `9.39.1` to `10.3.0`
+        - `@types/node` from `24.10.1` to `25.9.2`
+        - `@typescript-eslint/eslint-plugin` from `8.47.0` to `8.60.1`
+        - `@typescript-eslint/parser` from `8.47.0` to `8.60.1`
+        - `eslint` from `9.39.1` to `10.4.1`
         - `rimraf` from `6.1.2` to `6.1.3`
         - `typescript` from `5.8.3` to `6.0.3`
-        - `typescript-eslint` from `8.47.0` to `8.59.2`
+        - `typescript-eslint` from `8.47.0` to `8.60.1`
 - **Removed dependencies** — eliminated unused dependencies to reduce potential security risks and improve project
   maintainability.
     - Removed Dependencies

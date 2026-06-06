@@ -21,9 +21,9 @@ body:
   - type: textarea
     id: log
     attributes:
-      label: Log file
-      description: A log file will help our developers to better diagnose and fix the issue.
-      placeholder: Paste the log file here
+      label: Log file / error output
+      description: A log file or error output will help diagnose the issue.
+      placeholder: Paste the log file or error output here
     validations:
       required: true
   - type: input
@@ -31,21 +31,22 @@ body:
     attributes:
       label: Version
       description: Which version of the software are you using?
-      placeholder: 1.0.0
+      placeholder: 1.0.0-beta.2
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Runtime (Bun / Node)
+      description: Which runtime and version are you using?
+      placeholder: "Bun 1.3.0"
     validations:
       required: true
   - type: input
     id: os
     attributes:
       label: OS
-      placeholder: "e.g. Windows 10"
-    validations:
-      required: true
-  - type: input
-    id: browser
-    attributes:
-      label: Browser
-      placeholder: "e.g. Chrome"
+      placeholder: "e.g. Ubuntu 24.04"
     validations:
       required: true
   - type: textarea

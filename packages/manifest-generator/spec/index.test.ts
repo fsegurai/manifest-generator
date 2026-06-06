@@ -5,6 +5,7 @@ import path from 'path';
 import {
   cleanItem,
   discoverProjects,
+  formatTitle,
   generateDocsManifests,
   generateManifest,
   generateManifestsWithDiscovery,
@@ -12,6 +13,7 @@ import {
   sortItems,
   validateDocs,
   walkDocs,
+  watchDocs,
 } from '../src/index.js';
 
 let tempDir = '';
@@ -70,6 +72,48 @@ describe('parseFrontmatter', () => {
 
     expect(parsed.order).toBe(1);
     expect(parsed.version).toBe(2.5);
+  });
+
+  test('parses multiline pipe values', () => {
+    const content = '---\ndescription: |\n  Line one\n  Line two\nlabel: Done\n---\n# Content';
+    const parsed = parseFrontmatter<{ description: string; label: string }>(content);
+
+    expect(parsed.label).toBe('Done');
+    expect(parsed.description).toBeTruthy();
+  });
+
+  test('parses multiline block scalar with empty separator line', () => {
+    const content = '---\ndescription: >\n  Folded\n  text\n\nnext: value\n---\n# Content';
+    const parsed = parseFrontmatter(content);
+
+    expect(parsed.next).toBe('value');
+    expect(parsed.description).toBeTruthy();
+  });
+
+  test('handles key with empty value', () => {
+    const content = '---\nlabel:\norder: 1\n---\n# Content';
+    const parsed = parseFrontmatter<{ label?: string; order: number }>(content);
+
+    expect(parsed.order).toBe(1);
+    expect(parsed.label).toBeUndefined();
+  });
+});
+
+describe('formatTitle', () => {
+  test('removes .md extension and title-cases', () => {
+    expect(formatTitle('hello-world.md')).toBe('Hello World');
+  });
+
+  test('removes .mdx extension and title-cases', () => {
+    expect(formatTitle('getting-started.mdx')).toBe('Getting Started');
+  });
+
+  test('handles single word without extension', () => {
+    expect(formatTitle('readme')).toBe('Readme');
+  });
+
+  test('handles multiple dashes', () => {
+    expect(formatTitle('my-long-doc-name.md')).toBe('My Long Doc Name');
   });
 });
 
@@ -138,6 +182,32 @@ describe('walkDocs', () => {
     expect(manifest[0].label).toBe('Alpha');
     expect(manifest[1].label).toBe('Beta');
     expect(manifest[2].label).toBe('Charlie');
+  });
+
+  test('filters out draft and hidden files', () => {
+    const docsRoot = path.join(tempDir, 'docs-filter');
+    writeFile(path.join(docsRoot, 'visible.md'), '# Visible');
+    writeFile(path.join(docsRoot, 'draft.md'), '---\ndraft: true\n---\nDraft');
+    writeFile(path.join(docsRoot, 'hidden.md'), '---\nhidden: true\n---\nHidden');
+
+    const items = walkDocs(docsRoot);
+    expect(items.length).toBe(1);
+    expect(items[0].label).toBe('Visible');
+  });
+
+  test('folder inherits props from README.md', () => {
+    const docsRoot = path.join(tempDir, 'docs-inherit');
+    writeFile(path.join(docsRoot, 'section', 'README.md'), '---\norder: 1\nicon: folder-icon\nbadge: New\nbadgeColor: green\niconType: filled\n---\nSection');
+    writeFile(path.join(docsRoot, 'section', 'page.md'), '# Page');
+
+    const items = walkDocs(docsRoot);
+    const section = items.find(i => i.isParent);
+    expect(section).toBeTruthy();
+    expect(section?.order).toBe(1);
+    expect(section?.icon).toBe('folder-icon');
+    expect(section?.badge).toBe('New');
+    expect(section?.badgeColor).toBe('green');
+    expect(section?.iconType).toBe('filled');
   });
 
   test('reads new frontmatter fields', () => {
@@ -349,6 +419,43 @@ describe('validateDocs', () => {
 
     expect(results[0].warnings.some(w => w.includes('Both isTitle and isParent'))).toBe(true);
   });
+
+  test('warns on badge without badgeColor', () => {
+    const root = path.join(tempDir, 'docs-badge');
+    writeFile(path.join(root, 'badge.md'), '---\nbadge: New\n---\nContent');
+    const results = validateDocs(root);
+    expect(results[0].warnings.some(w => w.includes('badgeColor'))).toBe(true);
+  });
+
+  test('warns on externalUrl with redirect', () => {
+    const root = path.join(tempDir, 'docs-ext');
+    writeFile(path.join(root, 'both.md'), '---\nexternalUrl: https://example.com\nredirect: /old\n---\nContent');
+    const results = validateDocs(root);
+    expect(results[0].warnings.some(w => w.includes('externalUrl and redirect'))).toBe(true);
+  });
+
+  test('warns on redirect with route', () => {
+    const root = path.join(tempDir, 'docs-redir');
+    writeFile(path.join(root, 'both.md'), '---\nredirect: /new\nroute: /old\n---\nContent');
+    const results = validateDocs(root);
+    expect(results[0].warnings.some(w => w.includes('redirect set with route'))).toBe(true);
+  });
+
+  test('handles parse errors gracefully', () => {
+    const root = path.join(tempDir, 'docs-error');
+    writeFile(path.join(root, 'broken.md'), '---\nunclosed frontmatter\nContent');
+    const results = validateDocs(root);
+    expect(results.length).toBe(1);
+    expect(results[0].valid).toBe(true);
+  });
+
+  test('validates updatedAt invalid date', () => {
+    const root = path.join(tempDir, 'docs-updated');
+    writeFile(path.join(root, 'bad.md'), '---\nupdatedAt: not-a-date\n---\nContent');
+    const results = validateDocs(root);
+    expect(results[0].valid).toBe(false);
+    expect(results[0].errors.some(e => e.includes('not a valid date'))).toBe(true);
+  });
 });
 
 describe('generateManifestsWithDiscovery', () => {
@@ -406,6 +513,89 @@ describe('generateManifestsWithDiscovery', () => {
     expect(results[0].processed).toBe(true);
     expect(fs.existsSync(path.join(docsPath, 'manifest.json'))).toBe(true);
   });
+
+  test('generates for specific project by name', () => {
+    const root = path.join(tempDir, 'projects-gen');
+    const projectA = path.join(root, 'project-a');
+    const projectB = path.join(root, 'project-b');
+    writeFile(path.join(projectA, 'docs', 'README.md'), '# A');
+    writeFile(path.join(projectB, 'docs', 'README.md'), '# B');
+
+    const results = generateManifestsWithDiscovery(root, { project: 'project-a' });
+    expect(results.length).toBe(1);
+    expect(results[0].processed).toBe(true);
+    expect(fs.existsSync(path.join(projectA, 'manifest.json'))).toBe(true);
+    expect(fs.existsSync(path.join(projectB, 'manifest.json'))).toBe(false);
+  });
+
+  test('project with direct md files (no docs subfolder)', () => {
+    const root = path.join(tempDir, 'projects-direct');
+    const projectA = path.join(root, 'project-a');
+    writeFile(path.join(projectA, 'README.md'), '# A');
+
+    const results = generateManifestsWithDiscovery(root, { project: 'project-a' });
+    expect(results[0].processed).toBe(true);
+    expect(fs.existsSync(path.join(projectA, 'manifest.json'))).toBe(true);
+  });
+
+  test('generates with outputDir for route', () => {
+    const docsPath = path.join(tempDir, 'route-out');
+    const outDir = path.join(tempDir, 'route-out-gen');
+    writeFile(path.join(docsPath, 'page.md'), '---\nlabel: P\n---\nC');
+
+    const results = generateManifestsWithDiscovery(tempDir, {
+      route: docsPath,
+      outputDir: outDir,
+    });
+
+    expect(results[0].processed).toBe(true);
+    expect(fs.existsSync(path.join(outDir, 'manifest.json'))).toBe(true);
+  });
+
+  test('returns empty array when autoDetect is false and no project/route', () => {
+    const results = generateManifestsWithDiscovery(tempDir, { autoDetect: false });
+    expect(results).toEqual([]);
+  });
+
+  test('throws on non-existent route', () => {
+    expect(() => {
+      generateManifestsWithDiscovery('/nonexistent-route', { route: '/nonexistent-route' });
+    }).toThrow('Route not found');
+  });
+
+  test('throws on non-existent project', () => {
+    const root = path.join(tempDir, 'no-proj');
+    fs.mkdirSync(root, { recursive: true });
+    expect(() => {
+      generateManifestsWithDiscovery(root, { project: 'nonexistent' });
+    }).toThrow('Project not found');
+  });
+});
+
+describe('generateDocsManifests', () => {
+  test('processes all discovered projects', () => {
+    const root = path.join(tempDir, 'multi-proj');
+    writeFile(path.join(root, 'proj-a', 'docs', 'README.md'), '# A');
+    writeFile(path.join(root, 'proj-b', 'docs', 'README.md'), '# B');
+
+    const results = generateDocsManifests(root);
+    expect(results.length).toBe(2);
+    expect(results.every(r => r.processed)).toBe(true);
+  });
+
+  test('handles invalid manifest from custom walker', () => {
+    const root = path.join(tempDir, 'invalid-walk');
+    writeFile(path.join(root, 'proj', 'docs', 'README.md'), '# A');
+
+    const results = generateDocsManifests(root, {
+      docsSubfolder: 'docs',
+      walkerFn: () => null as any,
+    });
+
+    expect(results.length).toBe(1);
+    expect(results[0].processed).toBe(false);
+    expect(results[0].error).toBe('Invalid manifest generated');
+  });
 });
 
 describe('generateManifest', () => {
@@ -420,5 +610,65 @@ describe('generateManifest', () => {
     expect(result.searchIndex.length).toBe(2);
     expect(result.manifest[0].label).toBe('Page A');
     expect(result.manifest[1].label).toBe('Page B');
+  });
+});
+
+describe('discoverProjects', () => {
+  test('returns empty array for directory with no projects', () => {
+    const root = path.join(tempDir, 'empty-projs');
+    fs.mkdirSync(path.join(root, 'not-a-project'), { recursive: true });
+    const discovered = discoverProjects(root);
+    expect(discovered).toEqual([]);
+  });
+
+  test('skips dot-prefixed directories', () => {
+    const root = path.join(tempDir, 'dot-dirs');
+    writeFile(path.join(root, '.hidden', 'docs', 'README.md'), '# hidden');
+    writeFile(path.join(root, 'visible', 'docs', 'README.md'), '# visible');
+
+    const discovered = discoverProjects(root, { recursive: true });
+    expect(discovered.some(d => d.name === '.hidden')).toBe(false);
+    expect(discovered.some(d => d.name === 'visible')).toBe(true);
+  });
+});
+
+describe('watchDocs', () => {
+  test('detects file change via mtime polling', async () => {
+    const docsRoot = path.join(tempDir, 'watch-test');
+    writeFile(path.join(docsRoot, 'page.md'), '# Original');
+
+    const changes: string[] = [];
+    const watcher = watchDocs(docsRoot, (file) => {
+      changes.push(file);
+    }, 20);
+
+    await Bun.sleep(50);
+
+    writeFile(path.join(docsRoot, 'page.md'), '# Modified');
+
+    await Bun.sleep(60);
+
+    watcher.close();
+
+    expect(changes.length).toBe(1);
+    expect(changes[0]).toContain('page.md');
+  });
+
+  test('watcher close stops polling', async () => {
+    const docsRoot = path.join(tempDir, 'watch-stop');
+    writeFile(path.join(docsRoot, 'page.md'), '# Original');
+
+    let callCount = 0;
+    const watcher = watchDocs(docsRoot, () => {
+      callCount++;
+    }, 10);
+
+    watcher.close();
+
+    writeFile(path.join(docsRoot, 'page.md'), '# Modified');
+
+    await Bun.sleep(50);
+
+    expect(callCount).toBe(0);
   });
 });

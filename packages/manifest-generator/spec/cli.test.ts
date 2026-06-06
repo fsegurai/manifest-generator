@@ -29,6 +29,26 @@ describe('maybeRunCli', () => {
 
     expect(ran).toBe(false);
   });
+
+  test('runs CLI when not in test env', () => {
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      const result = maybeRunCli({}, ['--help'], exitFn);
+      expect(result).toBe(true);
+      expect(exitCode).toBe(0);
+    } finally {
+      console.log = originalLog;
+    }
+  });
 });
 
 describe('runCli', () => {
@@ -186,5 +206,386 @@ describe('runCli', () => {
     expect(exitCode).toBe(0);
     expect(fs.existsSync(path.join(projectA, 'manifest.json'))).toBe(true);
     expect(fs.existsSync(path.join(projectB, 'manifest.json'))).toBe(true);
+  });
+
+  test('--help prints help and exits 0', () => {
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--help'], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(logs.join('\n')).toContain('@fsegurai/manifest-generator CLI');
+  });
+
+  test('--version prints version and exits 0', () => {
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--version'], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(logs.join('\n')).toContain('@fsegurai/manifest-generator v');
+  });
+
+  test('--version shows unknown when package.json is missing', () => {
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+    try {
+      runCli(['--version'], exitFn);
+    } finally {
+      process.chdir(originalCwd);
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(logs.join('\n')).toContain('version unknown');
+  });
+
+  test('--discover shows no projects in empty directory', () => {
+    const empty = path.join(tempDir, 'empty');
+    fs.mkdirSync(empty, { recursive: true });
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--discover', '--docs-root', empty], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(logs.join('\n')).toContain('No documentation projects found');
+  });
+
+  test('--validate reports no markdown files in empty directory', () => {
+    const empty = path.join(tempDir, 'empty-validate');
+    fs.mkdirSync(empty, { recursive: true });
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--validate', '--docs-root', empty], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(logs.join('\n')).toContain('No markdown files found to validate');
+  });
+
+  test('--project generates for specific project', () => {
+    const root = path.join(tempDir, 'project-flag');
+    const projectA = path.join(root, 'project-a');
+    const projectB = path.join(root, 'project-b');
+    writeFile(path.join(projectA, 'docs', 'README.md'), '# A');
+    writeFile(path.join(projectB, 'docs', 'README.md'), '# B');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--project', 'project-a', '--docs-root', root], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(fs.existsSync(path.join(projectA, 'manifest.json'))).toBe(true);
+    expect(fs.existsSync(path.join(projectB, 'manifest.json'))).toBe(false);
+  });
+
+  test('--project nonexistent exits 1 with error', () => {
+    const errors: string[] = [];
+    const originalError = console.error;
+    const originalLog = console.log;
+    console.error = (...args: unknown[]) => errors.push(args.join(' '));
+    console.log = () => {};
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--project', 'nonexistent', '--docs-root', tempDir], exitFn);
+    } finally {
+      console.error = originalError;
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(1);
+    expect(errors.join('\n')).toContain('Error:');
+  });
+
+  test('--route generates for specific path', () => {
+    const docsPath = path.join(tempDir, 'route-test');
+    writeFile(path.join(docsPath, 'page.md'), '---\nlabel: My Page\n---\nContent');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--route', docsPath], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(fs.existsSync(path.join(docsPath, 'manifest.json'))).toBe(true);
+  });
+
+  test('--docs-subfolder with --all uses custom subfolder name', () => {
+    const root = path.join(tempDir, 'subfolder-test');
+    const projectA = path.join(root, 'project-a');
+    writeFile(path.join(projectA, 'documents', 'README.md'), '# A');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--all', '--docs-root', root, '--docs-subfolder', 'documents'], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(fs.existsSync(path.join(projectA, 'manifest.json'))).toBe(true);
+  });
+
+  test('positional arg is used as docs root with auto-detect', () => {
+    const root = path.join(tempDir, 'positional');
+    const projectA = path.join(root, 'project-a');
+    writeFile(path.join(projectA, 'docs', 'README.md'), '# A');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli([root], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(fs.existsSync(path.join(projectA, 'manifest.json'))).toBe(true);
+  });
+
+  test('no args or flags shows help and exits 0', () => {
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli([], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(logs.join('\n')).toContain('@fsegurai/manifest-generator CLI');
+  });
+
+  test('--watch triggers initial generation and starts watcher', () => {
+    const root = path.join(tempDir, 'watch-cli');
+    writeFile(path.join(root, 'proj', 'docs', 'README.md'), '# Project');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    const exitFn = ((_code?: number): never => {
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--watch', '--docs-root', root], exitFn);
+      const output = logs.join('\n');
+      expect(output).toContain('Watching for file changes');
+      expect(output).toContain('Watching for changes in:');
+      expect(output).toContain('Generated manifest and search index');
+    } finally {
+      console.log = originalLog;
+    }
+  });
+
+  test('--watch stops on SIGINT', () => {
+    const root = path.join(tempDir, 'watch-sigint');
+    writeFile(path.join(root, 'proj', 'docs', 'README.md'), '# Project');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--watch', '--docs-root', root], exitFn);
+      process.emit('SIGINT');
+      expect(logs.join('\n')).toContain('Stopping watch...');
+      expect(exitCode).toBe(0);
+    } finally {
+      console.log = originalLog;
+      process.removeAllListeners('SIGINT');
+      process.removeAllListeners('SIGTERM');
+    }
+  });
+
+  test('--watch stops on SIGTERM', () => {
+    const root = path.join(tempDir, 'watch-sigterm');
+    writeFile(path.join(root, 'proj', 'docs', 'README.md'), '# Project');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--watch', '--docs-root', root], exitFn);
+      process.emit('SIGTERM');
+      expect(exitCode).toBe(0);
+    } finally {
+      console.log = originalLog;
+      process.removeAllListeners('SIGINT');
+      process.removeAllListeners('SIGTERM');
+    }
+  });
+
+  test('--all --output logs output directory', () => {
+    const root = path.join(tempDir, 'all-output');
+    writeFile(path.join(root, 'proj', 'docs', 'README.md'), '# A');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--all', '--docs-root', root, '--output', tempDir], exitFn);
+      expect(exitCode).toBe(0);
+      expect(logs.join('\n')).toContain('Output directory:');
+    } finally {
+      console.log = originalLog;
+    }
+  });
+
+  test('--all --recursive logs recursive discovery', () => {
+    const root = path.join(tempDir, 'all-recursive');
+    writeFile(path.join(root, 'group', 'proj', 'docs', 'README.md'), '# A');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--all', '--recursive', '--docs-root', root], exitFn);
+      expect(exitCode).toBe(0);
+      expect(logs.join('\n')).toContain('Recursive discovery: enabled');
+    } finally {
+      console.log = originalLog;
+    }
   });
 });

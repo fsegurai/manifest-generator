@@ -1,32 +1,36 @@
+# Infrastructure & Configuration
 infra:
   - fsegurai
-  
+
 dependencies:
   - fsegurai
 
 ci-cd:
   - fsegurai
 
-demo:
-  - fsegurai
-
-assets:
-  - fsegurai
-
-styles:
-  - fsegurai
-
+# Library
 library:
   - fsegurai
 
-tests-library:
+helper:
   - fsegurai
 
-tests-demo:
-    - fsegurai
+# Demo Application
+demo:
+  - fsegurai
 
+# Styling
+styles:
+  - fsegurai
+
+# Testing & Quality
+tests:
+  - fsegurai
+
+# Documentation
 documentation:
   - fsegurai
 
+# Default fallback
 default:
-  - '@developers'
+  - fsegurai
