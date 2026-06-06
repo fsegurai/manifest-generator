@@ -1,0 +1,11 @@
+[
+  {
+    "label": "Sample Project Documentation",
+    "description": "",
+    "route": "README",
+    "tags": [
+      "documentation",
+      "getting-started"
+    ]
+  }
+]
