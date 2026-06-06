@@ -170,8 +170,8 @@ Your content here...
 **Generated manifest entry:**
 ```json
 {
-  "title": "Getting Started Guide",
-  "path": "getting-started",
+  "label": "Getting Started Guide",
+  "route": "getting-started",
   "tags": ["guide", "beginner"]
 }
 ```

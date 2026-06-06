@@ -5,44 +5,44 @@ Welcome to the comprehensive documentation for the Manifest Generator - a powerf
 ## 📚 Documentation Sections
 
 ### 🚀 Getting Started
-- [📖 Overview](getting-startedEADME.md) - Introduction and quick start
-- [💾 Installation](getting-startednstallation.md) - Installation methods and setup
-- [👶 First Steps](getting-startedirst-steps.md) - Your first manifest generation
-- [🚀 Getting Started Guide](getting-startedetting-started.md) - Complete getting started tutorial
+- [📖 Overview](getting-started/README.md) - Introduction and quick start
+- [💾 Installation](getting-started/installation.md) - Installation methods and setup
+- [👶 First Steps](getting-started/first-steps.md) - Your first manifest generation
+- [🚀 Getting Started Guide](getting-started/getting-started.md) - Complete getting started tutorial
 
 ### 📚 User Guides
-- [📖 Overview](guidesEADME.md) - Comprehensive usage guides
-- [💻 CLI Usage](guidesli-usage.md) - Complete command-line interface reference
-- [⚙️ Configuration](guidesonfiguration.md) - Configuration options and patterns
-- [🏗️ Project Structure](guidesroject-structure.md) - How the tool detects projects
-- [📝 Frontmatter Support](guidesrontmatter.md) - YAML frontmatter parsing
+- [📖 Overview](guides/README.md) - Comprehensive usage guides
+- [💻 CLI Usage](guides/cli-usage.md) - Complete command-line interface reference
+- [⚙️ Configuration](guides/configuration.md) - Configuration options and patterns
+- [🏗️ Project Structure](guides/project-structure.md) - How the tool detects projects
+- [📝 Frontmatter Support](guides/frontmatter.md) - YAML frontmatter parsing
 
 ### 🔧 API Reference
-- [📖 Overview](apiEADME.md) - Programmatic usage introduction
-- [🔧 Reference](apieference.md) - Complete API functions and methods
-- [📘 TypeScript](apiypescript.md) - Type definitions and interfaces
-- [💡 Examples](apixamples.md) - Practical API usage examples
+- [📖 Overview](api/README.md) - Programmatic usage introduction
+- [🔧 Reference](api/reference.md) - Complete API functions and methods
+- [📘 TypeScript](api/typescript.md) - Type definitions and interfaces
+- [💡 Examples](api/examples.md) - Practical API usage examples
 
 ### ✨ Features
-- [📖 Overview](featuresEADME.md) - Core features and capabilities
-- [🔍 Search Index](featuresearch-index.md) - Search functionality implementation
+- [📖 Overview](features/README.md) - Core features and capabilities
+- [🔍 Search Index](features/search-index.md) - Search functionality implementation
 
 ### 🔗 Integration
-- [📖 Overview](integrationEADME.md) - Integration guide introduction
-- [🔧 Build Systems](integrationuild-systems.md) - Webpack, Vite, npm scripts
-- [🚀 Frameworks](integrationrameworks.md) - React, Vue, Angular, Next.js
-- [⚙️ CI/CD](integrationi-cd.md) - GitHub Actions, GitLab CI, Azure DevOps
+- [📖 Overview](integration/README.md) - Integration guide introduction
+- [🔧 Build Systems](integration/build-systems.md) - Webpack, Vite, npm scripts
+- [🚀 Frameworks](integration/frameworks.md) - React, Vue, Angular, Next.js
+- [⚙️ CI/CD](integration/ci-cd.md) - GitHub Actions, GitLab CI, Azure DevOps
 
 ### 💡 Examples
-- [📖 Overview](examplesEADME.md) - Real-world usage examples
-- [🚀 Basic Usage](examplesasic-usage.md) - Simple examples for beginners
-- [🔧 Framework Examples](examplesrameworks.md) - Framework-specific implementations
-- [⚡ Advanced Usage](examplesdvanced.md) - Complex scenarios and workflows
+- [📖 Overview](examples/README.md) - Real-world usage examples
+- [🚀 Basic Usage](examples/basic-usage.md) - Simple examples for beginners
+- [🔧 Framework Examples](examples/frameworks.md) - Framework-specific implementations
+- [⚡ Advanced Usage](examples/advanced.md) - Complex scenarios and workflows
 
 ### ❓ Help & Support
-- [📖 Overview](helpEADME.md) - Getting help and support
-- [❓ FAQ](helpaq.md) - Frequently asked questions
-- [🔧 Troubleshooting](helproubleshooting.md) - Common issues and solutions
+- [📖 Overview](help/README.md) - Getting help and support
+- [❓ FAQ](help/faq.md) - Frequently asked questions
+- [🔧 Troubleshooting](help/troubleshooting.md) - Common issues and solutions
 
 ## Quick Start
 
@@ -93,16 +93,16 @@ This tool automatically:
 ### New to Manifest Generator?
 1. 🚀 Start with [Getting Started](getting-started/) for installation and setup
 2. 📚 Read the [User Guides](guides/) for detailed usage instructions
-3. 💡 Check [Basic Examples](examplesasic-usage.md) for simple use cases
+3. 💡 Check [Basic Examples](examples/basic-usage.md) for simple use cases
 
 ### Ready to Integrate?
 1. 🔧 Explore [API Reference](api/) for programmatic usage
 2. 🔗 Check [Integration](integration/) for build system setup
-3. 💡 Browse [Framework Examples](examplesrameworks.md) for your tech stack
+3. 💡 Browse [Framework Examples](examples/frameworks.md) for your tech stack
 
 ### Need Help?
-1. ❓ Check the [FAQ](helpaq.md) for common questions
-2. 🔧 Review [Troubleshooting](helproubleshooting.md) for common issues
+1. ❓ Check the [FAQ](help/faq.md) for common questions
+2. 🔧 Review [Troubleshooting](help/troubleshooting.md) for common issues
 3. 🐛 Open an issue on GitHub for bugs or feature requests
 
 ## Contributing

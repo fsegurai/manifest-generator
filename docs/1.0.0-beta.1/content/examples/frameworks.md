@@ -48,13 +48,13 @@ function DocumentationNav() {
   const renderNav = (items) => (
     <ul className="documentation-nav">
       {items.map(item => (
-        <li key={item.path || item.title}>
-          {item.path ? (
-            <a href={`/docs/${item.path}`} className="nav-link">
-              {item.title}
+        <li key={item.route || item.label}>
+          {item.route ? (
+            <a href={`/docs/${item.route}`} className="nav-link">
+              {item.label}
             </a>
           ) : (
-            <span className="nav-folder">{item.title}</span>
+            <span className="nav-folder">{item.label}</span>
           )}
           {item.children && (
             <ul className="nav-children">
@@ -250,7 +250,7 @@ export async function getStaticPaths() {
   );
   
   const paths = searchIndex.map(item => ({
-    params: { slug: item.path.split('/') }
+    params: { slug: item.route.split('/') }
   }));
   
   return { paths, fallback: 'blocking' };
@@ -258,39 +258,40 @@ export async function getStaticPaths() {
 ```
 
 **API Route for Dynamic Generation:**
+
 ```javascript
 // pages/api/docs/regenerate.js
-import { generateManifest } from '@fsegurai/manifest-generator';
+import {generateManifest} from '@fsegurai/manifest-generator';
 import fs from 'fs';
 import path from 'path';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+    if (req.method !== 'POST') {
+        return res.status(405).json({error: 'Method not allowed'});
+    }
 
-  try {
-    const docsPath = path.join(process.cwd(), 'public/docs');
-    const result = generateManifest(docsPath);
-    
-    // Save updated files
-    fs.writeFileSync(
-      path.join(docsPath, 'manifest.json'),
-      JSON.stringify(result.manifest, null, 2)
-    );
-    fs.writeFileSync(
-      path.join(docsPath, 'search-index.json'),
-      JSON.stringify(result.searchIndex, null, 2)
-    );
+    try {
+        const docsPath = path.join(process.cwd(), 'public/docs');
+        const result = generateManifest(docsPath);
 
-    res.json({ 
-      success: true, 
-      manifest: result.manifest.length,
-      searchIndex: result.searchIndex.length
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+        // Save updated files
+        fs.writeFileSync(
+            path.join(docsPath, 'manifest.json'),
+            JSON.stringify(result.manifest, null, 2)
+        );
+        fs.writeFileSync(
+            path.join(docsPath, 'search-index.json'),
+            JSON.stringify(result.searchIndex, null, 2)
+        );
+
+        res.json({
+            success: true,
+            manifest: result.manifest.length,
+            searchIndex: result.searchIndex.length
+        });
+    } catch (error) {
+        res.status(500).json({error: error.message});
+    }
 }
 ```
 
@@ -321,25 +322,25 @@ npx @fsegurai/manifest-generator --route ./public/docs
     <div v-if="loading" class="loading">Loading documentation...</div>
     <div v-else-if="error" class="error">Error: {{ error.message }}</div>
     <ul v-else class="nav-list">
-      <li v-for="item in manifest" :key="item.path || item.title">
+      <li v-for="item in manifest" :key="item.route || item.label">
         <router-link 
-          v-if="item.path" 
-          :to="`/docs/${item.path}`"
+          v-if="item.route" 
+          :to="`/docs/${item.route}`"
           class="nav-link"
           active-class="active"
         >
-          {{ item.title }}
+          {{ item.label }}
         </router-link>
-        <span v-else class="nav-folder">{{ item.title }}</span>
+        <span v-else class="nav-folder">{{ item.label }}</span>
         
         <ul v-if="item.children" class="nav-children">
-          <li v-for="child in item.children" :key="child.path">
+          <li v-for="child in item.children" :key="child.route">
             <router-link 
-              :to="`/docs/${child.path}`"
+              :to="`/docs/${child.route}`"
               class="nav-link child"
               active-class="active"
             >
-              {{ child.title }}
+              {{ child.label }}
             </router-link>
           </li>
         </ul>
@@ -438,7 +439,7 @@ export function useDocumentation() {
     if (!query.trim()) return [];
     
     return state.searchIndex.filter(item =>
-      item.title.toLowerCase().includes(query.toLowerCase()) ||
+      item.label.toLowerCase().includes(query.toLowerCase()) ||
       item.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
     );
   };
@@ -596,23 +597,23 @@ export class DocumentationNavComponent implements OnInit, OnDestroy {
   
   <ul *ngIf="!loading" class="nav-list">
     <li *ngFor="let item of manifest" class="nav-item">
-      <a *ngIf="item.path; else folderTemplate"
-         [routerLink]="['/docs', item.path]"
+      <a *ngIf="item.route; else folderTemplate"
+         [routerLink]="['/docs', item.route]"
          routerLinkActive="active"
          class="nav-link">
-        {{ item.title }}
+        {{ item.label }}
       </a>
       
       <ng-template #folderTemplate>
-        <span class="nav-folder">{{ item.title }}</span>
+        <span class="nav-folder">{{ item.label }}</span>
       </ng-template>
       
       <ul *ngIf="item.children" class="nav-children">
         <li *ngFor="let child of item.children" class="nav-child">
-          <a [routerLink]="['/docs', child.path]"
+          <a [routerLink]="['/docs', child.route]"
              routerLinkActive="active"
              class="nav-link child">
-            {{ child.title }}
+            {{ child.label }}
           </a>
         </li>
       </ul>
@@ -809,16 +810,16 @@ export const documentation = createDocumentationStore();
     <ul class="nav-list">
       {#each $documentation.manifest as item}
         <li class="nav-item">
-          {#if item.path}
+          {#if item.route}
             <a 
-              href="/docs/{item.path}" 
+              href="/docs/{item.route}" 
               class="nav-link"
-              class:active={isActive(item.path)}
+              class:active={isActive(item.route)}
             >
-              {item.title}
+              {item.label}
             </a>
           {:else}
-            <span class="nav-folder">{item.title}</span>
+            <span class="nav-folder">{item.label}</span>
           {/if}
           
           {#if item.children}
@@ -826,11 +827,11 @@ export const documentation = createDocumentationStore();
               {#each item.children as child}
                 <li>
                   <a 
-                    href="/docs/{child.path}" 
+                    href="/docs/{child.route}" 
                     class="nav-link child"
-                    class:active={isActive(child.path)}
+                    class:active={isActive(child.route)}
                   >
-                    {child.title}
+                    {child.label}
                   </a>
                 </li>
               {/each}
@@ -932,7 +933,7 @@ class DocumentationManager {
     if (!query.trim()) return [];
     
     const results = this.searchIndex.filter(item =>
-      item.title.toLowerCase().includes(query.toLowerCase()) ||
+      item.label.toLowerCase().includes(query.toLowerCase()) ||
       item.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
     );
     
@@ -961,15 +962,15 @@ class DocumentationManager {
       const li = document.createElement('li');
       li.className = 'nav-item';
       
-      if (item.path) {
+      if (item.route) {
         const a = document.createElement('a');
-        a.href = `/docs/${item.path}`;
-        a.textContent = item.title;
+        a.href = `/docs/${item.route}`;
+        a.textContent = item.label;
         a.className = 'nav-link';
         li.appendChild(a);
       } else {
         const span = document.createElement('span');
-        span.textContent = item.title;
+        span.textContent = item.label;
         span.className = 'nav-folder';
         li.appendChild(span);
       }

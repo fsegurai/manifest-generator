@@ -104,40 +104,40 @@ module.exports = {
 
 ```javascript
 // webpack.config.js
-const { generateManifest } = require('@fsegurai/manifest-generator');
+const {generateManifest} = require('@fsegurai/manifest-generator');
 const fs = require('fs');
 const path = require('path');
 
 class ProgrammaticManifestPlugin {
-  apply(compiler) {
-    compiler.hooks.beforeCompile.tapAsync(
-      'ProgrammaticManifestPlugin',
-      async (compilation, callback) => {
-        try {
-          const result = generateManifest('./docs');
-          
-          const outputDir = path.join(__dirname, 'dist', 'data');
-          if (!fs.existsSync(outputDir)) {
-            fs.mkdirSync(outputDir, { recursive: true });
-          }
-          
-          fs.writeFileSync(
-            path.join(outputDir, 'manifest.json'),
-            JSON.stringify(result.manifest, null, 2)
-          );
-          
-          fs.writeFileSync(
-            path.join(outputDir, 'search-index.json'),
-            JSON.stringify(result.searchIndex, null, 2)
-          );
-          
-          callback();
-        } catch (error) {
-          callback(error);
-        }
-      }
-    );
-  }
+    apply(compiler) {
+        compiler.hooks.beforeCompile.tapAsync(
+            'ProgrammaticManifestPlugin',
+            async (compilation, callback) => {
+                try {
+                    const result = generateManifest('./docs');
+
+                    const outputDir = path.join(__dirname, 'dist', 'data');
+                    if (!fs.existsSync(outputDir)) {
+                        fs.mkdirSync(outputDir, {recursive: true});
+                    }
+
+                    fs.writeFileSync(
+                        path.join(outputDir, 'manifest.json'),
+                        JSON.stringify(result.manifest, null, 2)
+                    );
+
+                    fs.writeFileSync(
+                        path.join(outputDir, 'search-index.json'),
+                        JSON.stringify(result.searchIndex, null, 2)
+                    );
+
+                    callback();
+                } catch (error) {
+                    callback(error);
+                }
+            }
+        );
+    }
 }
 ```
 

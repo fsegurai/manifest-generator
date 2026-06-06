@@ -1,101 +1,36 @@
 [
   {
-    "label": "Api",
-    "route": "api",
-    "isParent": true,
-    "children": [
-      {
-        "label": "API Examples",
-        "route": "api/examples",
-        "tags": [
-          "api",
-          "examples",
-          "advanced",
-          "usage",
-          "batch"
-        ]
-      },
-      {
-        "label": "Get Started with API Reference",
-        "route": "api/README",
-        "tags": [
-          "api",
-          "examples",
-          "advanced",
-          "usage",
-          "batch"
-        ]
-      },
-      {
-        "label": "Reference",
-        "route": "api/reference",
-        "tags": []
-      },
-      {
-        "label": "Typescript",
-        "route": "api/typescript",
-        "tags": []
-      }
-    ]
-  },
-  {
-    "label": "Examples",
-    "route": "examples",
-    "isParent": true,
-    "children": [
-      {
-        "label": "Advanced",
-        "route": "examples/advanced",
-        "tags": []
-      },
-      {
-        "label": "Basic Usage",
-        "route": "examples/basic-usage",
-        "tags": []
-      },
-      {
-        "label": "Frameworks",
-        "route": "examples/frameworks",
-        "tags": []
-      },
-      {
-        "label": "README",
-        "route": "examples/README",
-        "tags": []
-      }
-    ]
-  },
-  {
-    "label": "Features",
-    "route": "features",
-    "isParent": true,
-    "children": [
-      {
-        "label": "README",
-        "description": "Complete overview of all Manifest Generator features and capabilities",
-        "route": "features/README",
-        "tags": [
-          "features",
-          "capabilities",
-          "overview"
-        ]
-      },
-      {
-        "label": "Search Index",
-        "route": "features/search-index",
-        "tags": []
-      }
-    ]
-  },
-  {
     "label": "Getting Started",
     "route": "getting-started",
     "isParent": true,
+    "icon": null,
+    "iconType": null,
+    "badge": null,
+    "badgeColor": null,
     "children": [
       {
+        "label": "Installation",
+        "description": "",
+        "route": "getting-started/installation",
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
+      },
+      {
         "label": "First Steps",
+        "description": "",
         "route": "getting-started/first-steps",
-        "tags": []
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
       },
       {
         "label": "Getting Started",
@@ -106,12 +41,13 @@
           "installation",
           "tutorial",
           "quickstart"
-        ]
-      },
-      {
-        "label": "Installation",
-        "route": "getting-started/installation",
-        "tags": []
+        ],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
       },
       {
         "label": "README",
@@ -121,39 +57,13 @@
           "getting-started",
           "overview",
           "introduction"
-        ]
-      }
-    ]
-  },
-  {
-    "label": "Guides",
-    "route": "guides",
-    "isParent": true,
-    "children": [
-      {
-        "label": "Cli Usage",
-        "route": "guides/cli-usage",
-        "tags": []
-      },
-      {
-        "label": "Configuration",
-        "route": "guides/configuration",
-        "tags": []
-      },
-      {
-        "label": "Frontmatter",
-        "route": "guides/frontmatter",
-        "tags": []
-      },
-      {
-        "label": "Project Structure",
-        "route": "guides/project-structure",
-        "tags": []
-      },
-      {
-        "label": "README",
-        "route": "guides/README",
-        "tags": []
+        ],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
       }
     ]
   },
@@ -161,21 +71,85 @@
     "label": "Help",
     "route": "help",
     "isParent": true,
+    "icon": null,
+    "iconType": null,
+    "badge": null,
+    "badgeColor": null,
     "children": [
       {
+        "label": "Troubleshooting",
+        "description": "",
+        "route": "help/troubleshooting",
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
+      },
+      {
         "label": "Faq",
+        "description": "",
         "route": "help/faq",
-        "tags": []
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
       },
       {
         "label": "README",
+        "description": "",
         "route": "help/README",
-        "tags": []
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
+      }
+    ]
+  },
+  {
+    "label": "Features",
+    "route": "features",
+    "isParent": true,
+    "icon": null,
+    "iconType": null,
+    "badge": null,
+    "badgeColor": null,
+    "children": [
+      {
+        "label": "Search Index",
+        "description": "",
+        "route": "features/search-index",
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
       },
       {
-        "label": "Troubleshooting",
-        "route": "help/troubleshooting",
-        "tags": []
+        "label": "README",
+        "description": "Complete overview of all Manifest Generator features and capabilities",
+        "route": "features/README",
+        "tags": [
+          "features",
+          "capabilities",
+          "overview"
+        ],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
       }
     ]
   },
@@ -183,32 +157,272 @@
     "label": "Integration",
     "route": "integration",
     "isParent": true,
+    "icon": null,
+    "iconType": null,
+    "badge": null,
+    "badgeColor": null,
     "children": [
       {
         "label": "Build Systems",
+        "description": "",
         "route": "integration/build-systems",
-        "tags": []
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
       },
       {
         "label": "Ci Cd",
+        "description": "",
         "route": "integration/ci-cd",
-        "tags": []
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
       },
       {
         "label": "Frameworks",
+        "description": "",
         "route": "integration/frameworks",
-        "tags": []
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
       },
       {
         "label": "README",
+        "description": "",
         "route": "integration/README",
-        "tags": []
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
+      }
+    ]
+  },
+  {
+    "label": "Examples",
+    "route": "examples",
+    "isParent": true,
+    "icon": null,
+    "iconType": null,
+    "badge": null,
+    "badgeColor": null,
+    "children": [
+      {
+        "label": "Basic Usage",
+        "description": "",
+        "route": "examples/basic-usage",
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
+      },
+      {
+        "label": "Advanced",
+        "description": "",
+        "route": "examples/advanced",
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
+      },
+      {
+        "label": "Frameworks",
+        "description": "",
+        "route": "examples/frameworks",
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
+      },
+      {
+        "label": "README",
+        "description": "",
+        "route": "examples/README",
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
+      }
+    ]
+  },
+  {
+    "label": "Guides",
+    "route": "guides",
+    "isParent": true,
+    "icon": null,
+    "iconType": null,
+    "badge": null,
+    "badgeColor": null,
+    "children": [
+      {
+        "label": "Frontmatter",
+        "description": "",
+        "route": "guides/frontmatter",
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
+      },
+      {
+        "label": "Cli Usage",
+        "description": "",
+        "route": "guides/cli-usage",
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
+      },
+      {
+        "label": "Project Structure",
+        "description": "",
+        "route": "guides/project-structure",
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
+      },
+      {
+        "label": "Configuration",
+        "description": "",
+        "route": "guides/configuration",
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
+      },
+      {
+        "label": "README",
+        "description": "",
+        "route": "guides/README",
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
+      }
+    ]
+  },
+  {
+    "label": "Api",
+    "route": "api",
+    "isParent": true,
+    "icon": null,
+    "iconType": null,
+    "badge": null,
+    "badgeColor": null,
+    "children": [
+      {
+        "label": "API Examples",
+        "description": "",
+        "route": "api/examples",
+        "tags": [
+          "api",
+          "examples",
+          "advanced",
+          "usage",
+          "batch"
+        ],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
+      },
+      {
+        "label": "Typescript",
+        "description": "",
+        "route": "api/typescript",
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
+      },
+      {
+        "label": "Reference",
+        "description": "",
+        "route": "api/reference",
+        "tags": [],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
+      },
+      {
+        "label": "Get Started with API Reference",
+        "description": "",
+        "route": "api/README",
+        "tags": [
+          "api",
+          "examples",
+          "advanced",
+          "usage",
+          "batch"
+        ],
+        "isTitle": false,
+        "isParent": false,
+        "icon": null,
+        "iconType": null,
+        "badge": null,
+        "badgeColor": null
       }
     ]
   },
   {
     "label": "README",
+    "description": "",
     "route": "README",
-    "tags": []
+    "tags": [],
+    "isTitle": false,
+    "isParent": false,
+    "icon": null,
+    "iconType": null,
+    "badge": null,
+    "badgeColor": null
   }
 ]

@@ -53,21 +53,21 @@ The tool creates two files in your documentation directory:
 ```json
 [
   {
-    "title": "README",
-    "path": "README",
+    "label": "README",
+    "route": "README",
     "tags": []
   },
   {
-    "title": "Getting Started Guide",
-    "path": "getting-started",
+    "label": "Getting Started Guide",
+    "route": "getting-started",
     "tags": ["guide", "beginner"]
   },
   {
-    "title": "Api",
+    "label": "Api",
     "children": [
       {
-        "title": "Reference",
-        "path": "api/reference",
+        "label": "Reference",
+        "route": "api/reference",
         "tags": []
       }
     ]
@@ -79,18 +79,18 @@ The tool creates two files in your documentation directory:
 ```json
 [
   {
-    "title": "README",
-    "path": "README",
+    "label": "README",
+    "route": "README",
     "tags": []
   },
   {
-    "title": "Getting Started Guide",
-    "path": "getting-started",
+    "label": "Getting Started Guide",
+    "route": "getting-started",
     "tags": ["guide", "beginner"]
   },
   {
-    "title": "Reference",
-    "path": "api/reference",
+    "label": "Reference",
+    "route": "api/reference",
     "tags": []
   }
 ]

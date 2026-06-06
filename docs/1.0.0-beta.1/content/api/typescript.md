@@ -10,7 +10,7 @@ Represents a single navigation item in the manifest structure.
 ```typescript
 interface NavigationItem {
   label: string;                    // Display title for the navigation item
-  path?: string;                   // Optional path for navigation (undefined for folders)
+  route?: string;                  // Optional route for navigation (undefined for folders)
   tags?: string[];                 // Optional tags from frontmatter
   children?: NavigationItem[];     // Optional nested navigation items
 }
@@ -20,7 +20,7 @@ interface NavigationItem {
 ```typescript
 const navItem: NavigationItem = {
   label: "Getting Started",
-  path: "getting-started",
+  route: "getting-started",
   tags: ["guide", "beginner"]
 };
 
@@ -29,7 +29,7 @@ const folderItem: NavigationItem = {
   children: [
     {
       label: "Reference",
-      path: "api/reference",
+      route: "api/reference",
       tags: ["api", "reference"]
     }
   ]
@@ -42,7 +42,7 @@ Represents an entry in the flat search index.
 ```typescript
 interface SearchEntry {
   label: string;        // Document title
-  path: string;         // Document path (required for search)
+  route: string;        // Document route (required for search)
   tags?: string[];      // Optional document tags
 }
 ```
@@ -51,7 +51,7 @@ interface SearchEntry {
 ```typescript
 const searchEntry: SearchEntry = {
   label: "User Authentication API",
-  path: "api/authentication",
+  route: "api/authentication",
   tags: ["api", "authentication", "security"]
 };
 ```
@@ -197,8 +197,8 @@ function discoverProjects(
 
 ### Checking Navigation Item Types
 ```typescript
-function hasPath(item: NavigationItem): item is NavigationItem & { path: string } {
-  return typeof item.path === 'string';
+function hasRoute(item: NavigationItem): item is NavigationItem & { route: string } {
+  return typeof item.route === 'string';
 }
 
 function hasChildren(item: NavigationItem): item is NavigationItem & { children: NavigationItem[] } {
@@ -207,10 +207,10 @@ function hasChildren(item: NavigationItem): item is NavigationItem & { children:
 
 // Usage
 manifest.forEach(item => {
-  if (hasPath(item)) {
-    console.log(`Page: ${item.title} -> ${item.path}`);
+  if (hasRoute(item)) {
+    console.log(`Page: ${item.label} -> ${item.route}`);
   } else if (hasChildren(item)) {
-    console.log(`Folder: ${item.title} (${item.children.length} children)`);
+    console.log(`Folder: ${item.label} (${item.children.length} children)`);
   }
 });
 ```
@@ -219,7 +219,7 @@ manifest.forEach(item => {
 
 ### Extract specific types from interfaces
 ```typescript
-type NavigationPath = NonNullable<NavigationItem['path']>;
+type NavigationRoute = NonNullable<NavigationItem['route']>;
 type NavigationTags = NonNullable<NavigationItem['tags']>;
 type ProjectType = DiscoveredProject['type'];
 ```
@@ -259,7 +259,7 @@ const Documentation: React.FC<DocumentationProps> = ({ manifestUrl, searchIndexU
     <div>
       <nav>
         {manifest.map(item => (
-          <NavigationItem key={item.title} item={item} />
+          <NavigationItem key={item.label} item={item} />
         ))}
       </nav>
     </div>
