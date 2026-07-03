@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import yaml from 'js-yaml';
 import type {
   DiscoveredProject,
   DiscoveryOptions,
@@ -12,6 +13,8 @@ import type {
   ValidateResult,
 } from './types.js';
 
+export { defineConfig } from './config.js';
+
 function formatTitle(name: string): string {
   return name.replace(/\.(md|mdx)$/, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
@@ -20,102 +23,12 @@ function parseFrontmatter<T = Record<string, unknown>>(content: string): T {
   const match = content.match(/^---\s*\n([\s\S]*?)\n\s*---/);
   if (!match) return {} as T;
 
-  const raw = match[1];
-  const data: Record<string, unknown> = {};
-  const lines = raw.split('\n');
-  let currentKey: string | null = null;
-  let currentValue: string[] = [];
-  let inMultiline = false;
-
-  function commitValue() {
-    if (currentKey === null) return;
-    const rawValue = currentValue.join('\n').trim();
-    if (!rawValue) {
-      currentKey = null;
-      currentValue = [];
-      return;
-    }
-    data[currentKey] = parseValue(rawValue);
-    currentKey = null;
-    currentValue = [];
+  try {
+    const doc = yaml.load(match[1], { schema: yaml.JSON_SCHEMA }) as Record<string, unknown> | null;
+    return (doc || {}) as T;
+  } catch {
+    return {} as T;
   }
-
-  for (const line of lines) {
-    const trimmed = line.trimEnd();
-
-    if (inMultiline) {
-      if (trimmed === '' || trimmed.startsWith('---')) {
-        inMultiline = false;
-        continue;
-      }
-      const indented = line.startsWith(' ') || line.startsWith('\t');
-      const nextKeyMatch = !indented && trimmed.match(/^(\w[\w-]*?):\s/);
-      if (nextKeyMatch && currentValue.length > 0) {
-        commitValue();
-        currentKey = nextKeyMatch[1];
-        const rest = trimmed.slice(nextKeyMatch[0].length).trim();
-        if (rest) {
-          currentValue = [rest];
-        }
-      } else {
-        currentValue.push(line);
-      }
-      continue;
-    }
-
-    const keyMatch = trimmed.match(/^(\w[\w-]*?):\s*(.*)/);
-    if (!keyMatch) continue;
-
-    commitValue();
-
-    currentKey = keyMatch[1];
-    const rest = keyMatch[2];
-
-    if (rest === '|' || rest === '>') {
-      inMultiline = true;
-      currentValue = [];
-    } else if (rest) {
-      currentValue = [rest];
-    } else {
-      currentValue = [];
-    }
-  }
-
-  if (currentKey !== null) {
-    commitValue();
-  }
-
-  return data as T;
-}
-
-function parseValue(rawValue: string): unknown {
-  const trimmed = rawValue.trim();
-
-  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-    try {
-      return JSON.parse(trimmed);
-    } catch {
-      return trimmed;
-    }
-  }
-
-  if (trimmed === 'true' || trimmed === 'false') {
-    return trimmed === 'true';
-  }
-
-  if (trimmed === 'null') {
-    return null;
-  }
-
-  if (!isNaN(Number(trimmed)) && trimmed !== '') {
-    return Number(trimmed);
-  }
-
-  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith('\'') && trimmed.endsWith('\''))) {
-    return trimmed.slice(1, -1);
-  }
-
-  return trimmed.replace(/^["']|["']$/g, '');
 }
 
 function cleanItem(item: NavigationItem): NavigationItem {
@@ -125,7 +38,7 @@ function cleanItem(item: NavigationItem): NavigationItem {
     const value = item[key];
     if (value !== null && value !== false && value !== '' && value !== undefined) {
       if (key === 'children' && Array.isArray(value)) {
-        cleaned.children = value.map(cleanItem);
+        cleaned.children = (value as NavigationItem[]).map(cleanItem);
       } else if (key !== 'children') {
         cleaned[key] = value as never;
       }
@@ -149,10 +62,110 @@ function sortItems(items: NavigationItem[]): NavigationItem[] {
   return sorted;
 }
 
+function getBody(content: string): string {
+  const match = content.match(/^---\s*\n[\s\S]*?\n\s*---\n*/);
+  return match ? content.slice(match[0].length) : content;
+}
+
+function diceSimilarity(a: string, b: string): number {
+  const bigramsA = new Set<string>();
+  const bigramsB = new Set<string>();
+  for (let i = 0; i < a.length - 1; i++) { bigramsA.add(a.slice(i, i + 2).toLowerCase()); }
+  for (let i = 0; i < b.length - 1; i++) { bigramsB.add(b.slice(i, i + 2).toLowerCase()); }
+  let intersection = 0;
+  for (const bg of bigramsA) { if (bigramsB.has(bg)) intersection++; }
+  return (2 * intersection) / (bigramsA.size + bigramsB.size);
+}
+
+function dedupeHeadings(headings: string[], threshold = 0.7): string[] {
+  const result: string[] = [];
+  for (const h of headings) {
+    if (!result.some(existing => diceSimilarity(existing, h) > threshold)) result.push(h);
+  }
+  return result;
+}
+
+function extractHeadings(body: string): string[] {
+  const headings: string[] = [];
+  const regex = /^#{2,3}\s+(.+)$/gm;
+  let match;
+  while ((match = regex.exec(body)) !== null) {
+    headings.push(match[1].trim());
+  }
+  return dedupeHeadings(headings);
+}
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`[^`]*`/g, ' ')
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/^>\s+/gm, '')
+    .replace(/^[-*+]\s+/gm, '')
+    .replace(/^\d+\.\s+/gm, '')
+    .replace(/^[-*_]{3,}\s*$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]+/g, ' ')
+    .trim();
+}
+
+function makeExcerpt(body: string, maxLength = 150): string {
+  const text = stripMarkdown(body);
+  if (!text || text.length <= maxLength) return text;
+
+  const truncated = text.slice(0, maxLength);
+  const lastSentence = truncated.match(/.*[.!?]/);
+  if (lastSentence && lastSentence[0].length > 30) {
+    return lastSentence[0];
+  }
+
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace > 30) {
+    return truncated.slice(0, lastSpace) + '...';
+  }
+
+  return truncated + '...';
+}
+
+function makeBreadcrumb(route: string): string | undefined {
+  const segments = route.split('/');
+  if (segments.length <= 1) return undefined;
+  segments.pop();
+  return segments
+    .map(s => s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))
+    .join(' > ');
+}
+
 const VALID_MARKDOWN_EXTENSIONS = ['.md', '.mdx'];
 
 function isMarkdownFile(name: string): boolean {
   return VALID_MARKDOWN_EXTENSIONS.some(ext => name.endsWith(ext));
+}
+
+function computeRoutePrefix(outputDir: string, sourceDir: string): string {
+  const rel = path.relative(path.resolve(outputDir), path.resolve(sourceDir));
+  if (!rel || rel.startsWith('..')) return '';
+  return rel.split(path.sep).join('/');
+}
+
+function applyRoutePrefix(items: NavigationItem[], prefix: string): NavigationItem[] {
+  return items.map(item => {
+    if (item.route && item.route !== '#') {
+      item.route = `${prefix}/${item.route}`;
+    }
+    if (item.children) {
+      item.children = applyRoutePrefix(item.children, prefix);
+    }
+    return item;
+  });
 }
 
 function walkDocs(dir: string, relative = '', searchIndex: SearchEntry[] = []): NavigationItem[] {
@@ -195,6 +208,11 @@ function walkDocs(dir: string, relative = '', searchIndex: SearchEntry[] = []): 
         if (meta.draft || meta.hidden) return null;
 
         const cleanPath = relPath.replace(/\.(md|mdx)$/, '').replace(/\\/g, '/');
+        const body = getBody(content);
+        const headings = extractHeadings(body);
+        const excerpt = makeExcerpt(body);
+        const breadcrumb = makeBreadcrumb(cleanPath);
+
         const item: NavigationItem = {
           label: meta.label || formatTitle(entry.name),
           description: meta.description || '',
@@ -228,8 +246,9 @@ function walkDocs(dir: string, relative = '', searchIndex: SearchEntry[] = []): 
             description: item.description,
             route: cleanPath,
             tags: item.tags,
-            keywords: item.keywords,
-            breadcrumbTitle: item.breadcrumbTitle,
+            headings: headings.length > 0 ? headings : undefined,
+            excerpt: excerpt || undefined,
+            breadcrumb: breadcrumb || undefined,
           });
         }
 
@@ -271,6 +290,15 @@ function generateDocsManifests(
           error: 'Invalid manifest generated',
         });
         return;
+      }
+
+      const prefix = computeRoutePrefix(project.projectPath, project.docsPath);
+      if (prefix) {
+        applyRoutePrefix(manifest, prefix);
+        for (let i = 0; i < searchIndex.length; i++) {
+          const entry = searchIndex[i];
+          if (entry.route) searchIndex[i] = { ...entry, route: `${prefix}/${entry.route}` };
+        }
       }
 
       const cleaned = manifest.map(cleanItem);
@@ -384,6 +412,15 @@ function generateManifestsWithDiscovery(
     const result = generateManifest(route);
     const outputPath = outputDir || route;
 
+    const prefix = outputDir ? computeRoutePrefix(outputDir, route) : '';
+    if (prefix) {
+      applyRoutePrefix(result.manifest, prefix);
+      for (let i = 0; i < result.searchIndex.length; i++) {
+        const entry = result.searchIndex[i];
+        if (entry.route) result.searchIndex[i] = { ...entry, route: `${prefix}/${entry.route}` };
+      }
+    }
+
     fs.mkdirSync(outputPath, { recursive: true });
 
     const cleaned = result.manifest.map(cleanItem);
@@ -416,6 +453,15 @@ function generateManifestsWithDiscovery(
     const result = generateManifest(targetPath);
     const outputPath2 = outputDir || projectPath;
 
+    const prefix = outputDir ? computeRoutePrefix(outputPath2, targetPath) : '';
+    if (prefix) {
+      applyRoutePrefix(result.manifest, prefix);
+      for (let i = 0; i < result.searchIndex.length; i++) {
+        const entry = result.searchIndex[i];
+        if (entry.route) result.searchIndex[i] = { ...entry, route: `${prefix}/${entry.route}` };
+      }
+    }
+
     fs.mkdirSync(outputPath2, { recursive: true });
 
     const cleaned = result.manifest.map(cleanItem);
@@ -442,6 +488,13 @@ function generateManifestsWithDiscovery(
 
   return [];
 }
+
+export const ALLOWED_FRONTMATTER_KEYS: ReadonlySet<string> = new Set([
+  'label', 'description', 'tags', 'keywords', 'order', 'isTitle', 'isParent',
+  'icon', 'iconType', 'badge', 'badgeColor', 'breadcrumbTitle', 'layout',
+  'redirect', 'externalUrl', 'deprecated', 'deprecatedAlternative',
+  'publishedAt', 'updatedAt', 'draft', 'hidden',
+]);
 
 function validateDocs(rootDir: string): ValidateResult[] {
   const results: ValidateResult[] = [];
@@ -495,10 +548,6 @@ function validateDocs(rootDir: string): ValidateResult[] {
             result.warnings.push('Both externalUrl and redirect set — redirect takes precedence');
           }
 
-          if (frontmatter.redirect && frontmatter.route) {
-            result.warnings.push('redirect set with route — route will be overridden');
-          }
-
           if (frontmatter.deprecated && !frontmatter.deprecatedAlternative) {
             result.warnings.push('deprecated set without deprecatedAlternative — consider suggesting a migration path');
           }
@@ -511,6 +560,63 @@ function validateDocs(rootDir: string): ValidateResult[] {
           if (frontmatter.updatedAt && isNaN(Date.parse(frontmatter.updatedAt))) {
             result.errors.push(`updatedAt "${ frontmatter.updatedAt }" is not a valid date`);
             result.valid = false;
+          }
+
+          if (!frontmatter.label) {
+            result.warnings.push('No label set — title will be derived from filename');
+          }
+
+          if (frontmatter.publishedAt && frontmatter.updatedAt) {
+            const published = Date.parse(frontmatter.publishedAt);
+            const updated = Date.parse(frontmatter.updatedAt);
+            if (!isNaN(published) && !isNaN(updated) && published > updated) {
+              result.warnings.push(`publishedAt (${ frontmatter.publishedAt }) is after updatedAt (${ frontmatter.updatedAt }) — dates may be reversed`);
+            }
+          }
+
+          if (frontmatter.publishedAt) {
+            const published = Date.parse(frontmatter.publishedAt);
+            if (!isNaN(published) && published > Date.now()) {
+              result.warnings.push(`publishedAt (${ frontmatter.publishedAt }) is in the future — document will not appear as published`);
+            }
+          }
+
+          if (frontmatter.order !== undefined && !Number.isInteger(frontmatter.order)) {
+            result.warnings.push(`order "${ frontmatter.order }" is not an integer — sort order may be unexpected`);
+          }
+
+          if (frontmatter.order !== undefined && frontmatter.order < 0) {
+            result.errors.push(`order "${ frontmatter.order }" is negative — must be >= 0`);
+            result.valid = false;
+          }
+
+          if (frontmatter.tags && frontmatter.keywords) {
+            const overlap = frontmatter.tags.filter(t => frontmatter.keywords?.includes(t));
+            if (overlap.length > 0) {
+              result.warnings.push(`tags and keywords overlap: [${ overlap.join(', ') }] — redundant data`);
+            }
+          }
+
+          if (frontmatter.iconType && !frontmatter.icon) {
+            result.warnings.push('iconType set without icon — has no effect');
+          }
+
+          if (frontmatter.badgeColor && !frontmatter.badge) {
+            result.warnings.push('badgeColor set without badge — has no effect');
+          }
+
+          if (frontmatter.externalUrl && !frontmatter.externalUrl.includes('://')) {
+            result.warnings.push(`externalUrl "${ frontmatter.externalUrl }" may be invalid — expected a URL with scheme`);
+          }
+
+          if (frontmatter.redirect && !frontmatter.redirect.startsWith('/') && !frontmatter.redirect.startsWith('http')) {
+            result.warnings.push(`redirect "${ frontmatter.redirect }" does not start with "/" — may resolve to unexpected path`);
+          }
+
+          for (const key of Object.keys(frontmatter)) {
+            if (!ALLOWED_FRONTMATTER_KEYS.has(key)) {
+              result.warnings.push(`Unknown frontmatter key "${ key }" — possible typo`);
+            }
           }
 
         } catch (error) {
@@ -597,9 +703,15 @@ export {
   generateManifestsWithDiscovery,
   validateDocs,
   watchDocs,
+  diceSimilarity,
+  dedupeHeadings,
+  extractHeadings,
+  makeExcerpt,
+  makeBreadcrumb,
 };
 
 export type {
+  ConfigFile,
   NavigationItem,
   SearchEntry,
   ManifestResult,
@@ -607,6 +719,7 @@ export type {
   ProcessingResult,
   DiscoveryOptions,
   ManifestGenerationOptions,
+  ProjectConfig,
   Frontmatter,
   ValidateResult,
 } from './types.js';

@@ -126,4 +126,4 @@ or [create an issue](https://github.com/fsegurai/manifest-generator/issues) and 
 
 ---
 
-Thanks for contributing to ScrollSpy! ✨
+Thanks for contributing to Manifest Generator! ✨

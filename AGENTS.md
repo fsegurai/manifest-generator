@@ -75,7 +75,7 @@ scripts/test-all-packages.ts   # optional summary runner
 - `--validate` checks frontmatter (date validity, conflicting flags, missing alternatives).
 - `--watch` polls for file changes and regenerates.
 - Frontmatter keys (18 total): `label`, `description`, `tags`, `keywords`, `order`, `isTitle`, `isParent`, `icon`, `iconType`, `badge`, `badgeColor`, `breadcrumbTitle`, `layout`, `redirect`, `externalUrl`, `deprecated`, `deprecatedAlternative`, `publishedAt`, `updatedAt`, `draft`, `hidden`.
-- Output: `manifest.json` + `search-index.json` written to project root (or `--output`). Items sorted by `order` then label. Null/false fields stripped via `cleanItem()`.
+- Output: `manifest.json` + `search-index.json` written to `--output` dir (or source root if omitted). In this repo, output lives at `docs/<version>/` (not inside `content/`). Items sorted by `order` then label. Null/false fields stripped via `cleanItem()`.
 - Supports `.md` and `.mdx` files.
 
 ## Important constraints

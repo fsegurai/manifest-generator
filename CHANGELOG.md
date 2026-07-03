@@ -7,7 +7,67 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+No changes yet.
 
+---
+
+## [1.0.0-beta.3] - 2026-06-xx
+
+### 🚀 Added
+
+- **Config file support** — `manifest-generator.config.json/.js/.ts` with `--config` flag, auto-detection in project
+  root. Includes `defineConfig()` type-safe helper and `mergeConfig()` for CLI-flag priority.
+- **`--init` scaffold command** — one-command setup that creates a config file + sample docs structure (7 Markdown files
+  demonstrating frontmatter features).
+- **`ALLOWED_FRONTMATTER_KEYS`** — public API export: readonly `Set<string>` of all recognized frontmatter key names.
+- **11 new frontmatter validation rules** — label absent, `publishedAt` in future / after `updatedAt`, `order`
+  non-integer / negative, unknown-key detection, malformed URLs, conflicting flags (`draft`+`hidden`,
+  `isTitle`+`isParent`, `externalUrl`+`redirect`), date format validation, `badge`/`badgeColor` checks,
+  `deprecated` without alternative.
+- **Search index enrichment** — new fields in `SearchEntry`: `headings[]` (deduplicated `h2`/`h3`), `excerpt` (first
+  ~150 chars, markup-stripped), `breadcrumb` (auto-derived from route path). Removed `keywords` and `breadcrumbTitle`
+  from search entries (redundant with `tags` and the derived `breadcrumb`).
+- **Heading deduplication** — `diceSimilarity()` and `dedupeHeadings()` using Dice coefficient (bigram-based,
+  threshold 0.7) to collapse near-identical headings.
+- **Route prefix for separate output** — when `--output` differs from the source route, all routes in
+  `manifest.json` and `search-index.json` are automatically prefixed with the relative path from output to source
+  (e.g., `getting-started/installation` → `content/getting-started/installation`).
+- `ConfigFile`, `ProjectConfig` TypeScript interfaces exported from the package entrypoint.
+
+### 🔧 Changed
+
+- Replaced custom YAML parser with `js-yaml` (JSON_SCHEMA) — handles block scalars, quoted strings, nested and
+  JSON-style arrays, explicit `null`. Empty YAML values (`label:`) now correctly become `null`.
+- `SearchEntry` type: removed `keywords` and `breadcrumbTitle`; added `headings[]`, `excerpt`, `breadcrumb`.
+- Output location: `manifest.json` and `search-index.json` now written to the `--output` directory (or source root
+  if omitted) instead of alongside source markdown. In this repo, files live at `docs/<version>/` — separate from
+  the `content/` source subdirectory.
+- `generate:manifest` and `generate:manifest-current` npm scripts updated: `--output` now points to version root
+  instead of the content subdirectory. Removed stale `generate:manifest-beta2` alias.
+- `generateDocsManifests()` now applies route prefix based on the project path vs docs path relationship.
+- Config priority: CLI flags > config file > hardcoded defaults.
+- Added dependency: `js-yaml@^4.2.0`, `@types/js-yaml@^4.0.9`.
+
+### 🧪 Testing
+
+- Expanded test suite from 32 to **122 tests**, 269 expect() calls across 3 test files.
+- Added test coverage for: config loading/merging (13 tests), `diceSimilarity` (3), `dedupeHeadings` (2),
+  `extractHeadings` deduplication, search-index fields integration.
+- Updated tests for removed `keywords`/`breadcrumbTitle` from `SearchEntry`.
+
+### 📃 Documentation
+
+- Created full 29-file docs set under `docs/1.0.0-beta.3/content/` — landing page, getting-started (4), guides (5),
+  api (4), features (2), help (3), examples (4), integration (5). Updated for config, `--init`, js-yaml, and all
+  new validation rules.
+- **features/search-index.md**: new Search Index Fields table; Dice coefficient deduplication explanation; fixed
+  all code examples from `title`→`label` and `path`→`route`; updated JSON examples with `content/`-prefixed routes.
+- **features/README.md**, **guides/frontmatter.md**, **api/typescript.md**: updated for search-index fields and
+  schema changes.
+- **AGENTS.md**: updated with output location, route prefix behavior, test counts, and build scripts.
+- All `.github/` files rewritten to reference manifest-generator.
+
+- [Full Changelog](https://github.com/fsegurai/manifest-generator/commits/1.0.0-beta.3)
 
 ---
 
@@ -117,7 +177,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Updated `AGENTS.md` with new CLI flags, frontmatter keys, and behavior notes.
 - Updated root `CHANGELOG.md` and `README.md` with feature summaries.
 
-- [Full Changelog](https://github.com/fsegurai/manifest-generator/compare/v1.0.0-beta.1...v1.0.0-beta.2)
+- [Full Changelog](https://github.com/fsegurai/manifest-generator/commits/v1.0.0-beta.2)
 
 ---
 
@@ -155,7 +215,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
         - `rollup` from `4.52.3` to `4.53.3`
         - `typescript-eslint` from `8.45.0` to `8.47.0`
 
-- [Full Changelog](https://github.com/fsegurai/manifest-generator/compare/v0.0.0-alpha.3...v1.0.0-beta.1)
+- [Full Changelog](https://github.com/fsegurai/manifest-generator/commits/v1.0.0-beta.1)
 
 ---
 
@@ -192,6 +252,8 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - N/A (initial release)
 
+- [Full Changelog](https://github.com/fsegurai/manifest-generator/commits/v0.0.0-alpha.3)
+
 ---
 
 ## 📦 Dependencies
@@ -199,11 +261,13 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Runtime
 
 - No external dependencies (zero dependency library).
+
 - Native browser features (ES6+, `CustomEvent`, `MutationObserver`, etc.).
 
 ### Development
 
 - [`bun`](https://bun.sh/) — JS runtime and package manager
+
 - [`typescript`](https://www.typescriptlang.org/) — static type checking
 - [`eslint`](https://eslint.org/) — code linting and formatting
 - [`jest`](https://jestjs.io/) — testing framework
@@ -214,7 +278,7 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### From 0.x → 1.0.0
 
-- This is the first stable release of the `scrollspy` library.
+- This is the first stable release of the `manifest-generator` library.
 - ✅ No migration needed.
 
 ---
@@ -232,12 +296,16 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - ✅ Safari
 - ✅ Edge
 - ✅ ES6+ support required
-- ⚠️ IE is **not supported**
+- ⚠️ IE is **not supported*
 
 ---
 
-[unreleased]: https://github.com/fsegurai/scrollspy/compare/v1.0.0-beta.1...HEAD
+[unreleased]: https://github.com/fsegurai/manifest-generator/compare/v1.0.0-beta.3...HEAD
 
-[1.0.0-beta.1]: https://github.com/fsegurai/scrollspy/compare/v0.0.0-alpha.3...v1.0.0-beta.1
+[1.0.0-beta.3]: https://github.com/fsegurai/manifest-generator/compare/v1.0.0-beta.2...v1.0.0-beta.3
 
-[0.0.0-alpha.3]: https://github.com/fsegurai/scrollspy/releases/tag/v0.0.0-alpha.3
+[1.0.0-beta.2]: https://github.com/fsegurai/manifest-generator/compare/v1.0.0-beta.1...v1.0.0-beta.2
+
+[1.0.0-beta.1]: https://github.com/fsegurai/manifest-generator/compare/v0.0.0-alpha.3...v1.0.0-beta.1
+
+[0.0.0-alpha.3]: https://github.com/fsegurai/manifest-generator/releases/tag/v0.0.0-alpha.3

@@ -23,22 +23,7 @@ export function createLibraryConfig(options: {
   let declarationsGenerated = false;
 
   // Build globals object with defaults for known packages
-  const defaultGlobals: Record<string, string> = {
-    'marked': 'marked',
-    '@fsegurai/marked-extended-accordion': 'markedExtendedAccordion',
-    '@fsegurai/marked-extended-alert': 'markedExtendedAlert',
-    '@fsegurai/marked-extended-comments': 'markedExtendedComments',
-    '@fsegurai/marked-extended-embeds': 'markedExtendedEmbeds',
-    '@fsegurai/marked-extended-footnote': 'markedExtendedFootnote',
-    '@fsegurai/marked-extended-kanban': 'markedExtendedKanban',
-    '@fsegurai/marked-extended-lists': 'markedExtendedLists',
-    '@fsegurai/marked-extended-slide': 'markedExtendedSlide',
-    '@fsegurai/marked-extended-spoiler': 'markedExtendedSpoiler',
-    '@fsegurai/marked-extended-tables': 'markedExtendedTables',
-    '@fsegurai/marked-extended-tabs': 'markedExtendedTabs',
-    '@fsegurai/marked-extended-timeline': 'markedExtendedTimeline',
-    '@fsegurai/marked-extended-typographic': 'markedExtendedTypographic',
-  };
+  const defaultGlobals: Record<string, string> = {};
 
   // Merge provided globals with defaults, then build globals only for external dependencies
   const mergedGlobals = { ...defaultGlobals, ...globals };

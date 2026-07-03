@@ -1,5 +1,5 @@
 <p align="center" class="intro">
-  <img alt="Manifest Generator Logo" src="https://raw.githubusercontent.com/fsegurai/manifest-generator/main/public/manifest-generator.svg">
+  <img alt="Manifest Generator Logo" src="https://raw.githubusercontent.com/fsegurai/manifest-generator/main/demo/public/manifest-generator.svg">
 </p>
 
 <p align="center" class="intro">
@@ -24,48 +24,24 @@
 
 # @fsegurai/manifest-generator
 
-Monorepo for the Manifest Generator ecosystem.
-
-This repository contains:
-
-- the published package (`@fsegurai/manifest-generator`)
-- versioned product documentation (`docs/*`)
-- a demo app that consumes generated artifacts
+A CLI and library that scans Markdown/MDX documentation and generates hierarchical navigation manifests and search
+indexes. Built with TypeScript, powered by Bun.
 
 ## What the package does
 
-The package scans Markdown and MDX documentation and generates:
+Given a directory of Markdown or MDX files with YAML frontmatter, `@fsegurai/manifest-generator` produces two artifacts:
 
-- `manifest.json` (hierarchical navigation with sorting)
-- `search-index.json` (flat search entries with keywords)
+- **`manifest.json`** — hierarchical navigation tree with sorting, frontmatter metadata, draft/hidden filtering, and
+  folder inheritance
+- **`search-index.json`** — flat search entries with keywords and descriptions
 
-It can be used via CLI or programmatic API. Supports 20+ frontmatter fields,
-frontmatter validation, recursive project discovery, file watching, and sorting.
-
-## Repository structure
-
-```text
-manifest-generator/
-├── docs/
-│   └── 1.0.0-beta.2/
-│       └── content/
-├── packages/
-│   └── manifest-generator/
-│       ├── src/
-│       │   ├── cli.ts
-│       │   ├── index.ts
-│       │   └── types.ts
-│       └── spec/
-├── demo/
-└── scripts/
-```
+Supports 18 frontmatter keys, recursive project discovery, file watching, and frontmatter validation.
 
 ## Run locally (contributors)
 
 ### Requirements
 
-- Node.js 22+
-- Bun 1.3+
+- Node.js 22+, Bun 1.3+
 
 ### Setup
 
@@ -76,17 +52,23 @@ bun install
 ### Development workflow
 
 ```bash
-# run tests
+# run all tests
 bun test
 
-# build all workspaces and demo
+# run tests with coverage
+bun test --coverage
+
+# run single-package tests
+bun run --filter '@fsegurai/manifest-generator' pkg:test
+
+# lint everything
+bun run lint
+
+# build package + demo
 bun run build
 
-# build only the package
+# build only the library
 bun run --filter '@fsegurai/manifest-generator' pkg:build
-
-# run package tests only
-bun run --filter '@fsegurai/manifest-generator' pkg:test
 ```
 
 ### Run the CLI locally
@@ -96,7 +78,7 @@ bun ./packages/manifest-generator/src/cli.ts --help
 bun ./packages/manifest-generator/src/cli.ts --discover --docs-root ./docs
 ```
 
-### Regenerate versioned docs artifacts
+### Regenerate versioned docs (maintainers)
 
 ```bash
 bun ./packages/manifest-generator/src/cli.ts \
@@ -104,19 +86,88 @@ bun ./packages/manifest-generator/src/cli.ts \
   --output ./docs/1.0.0-beta.2
 ```
 
+## CLI reference
+
+```text
+--discover        Auto-detect documentation projects in --docs-root
+--validate        Validate frontmatter across all discovered projects
+--recursive       Discover projects in nested directories
+--watch           Watch for file changes and regenerate
+--all             Process all discovered projects
+--project <name>  Target a specific project by name
+--route <path>    Target a single documentation route
+--docs-root <dir> Root directory for documentation discovery
+--output <dir>    Output directory for generated manifests
+--docs-subfolder  Custom subfolder name inside project dirs (default: docs)
+```
+
+## Programmatic API
+
+```ts
+import {
+    generateManifest,
+    generateDocsManifests,
+    discoverProjects,
+    validateDocs,
+    watchDocs,
+    type NavigationItem,
+} from '@fsegurai/manifest-generator'
+
+// In-memory manifest generation
+const result = await generateManifest('./docs')
+console.log(result.navigation)
+console.log(result.searchIndex)
+
+// Discover projects then generate
+const projects = await discoverProjects('./docs', {recursive: true})
+await generateDocsManifests(projects, {outputDir: './dist'})
+
+// Validate frontmatter
+const {errors, warnings} = await validateDocs('./docs')
+
+// Watch for changes
+const watcher = await watchDocs('./docs', {
+    outputDir: './dist',
+    onGenerate: (result) => console.log('Regenerated:', result.project),
+})
+watcher.close()
+```
+
 ## Use as an external user
-
-If you only want to consume the package, start with the versioned docs:
-
-- `docs/1.0.0-beta.2/content/README.md`
-
-Or run directly from npm:
 
 ```bash
 npx @fsegurai/manifest-generator --help
 npx @fsegurai/manifest-generator --route ./docs
+npx @fsegurai/manifest-generator --discover --docs-root ./documentation
 ```
+
+For full documentation, start with the versioned docs:
+
+- `docs/1.0.0-beta.2/content/README.md`
+
+## Frontmatter fields
+
+The package reads YAML frontmatter from `.md` and `.mdx` files. Supported keys:
+
+| Key                                    | Type           | Description                              |
+|----------------------------------------|----------------|------------------------------------------|
+| `label`                                | string         | Display name in navigation               |
+| `description`                          | string         | Short description (used in search index) |
+| `tags`                                 | string[]       | Content tags                             |
+| `keywords`                             | string[]       | Search keywords                          |
+| `order`                                | number         | Sort position in navigation              |
+| `isTitle`                              | boolean        | Use as section title                     |
+| `isParent`                             | boolean        | Mark as parent node                      |
+| `icon` / `iconType`                    | string         | Icon reference                           |
+| `badge` / `badgeColor`                 | string         | Badge text and color                     |
+| `breadcrumbTitle`                      | string         | Override breadcrumb text                 |
+| `layout`                               | string         | Layout template                          |
+| `redirect` / `externalUrl`             | string         | URL redirects                            |
+| `deprecated` / `deprecatedAlternative` | boolean/string | Deprecation status                       |
+| `publishedAt` / `updatedAt`            | date           | Publication metadata                     |
+| `draft`                                | boolean        | Hide from production                     |
+| `hidden`                               | boolean        | Exclude from navigation                  |
 
 ## License
 
-MIT
+Licensed under [MIT](https://opensource.org/licenses/MIT).
