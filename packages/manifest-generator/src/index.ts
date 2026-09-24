@@ -146,11 +146,24 @@ function makeExcerpt(body: string, maxLength = 150): string {
   return `${truncated}...`;
 }
 
-function makeBreadcrumb(route: string): string | undefined {
-  const segments = route.split('/');
-  if (segments.length <= 1) return undefined;
-  segments.pop();
-  return segments.map((s) => s.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())).join(' > ');
+function makeBreadcrumb(labelChain: string[]): string | undefined {
+  return labelChain.length > 0 ? labelChain.join(' > ') : undefined;
+}
+
+function resolveFolderBreadcrumbLabel(dirFullPath: string, folderName: string): string {
+  const readmePath = path.join(dirFullPath, 'README.md');
+  const indexPath = path.join(dirFullPath, 'index.md');
+  const targetPath = fs.existsSync(readmePath) ? readmePath : fs.existsSync(indexPath) ? indexPath : null;
+
+  if (!targetPath) return formatTitle(folderName);
+
+  try {
+    const content = fs.readFileSync(targetPath, 'utf8');
+    const meta = parseFrontmatter<Frontmatter>(content);
+    return meta.breadcrumbTitle || formatTitle(folderName);
+  } catch {
+    return formatTitle(folderName);
+  }
 }
 
 const VALID_MARKDOWN_EXTENSIONS = ['.md', '.mdx'];
@@ -199,6 +212,7 @@ function walkDocs(
   relative = '',
   searchIndex: SearchEntry[] = [],
   exclude: string[] = [],
+  labelChain: string[] = [],
 ): NavigationItem[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
 
@@ -210,7 +224,8 @@ function walkDocs(
       const relPath = path.join(relative, entry.name);
 
       if (entry.isDirectory()) {
-        const children = walkDocs(fullPath, relPath, searchIndex, exclude);
+        const folderLabel = resolveFolderBreadcrumbLabel(fullPath, entry.name);
+        const children = walkDocs(fullPath, relPath, searchIndex, exclude, [...labelChain, folderLabel]);
         if (children.length === 0) return null;
 
         const folderItem: NavigationItem = {
@@ -248,7 +263,7 @@ function walkDocs(
         const body = getBody(content);
         const headings = extractHeadings(body);
         const excerpt = makeExcerpt(body);
-        const breadcrumb = makeBreadcrumb(cleanPath);
+        const breadcrumb = makeBreadcrumb(labelChain);
 
         const item: NavigationItem = {
           label: meta.label || formatTitle(entry.name),

@@ -257,6 +257,45 @@ Final section with a list:
     expect(searchIndex[0].tags).toEqual(['guide']);
   });
 
+  test('breadcrumbTitle in a folder README overrides the derived breadcrumb label', () => {
+    const docsRoot = path.join(tempDir, 'docs-breadcrumb-override');
+
+    writeFile(path.join(docsRoot, 'section', 'README.md'), '---\nbreadcrumbTitle: Custom Section Name\n---\nSection');
+    writeFile(path.join(docsRoot, 'section', 'page.md'), '# Page');
+
+    const searchIndex: { label: string; route: string; breadcrumb?: string }[] = [];
+    walkDocs(docsRoot, '', searchIndex);
+
+    const entry = searchIndex.find((e) => e.label === 'Page');
+    expect(entry?.breadcrumb).toBe('Custom Section Name');
+  });
+
+  test('breadcrumb falls back to the derived folder label without breadcrumbTitle override', () => {
+    const docsRoot = path.join(tempDir, 'docs-breadcrumb-default');
+
+    writeFile(path.join(docsRoot, 'getting-started', 'page.md'), '# Page');
+
+    const searchIndex: { label: string; route: string; breadcrumb?: string }[] = [];
+    walkDocs(docsRoot, '', searchIndex);
+
+    expect(searchIndex[0].breadcrumb).toBe('Getting Started');
+  });
+
+  test('chains multiple ancestor labels, some overridden and some derived', () => {
+    const docsRoot = path.join(tempDir, 'docs-breadcrumb-chain');
+
+    writeFile(
+      path.join(docsRoot, 'grandparent', 'README.md'),
+      '---\nbreadcrumbTitle: Custom Grandparent\n---\nGrandparent',
+    );
+    writeFile(path.join(docsRoot, 'grandparent', 'parent', 'page.md'), '# Page');
+
+    const searchIndex: { label: string; route: string; breadcrumb?: string }[] = [];
+    walkDocs(docsRoot, '', searchIndex);
+
+    expect(searchIndex[0].breadcrumb).toBe('Custom Grandparent > Parent');
+  });
+
   test('omits excerpt for file with only frontmatter', () => {
     const docsRoot = path.join(tempDir, 'docs-empty-body');
 
@@ -1027,20 +1066,20 @@ describe('makeExcerpt', () => {
 });
 
 describe('makeBreadcrumb', () => {
-  test('derives from route path', () => {
-    expect(makeBreadcrumb('guides/frontmatter')).toBe('Guides');
+  test('derives from a single-label chain', () => {
+    expect(makeBreadcrumb(['Guides'])).toBe('Guides');
   });
 
   test('handles deep nesting', () => {
-    expect(makeBreadcrumb('api/v2/reference')).toBe('Api > V2');
+    expect(makeBreadcrumb(['Api', 'V2'])).toBe('Api > V2');
   });
 
   test('handles multi-word segments', () => {
-    expect(makeBreadcrumb('getting-started/first-steps')).toBe('Getting Started');
+    expect(makeBreadcrumb(['Getting Started'])).toBe('Getting Started');
   });
 
-  test('returns undefined for root-level files', () => {
-    expect(makeBreadcrumb('README')).toBeUndefined();
+  test('returns undefined for an empty chain (root-level files)', () => {
+    expect(makeBreadcrumb([])).toBeUndefined();
   });
 });
 

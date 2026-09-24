@@ -1,0 +1,184 @@
+# Frontmatter
+
+The parser reads a YAML block at the top of each Markdown or MDX file and maps it to navigation items and search
+entries. The parser uses `js-yaml` v5 (`JSON_SCHEMA`) for robust YAML parsing.
+
+## Example
+
+```md
+---
+label: Custom Page Title
+description: Short summary for search
+tags: [guide, api]
+order: 1
+icon: book
+badge: New
+badgeColor: green
+---
+```
+
+## All 21 supported fields
+
+This is the exact list from the package's `ALLOWED_FRONTMATTER_KEYS` export:
+
+| Field                   | Type     | Purpose                                                                    |
+|-------------------------|----------|------------------------------------------------------------------------------|
+| `label`                 | string   | Navigation label shown in the manifest (falls back to the filename)        |
+| `description`           | string   | Search description                                                          |
+| `tags`                  | string[] | Search tags                                                                 |
+| `keywords`               | string[] | Additional search-relevant keywords (not shown in nav; not in search index)|
+| `order`                 | number   | Sort weight — lower values appear first (default `999`)                    |
+| `isTitle`               | boolean  | Mark an item as title-only (`route` becomes `#`)                           |
+| `isParent`              | boolean  | Mark an item as a parent node                                              |
+| `icon`                  | string   | Optional icon name                                                          |
+| `iconType`              | string   | Optional icon source/type                                                  |
+| `badge`                 | string   | Optional badge text                                                        |
+| `badgeColor`            | string   | Optional badge color                                                       |
+| `breadcrumbTitle`       | string   | Stored on the navigation item; see [note](#breadcrumbtitle) below          |
+| `layout`                | string   | Custom page layout identifier for the consuming frontend                   |
+| `redirect`              | string   | URL to redirect this page to                                               |
+| `externalUrl`           | string   | Link to an external resource instead of a doc page                        |
+| `deprecated`            | boolean  | Flag this page as outdated                                                 |
+| `deprecatedAlternative` | string   | Suggests a migration path (route or URL)                                  |
+| `publishedAt`           | date     | ISO date string when the page was published                               |
+| `updatedAt`             | date     | ISO date string when the page was last updated                            |
+| `draft`                 | boolean  | Exclude from output entirely                                               |
+| `hidden`                | boolean  | Exclude from output entirely (same effect as `draft`)                     |
+
+### `breadcrumbTitle`
+
+`breadcrumbTitle` is parsed, validated, and carried through onto the generated `NavigationItem` (`item.breadcrumbTitle`)
+so a consuming frontend can read it and choose to display a shorter breadcrumb label. However, the tool's own
+auto-generated `breadcrumb` field on **search index** entries is derived purely from the route path segments
+(`makeBreadcrumb()`) — it does not read `breadcrumbTitle` to override any segment. Setting `breadcrumbTitle` does not
+change what appears in `search-index.json`; it is metadata for your own UI to use if it wants to.
+
+## Validation
+
+The `--validate` CLI flag and `validateDocs()` API check frontmatter correctness — 11 rules against the fields above:
+
+| Rule                              | What it catches                                                  |
+|------------------------------------|--------------------------------------------------------------------|
+| label absent                      | File has no `label` frontmatter (warning)                         |
+| publishedAt > updatedAt           | Publish date is after the update date (warning)                   |
+| publishedAt in future             | Publish date is set to a future date (warning)                    |
+| order non-integer                 | `order` is not a whole number (warning)                            |
+| order negative                    | `order` is a negative number (error — invalid)                    |
+| tags/keywords overlap             | Same term appears in both `tags` and `keywords` (warning)          |
+| iconType without icon             | `iconType` set but `icon` is missing (warning)                     |
+| badge/badgeColor mismatch         | Either is set without the other (warning, either direction)       |
+| malformed externalUrl             | `externalUrl` has no `://` scheme (warning)                        |
+| redirect without leading `/`      | `redirect` doesn't start with `/` (warning)                        |
+| unknown keys                      | Frontmatter keys not in `ALLOWED_FRONTMATTER_KEYS` (warning — catches typos) |
+
+Additional checks folded into the same pass: `draft` + `hidden` both set (warning, redundant), `isTitle` + `isParent`
+both set (warning, mutually exclusive concepts), `deprecated` without `deprecatedAlternative` (warning), and invalid
+`publishedAt` / `updatedAt` date strings (**error** — `Date.parse()` fails).
+
+Validation exits with code `1` only when a file has an **error** (invalid date, negative `order`) — warnings alone do
+not fail the exit code.
+
+## Sorting
+
+Items are sorted by `order` (ascending, default `999`), then alphabetically by `label`. Folders inherit `order`,
+`icon`, `iconType`, `badge`, and `badgeColor` from their `README.md`/`index.md` file.
+
+```md
+---
+label: First Page
+order: 1
+---
+
+---
+label: Second Page
+order: 2
+---
+```
+
+Files without `order` sort alphabetically at the end.
+
+## Search index fields
+
+In addition to `label`, `description`, `route`, and `tags`, each search entry includes:
+
+- `headings[]` — deduplicated `h2`/`h3` headings extracted from the document body
+- `excerpt` — first ~150 characters of body content, stripped of markup
+- `breadcrumb` — auto-generated breadcrumb context from the route path segments (omitted for single-segment routes)
+
+## Rich frontmatter examples
+
+### Redirect from an old page
+
+```md
+---
+label: Old Page
+redirect: /new-location/page
+---
+```
+
+### External link in nav
+
+```md
+---
+label: External Docs
+externalUrl: https://example.com/docs
+---
+```
+
+### Deprecated page
+
+```md
+---
+label: Legacy API
+deprecated: true
+deprecatedAlternative: /api/v2/getting-started
+---
+```
+
+### Page with dates
+
+```md
+---
+label: Changelog
+publishedAt: 2024-01-15
+updatedAt: 2024-06-01
+---
+```
+
+### Page with icon and badge
+
+```md
+---
+label: Features
+icon: star
+iconType: filled
+badge: New
+badgeColor: green
+---
+```
+
+## Parsing rules
+
+- Parsing uses `js-yaml@^5.4.2` with the `JSON_SCHEMA` — block scalars, quoted strings, and nested/JSON-style arrays
+  (`[a, b]`) are all handled correctly.
+- `true`, `false`, and explicit `null` are recognised as booleans and null.
+- Numeric values become numbers.
+- **`js-yaml` v5 semantic change**: an empty scalar (`label:` with nothing after the colon) now parses to `''` (empty
+  string), not `null` as in earlier `js-yaml` major versions. This is a `js-yaml` v5 behavior, not a bug in this
+  package. In practice it has no visible effect here: `label`, `description`, `icon`, `iconType`, `badge`, and
+  `badgeColor` are all read with an `||` fallback (e.g. `meta.label || formatTitle(entry.name)`), which treats `''` and
+  `null` identically.
+- Empty, `draft: true`, and `hidden: true` items are removed from the output entirely.
+- Both `.md` and `.mdx` file extensions are supported.
+
+## Output
+
+The `cleanItem()` function strips all empty (`null`, `false`, `''`, `undefined`) fields from navigation items before
+writing to `manifest.json`, producing minimal output. It does **not** run over `search-index.json` entries — those are
+written as-is, so an `undefined` field (e.g. `breadcrumb` on a single-segment route) is simply omitted by
+`JSON.stringify`, while an explicit `''` in a search entry would still show up. In practice, all current `SearchEntry`
+fields (`headings`, `excerpt`, `breadcrumb`) are only ever set to a real value or left `undefined`, never `''`.
+
+## Next step
+
+Read the [CLI Usage](cli-usage.md) guide for command-line examples that use these fields.

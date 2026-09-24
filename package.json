@@ -60,9 +60,9 @@
     "lint:demo": "biome lint demo/",
     "format": "biome check --write",
     "format:audit": "biome check",
-    "generate:manifest": "bun ./packages/manifest-generator/src/cli.ts --route ./docs/1.0.0-beta.3/content --output ./docs/1.0.0-beta.3",
+    "generate:manifest": "bun ./packages/manifest-generator/src/cli.ts --route ./docs/$npm_package_version/content --output ./docs/$npm_package_version",
     "generate:manifest-all": "bun run generate:manifest",
-    "generate:manifest-current": "bun ./packages/manifest-generator/src/cli.ts --route ./docs/$npm_package_version/content --output ./docs/$npm_package_version"
+    "generate:manifest-specific-version": "bun ./packages/manifest-generator/src/cli.ts --route ./docs/1.0.0-beta.3/content --output ./docs/1.0.0-beta.3"
   },
   "dependencies": {
     "@material/web": "^2.5.0",
