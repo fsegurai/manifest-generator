@@ -2,18 +2,12 @@
   {
     "label": "API Reference",
     "route": "api-reference",
-    "tags": [
-      "api",
-      "reference"
-    ]
+    "tags": ["api", "reference"]
   },
   {
     "label": "Getting Started Guide",
     "route": "getting-started",
-    "tags": [
-      "tutorial",
-      "beginner"
-    ]
+    "tags": ["tutorial", "beginner"]
   },
   {
     "label": "Guides",
@@ -23,10 +17,7 @@
       {
         "label": "Advanced Configuration",
         "route": "guides/advanced-config",
-        "tags": [
-          "configuration",
-          "advanced"
-        ]
+        "tags": ["configuration", "advanced"]
       },
       {
         "label": "Setup",
@@ -36,10 +27,7 @@
           {
             "label": "Advanced Setup",
             "route": "guides/setup/advanced-setup",
-            "tags": [
-              "configuration",
-              "advanced"
-            ]
+            "tags": ["configuration", "advanced"]
           }
         ]
       }
@@ -48,9 +36,6 @@
   {
     "label": "Sample Project Documentation",
     "route": "README",
-    "tags": [
-      "documentation",
-      "getting-started"
-    ]
+    "tags": ["documentation", "getting-started"]
   }
 ]

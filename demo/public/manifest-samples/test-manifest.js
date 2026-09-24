@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { discoverProjects, generateManifestsWithDiscovery } from '@fsegurai/manifest-generator';
 import { parseArgs } from 'node:util';
+import { discoverProjects, generateManifestsWithDiscovery } from '@fsegurai/manifest-generator';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -12,14 +12,14 @@ const __dirname = path.dirname(__filename);
 const { values: flags, positionals } = parseArgs({
   args: process.argv.slice(2),
   options: {
-    'all': { type: 'boolean', short: 'a' },
-    'project': { type: 'string', short: 'p' },
-    'route': { type: 'string', short: 'r' },
+    all: { type: 'boolean', short: 'a' },
+    project: { type: 'string', short: 'p' },
+    route: { type: 'string', short: 'r' },
     'docs-root': { type: 'string', short: 'd' },
-    'output': { type: 'string', short: 'o' },
+    output: { type: 'string', short: 'o' },
     'docs-subfolder': { type: 'string', short: 's' },
-    'discover': { type: 'boolean' },
-    'help': { type: 'boolean', short: 'h' },
+    discover: { type: 'boolean' },
+    help: { type: 'boolean', short: 'h' },
   },
   allowPositionals: true,
 });
@@ -66,7 +66,7 @@ try {
 
   // Discovery mode (using library function)
   if (flags.discover) {
-    console.log(`🔍 Discovering projects in: ${ resolvedRoot }`);
+    console.log(`🔍 Discovering projects in: ${resolvedRoot}`);
     console.log('='.repeat(50));
 
     const discovered = discoverProjects(resolvedRoot, {
@@ -76,24 +76,24 @@ try {
     if (discovered.length === 0) {
       console.log('⚠️  No documentation projects found.');
     } else {
-      console.log(`📁 Found ${ discovered.length } project(s):`);
-      discovered.forEach(proj => {
-        console.log(`  - ${ proj.name } (${ proj.type }): ${ proj.docsPath }`);
+      console.log(`📁 Found ${discovered.length} project(s):`);
+      discovered.forEach((proj) => {
+        console.log(`  - ${proj.name} (${proj.type}): ${proj.docsPath}`);
       });
     }
     process.exit(0);
   }
 
   // Process using the library's generateManifestsWithDiscovery function
-  console.log(`📂 Processing: ${ resolvedRoot }`);
+  console.log(`📂 Processing: ${resolvedRoot}`);
   if (flags.project) {
-    console.log(`🎯 Target project: ${ flags.project }`);
+    console.log(`🎯 Target project: ${flags.project}`);
   }
   if (flags.route) {
-    console.log(`🛤️  Target route: ${ flags.route }`);
+    console.log(`🛤️  Target route: ${flags.route}`);
   }
   if (flags.output) {
-    console.log(`📁 Output directory: ${ flags.output }`);
+    console.log(`📁 Output directory: ${flags.output}`);
   }
   console.log('='.repeat(50));
 
@@ -110,16 +110,18 @@ try {
   const results = generateManifestsWithDiscovery(resolvedRoot, options);
 
   // Summary (matching CLI output)
-  const successful = results.filter(r => r.processed).length;
-  const failed = results.filter(r => !r.processed).length;
+  const successful = results.filter((r) => r.processed).length;
+  const failed = results.filter((r) => !r.processed).length;
 
   console.log('\n📊 Summary:');
-  console.log(`✅ Successful: ${ successful }`);
+  console.log(`✅ Successful: ${successful}`);
   if (failed > 0) {
-    console.log(`❌ Failed: ${ failed }`);
-    results.filter(r => !r.processed).forEach(r => {
-      console.log(`   - ${ r.name }: ${ r.error }`);
-    });
+    console.log(`❌ Failed: ${failed}`);
+    results
+      .filter((r) => !r.processed)
+      .forEach((r) => {
+        console.log(`   - ${r.name}: ${r.error}`);
+      });
   }
 
   if (successful > 0) {
@@ -130,7 +132,6 @@ try {
   }
 
   process.exit(failed > 0 ? 1 : 0);
-
 } catch (error) {
   console.error('❌ Error:', error.message);
   process.exit(1);

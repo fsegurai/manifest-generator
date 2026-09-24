@@ -146,13 +146,13 @@ class ProgrammaticManifestPlugin {
 ### Vite Plugin
 
 ```javascript
-// vite.config.js
+// vite.config.ts
 import { defineConfig } from 'vite';
 import { execSync } from 'child_process';
 
 function manifestGenerator(options = {}) {
   const { docsPath = './docs', outputPath = './public/data' } = options;
-  
+
   return {
     name: 'manifest-generator',
     buildStart() {
@@ -180,7 +180,7 @@ export default defineConfig({
 ### Vite Development Mode
 
 ```javascript
-// vite.config.js
+// vite.config.ts
 import { defineConfig } from 'vite';
 import { generateManifest } from '@fsegurai/manifest-generator';
 import fs from 'fs';
@@ -222,7 +222,7 @@ import { execSync } from 'child_process';
 
 function manifestGenerator(options = {}) {
   const { docsPath = './docs', outputPath = './dist' } = options;
-  
+
   return {
     name: 'manifest-generator',
     buildStart() {
@@ -272,13 +272,13 @@ module.exports = new Transformer({
     if (asset.filePath.includes('/docs/')) {
       // Trigger manifest generation when docs change
       const result = generateManifest('./docs');
-      
+
       // Add manifests as dependencies
       asset.addDependency({
         specifier: './docs/manifest.json',
         specifierType: 'url'
       });
-      
+
       return [asset];
     }
     return [asset];
@@ -379,7 +379,7 @@ function generateManifests() {
   return new Promise((resolve, reject) => {
     const isWindows = process.platform === 'win32';
     const command = isWindows ? 'npx.cmd' : 'npx';
-    
+
     const child = spawn(command, [
       '@fsegurai/manifest-generator',
       '--route', './docs',
@@ -388,7 +388,7 @@ function generateManifests() {
       stdio: 'inherit',
       shell: isWindows
     });
-    
+
     child.on('close', (code) => {
       if (code === 0) {
         resolve();
@@ -425,7 +425,7 @@ if (isMainThread) {
       worker.on('error', reject);
     });
   });
-  
+
   Promise.all(workers).then(() => {
     console.log('All documentation manifests generated');
   });
@@ -433,7 +433,7 @@ if (isMainThread) {
   // Worker thread - generate manifest
   const { execSync } = require('child_process');
   const { docsPath } = workerData;
-  
+
   try {
     execSync(`npx @fsegurai/manifest-generator --route ${docsPath}`);
     parentPort.postMessage(`Completed: ${docsPath}`);

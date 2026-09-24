@@ -36,12 +36,7 @@
         "label": "Getting Started",
         "description": "Complete guide to getting started with the Manifest Generator library",
         "route": "getting-started/getting-started",
-        "tags": [
-          "getting-started",
-          "installation",
-          "tutorial",
-          "quickstart"
-        ],
+        "tags": ["getting-started", "installation", "tutorial", "quickstart"],
         "isTitle": false,
         "isParent": false,
         "icon": null,
@@ -53,11 +48,7 @@
         "label": "README",
         "description": "Introduction to the Manifest Generator and quick start guide",
         "route": "getting-started/README",
-        "tags": [
-          "getting-started",
-          "overview",
-          "introduction"
-        ],
+        "tags": ["getting-started", "overview", "introduction"],
         "isTitle": false,
         "isParent": false,
         "icon": null,
@@ -139,11 +130,7 @@
         "label": "README",
         "description": "Complete overview of all Manifest Generator features and capabilities",
         "route": "features/README",
-        "tags": [
-          "features",
-          "capabilities",
-          "overview"
-        ],
+        "tags": ["features", "capabilities", "overview"],
         "isTitle": false,
         "isParent": false,
         "icon": null,
@@ -355,13 +342,7 @@
         "label": "API Examples",
         "description": "",
         "route": "api/examples",
-        "tags": [
-          "api",
-          "examples",
-          "advanced",
-          "usage",
-          "batch"
-        ],
+        "tags": ["api", "examples", "advanced", "usage", "batch"],
         "isTitle": false,
         "isParent": false,
         "icon": null,
@@ -397,13 +378,7 @@
         "label": "Get Started with API Reference",
         "description": "",
         "route": "api/README",
-        "tags": [
-          "api",
-          "examples",
-          "advanced",
-          "usage",
-          "batch"
-        ],
+        "tags": ["api", "examples", "advanced", "usage", "batch"],
         "isTitle": false,
         "isParent": false,
         "icon": null,

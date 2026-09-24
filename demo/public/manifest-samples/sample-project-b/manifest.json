@@ -2,9 +2,6 @@
   {
     "label": "Sample Project Documentation",
     "route": "README",
-    "tags": [
-      "documentation",
-      "getting-started"
-    ]
+    "tags": ["documentation", "getting-started"]
   }
 ]
