@@ -1,22 +1,17 @@
-# Contributing to manifest-generator
+# 🙌 Contributing to Manifest Generator
 
-Thanks for your interest in improving the **manifest-generator** project! This document describes the recommended local development setup, how to run tests, and the PR workflow. It is intentionally focused and cross-platform with PowerShell notes for Windows.
-
----
-
-## Requirements
-
-- Node.js LTS (recommended v18 or v20)
-- npm (or pnpm/yarn). Bun is optional for contributors who prefer it.
+Thanks for your interest in improving the **manifest-generator** project! Whether it's fixing bugs, improving documentation, or suggesting new features—your help is welcome 🙏
 
 ---
 
 ## 🚀 Getting Started
 
+> **Requirements**
+> Ensure you're using **Node.js v24.x** and **Bun v1.4.x** or higher.
+
 ### 1. Clone the Repository
 
-```powershell
-# PowerShell
+```bash
 git clone https://github.com/fsegurai/manifest-generator.git
 cd manifest-generator
 ```
@@ -27,6 +22,20 @@ cd manifest-generator
 bun install
 ```
 
+### 3. Build the Library
+
+```bash
+bun run build:packages
+```
+
+### 4. Start Development Server
+
+```bash
+bun run start
+```
+
+This will start the demo in watch mode for development.
+
 ---
 
 ## 🧪 Running Tests
@@ -34,14 +43,15 @@ bun install
 To run the full test suite:
 
 ```bash
-bun run test:packages
+bun test
 ```
 
-# Update snapshots
-bun run test-clean:packages
+### 🐞 Debug Mode
 
-# Run coverage report
-bun run test-cover:packages
+If you encounter issues, run tests in verbose mode for detailed output:
+
+```bash
+bun test --verbose
 ```
 
 ---
@@ -50,9 +60,21 @@ bun run test-cover:packages
 
 > Linting is enforced as part of the CI pipeline. Please ensure your code is clean before pushing:
 
-```powershell
+```bash
 bun run lint
+bun run format:audit   # Read-only check (Biome, covers lint + format)
 ```
+
+You can also lint specific parts:
+- Demo: `bun run lint:demo`
+- Packages: `bun run lint:packages`
+
+Run `bun run lint:fix` to auto-fix formatting issues before committing (it is the same command as `format`).
+
+**Git hooks (Husky)** are installed automatically via the `prepare` script on `bun install`:
+- `pre-commit` runs `bun run lint:fix` and re-stages your files, so fixes land inside the commit.
+- `pre-push` runs `bun run format:audit` as a read-only gate that blocks the push if anything is dirty.
+- Bypass with `git commit -n` / `git push -n` (or `HUSKY=0` for everything).
 
 ---
 
@@ -73,7 +95,7 @@ This project follows **[Conventional Commits](https://www.conventionalcommits.or
 Example:
 
 ```bash
-git commit -m "feat: new markdown property for manifest generation"
+git commit -m "feat: add new markdown extension for spoilers"
 ```
 
 ---
@@ -84,10 +106,10 @@ Please follow these steps to ensure a smooth review:
 
 1. **Merge** the latest changes from `main` into your branch:
    ```bash
-    git checkout main
-    git pull origin main
-    git checkout your-feature-branch
-    git merge main
+   git checkout main
+   git pull origin main
+   git checkout your-feature-branch
+   git merge main
    ```
 
 2. Make sure all tests pass:
@@ -95,14 +117,21 @@ Please follow these steps to ensure a smooth review:
    bun test
    ```
 
-3. If you've added functionality:
-    - Include **unit tests**.
-    - Update the **README.md** or relevant documentation.
+3. Build and verify your changes:
+   ```bash
+   bun run build:packages
+   bun run build:demo
+   ```
 
-4. Reference any related issues in your PR comment:
+4. If you've added functionality:
+	- Include **unit tests**.
+	- Update the **README.md** or relevant documentation.
+	- Add extension previews if applicable.
+
+5. Reference any related issues in your PR comment:
    > Example: _"Closes #12"_
 
-5. Ensure your PR title follows the **conventional commit** format.
+6. Ensure your PR title follows the **conventional commit** format.
 
 ---
 
@@ -114,8 +143,10 @@ When submitting a bug report, please include:
 - The **expected vs actual behavior**.
 - A **minimal reproducible example** (CodeSandbox or StackBlitz is ideal).
 - Details about:
-    - Browser(s) and OS
-    - Node and Bun versions
+	- Browser(s) and OS
+	- Node and Bun versions
+	- Marked Extension version
+	- Which extension is affected
 
 ---
 

@@ -24,12 +24,11 @@ coverageSkipTestFiles = true
 
 # Exclude paths from coverage
 coveragePathIgnorePatterns = [
-    "docs/**",
-    "demo/**",
+    "node_modules/**",
     "vendor/**",
     "generated/**",
-    "node_modules/**",
     "**/dist/**",
+    "demo/**",
     "**/*.config.js",
     "**/*.config.ts",
     "**/spec/**",
