@@ -85,8 +85,8 @@ relative path from output to source. For example, with `--output ./docs/v1 --rou
 ]
 ```
 
-Note that top-level pages like `README` (route with a single segment, no `/`) have **no `breadcrumb` key at all** —
-`makeBreadcrumb()` returns `undefined` for single-segment routes, and `JSON.stringify` simply omits `undefined`
+Note that top-level pages like `README` (no parent folder) have **no `breadcrumb` key at all** —
+`makeBreadcrumb()` returns `undefined` for an empty ancestor chain, and `JSON.stringify` simply omits `undefined`
 values. This is different from `cleanItem()`, which strips empty fields from `manifest.json`; search-index entries
 aren't run through `cleanItem()`, but in practice their optional fields (`tags`, `headings`, `excerpt`, `breadcrumb`)
 are only ever set to a real value or left `undefined` — never an empty string.

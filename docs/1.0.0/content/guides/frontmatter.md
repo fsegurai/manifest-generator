@@ -34,7 +34,7 @@ This is the exact list from the package's `ALLOWED_FRONTMATTER_KEYS` export:
 | `iconType`              | string   | Optional icon source/type                                                  |
 | `badge`                 | string   | Optional badge text                                                        |
 | `badgeColor`            | string   | Optional badge color                                                       |
-| `breadcrumbTitle`       | string   | Stored on the navigation item; see [note](#breadcrumbtitle) below          |
+| `breadcrumbTitle`       | string   | Overrides this folder's own label in descendants' breadcrumbs; see [note](#breadcrumbtitle) below |
 | `layout`                | string   | Custom page layout identifier for the consuming frontend                   |
 | `redirect`              | string   | URL to redirect this page to                                               |
 | `externalUrl`           | string   | Link to an external resource instead of a doc page                        |
@@ -47,11 +47,21 @@ This is the exact list from the package's `ALLOWED_FRONTMATTER_KEYS` export:
 
 ### `breadcrumbTitle`
 
-`breadcrumbTitle` is parsed, validated, and carried through onto the generated `NavigationItem` (`item.breadcrumbTitle`)
-so a consuming frontend can read it and choose to display a shorter breadcrumb label. However, the tool's own
-auto-generated `breadcrumb` field on **search index** entries is derived purely from the route path segments
-(`makeBreadcrumb()`) — it does not read `breadcrumbTitle` to override any segment. Setting `breadcrumbTitle` does not
-change what appears in `search-index.json`; it is metadata for your own UI to use if it wants to.
+Set on a folder's own `README.md`/`index.md` (README wins if both exist), `breadcrumbTitle` overrides what that
+folder's segment shows in every descendant page's auto-generated `breadcrumb` field (`search-index.json`), instead of
+falling back to the title-cased folder name. It's also still carried through onto the generated `NavigationItem`
+(`item.breadcrumbTitle`) for a consuming frontend to read directly. A page's own `breadcrumbTitle` only affects
+descendants — it has no effect on that page's own breadcrumb entry.
+
+```yaml
+# docs/api-reference/README.md
+---
+breadcrumbTitle: API
+---
+```
+
+A nested page at `docs/api-reference/authentication.md` then gets `"breadcrumb": "API"` instead of the auto-derived
+`"Api Reference"`.
 
 ## Validation
 

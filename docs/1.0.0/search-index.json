@@ -590,7 +590,7 @@
       "`dedupeHeadings(headings: string[], threshold?: number): string[]`",
       "`diceSimilarity(a: string, b: string): number`",
       "`makeExcerpt(body: string, maxLength?: number): string`",
-      "`makeBreadcrumb(route: string): string | undefined`",
+      "`makeBreadcrumb(labelChain: string[]): string | undefined`",
       "`walkDocs(dir: string, relative?: string, searchIndex?: SearchEntry[], exclude?: string[]): NavigationItem[]`",
       "`defineConfig(config: ConfigFile): ConfigFile`",
       "`ALLOWED_FRONTMATTER_KEYS`",

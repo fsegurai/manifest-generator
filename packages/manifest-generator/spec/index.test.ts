@@ -515,6 +515,20 @@ describe('validateDocs', () => {
     expect(results[0].warnings.some((w) => w.includes('Both draft and hidden'))).toBe(true);
   });
 
+  test('warns on duplicate redirect targets', () => {
+    const root = path.join(tempDir, 'docs');
+    writeFile(path.join(root, 'old-one.md'), '---\nredirect: /new-page\n---\nContent');
+    writeFile(path.join(root, 'old-two.md'), '---\nredirect: /new-page\n---\nContent');
+    writeFile(path.join(root, 'unique.md'), '---\nredirect: /other-page\n---\nContent');
+
+    const results = validateDocs(root);
+    const byFile = Object.fromEntries(results.map((r) => [r.file, r]));
+
+    expect(byFile['old-one.md'].warnings.some((w) => w.includes('also used by old-two.md'))).toBe(true);
+    expect(byFile['old-two.md'].warnings.some((w) => w.includes('also used by old-one.md'))).toBe(true);
+    expect(byFile['unique.md'].warnings.some((w) => w.includes('also used by'))).toBe(false);
+  });
+
   test('warns on deprecated without alternative', () => {
     const root = path.join(tempDir, 'docs');
     writeFile(path.join(root, 'dep.md'), '---\ndeprecated: true\n---\nOld');

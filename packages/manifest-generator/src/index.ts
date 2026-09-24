@@ -731,6 +731,25 @@ function validateDocs(rootDir: string): ValidateResult[] {
   }
 
   validateDirectory(rootDir);
+
+  const redirectTargets = new Map<string, string[]>();
+  for (const result of results) {
+    const target = result.frontmatter?.redirect;
+    if (!target) continue;
+    const files = redirectTargets.get(target) ?? [];
+    files.push(result.file);
+    redirectTargets.set(target, files);
+  }
+
+  for (const result of results) {
+    const target = result.frontmatter?.redirect;
+    if (!target) continue;
+    const collidingFiles = (redirectTargets.get(target) ?? []).filter((file) => file !== result.file);
+    if (collidingFiles.length > 0) {
+      result.warnings.push(`Redirect target "${target}" is also used by ${collidingFiles.join(', ')}`);
+    }
+  }
+
   return results;
 }
 
