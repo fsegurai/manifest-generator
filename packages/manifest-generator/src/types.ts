@@ -53,6 +53,7 @@ export interface ProcessingResult {
 export interface DiscoveryOptions {
   docsSubfolder?: string;
   recursive?: boolean;
+  exclude?: string[];
 }
 
 export interface ManifestGenerationOptions {
@@ -62,6 +63,9 @@ export interface ManifestGenerationOptions {
   docsSubfolder?: string;
   autoDetect?: boolean;
   recursive?: boolean;
+  exclude?: string[];
+  projects?: Record<string, ProjectConfig>;
+  dryRun?: boolean;
 }
 
 export interface Frontmatter {

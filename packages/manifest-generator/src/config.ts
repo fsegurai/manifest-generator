@@ -20,10 +20,7 @@ function findConfigPath(rootDir: string): string | null {
   return null;
 }
 
-export function loadConfig(rootDir: string): Partial<ConfigFile> {
-  const configPath = findConfigPath(rootDir);
-  if (!configPath) return {};
-
+export function parseConfigFile(configPath: string): Partial<ConfigFile> {
   const ext = path.extname(configPath);
   if (ext === '.json') {
     return JSON.parse(fs.readFileSync(configPath, 'utf8')) as Partial<ConfigFile>;
@@ -48,6 +45,23 @@ export function loadConfig(rootDir: string): Partial<ConfigFile> {
     console.warn(`Warning: Could not parse config file ${configPath}`);
     return {};
   }
+}
+
+export function loadConfig(rootDir: string): Partial<ConfigFile> {
+  const configPath = findConfigPath(rootDir);
+  if (!configPath) return {};
+
+  return parseConfigFile(configPath);
+}
+
+export function loadConfigFromFile(filePath: string): Partial<ConfigFile> {
+  const resolvedPath = path.resolve(filePath);
+  if (!fs.existsSync(resolvedPath)) {
+    console.warn(`Warning: Config file not found: ${resolvedPath}`);
+    return {};
+  }
+
+  return parseConfigFile(resolvedPath);
 }
 
 export function mergeConfig<T extends Record<string, unknown>>(

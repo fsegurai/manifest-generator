@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import type {
   DiscoveredProject,
   DiscoveryOptions,
@@ -9,6 +9,7 @@ import type {
   ManifestResult,
   NavigationItem,
   ProcessingResult,
+  ProjectConfig,
   SearchEntry,
   ValidateResult,
 } from './types.js';
@@ -158,6 +159,23 @@ function isMarkdownFile(name: string): boolean {
   return VALID_MARKDOWN_EXTENSIONS.some((ext) => name.endsWith(ext));
 }
 
+function globToRegExp(pattern: string): RegExp {
+  const placeholder = '\u0000';
+  const escaped = pattern
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*/g, placeholder)
+    .replace(/\*/g, '[^/]*')
+    .split(placeholder)
+    .join('.*');
+  return new RegExp(`^${escaped}$`);
+}
+
+function isExcluded(relPath: string, patterns: string[]): boolean {
+  if (!patterns || patterns.length === 0) return false;
+  const normalized = relPath.split(path.sep).join('/');
+  return patterns.some((pattern) => globToRegExp(pattern).test(normalized));
+}
+
 function computeRoutePrefix(outputDir: string, sourceDir: string): string {
   const rel = path.relative(path.resolve(outputDir), path.resolve(sourceDir));
   if (!rel || rel.startsWith('..')) return '';
@@ -176,17 +194,23 @@ function applyRoutePrefix(items: NavigationItem[], prefix: string): NavigationIt
   });
 }
 
-function walkDocs(dir: string, relative = '', searchIndex: SearchEntry[] = []): NavigationItem[] {
+function walkDocs(
+  dir: string,
+  relative = '',
+  searchIndex: SearchEntry[] = [],
+  exclude: string[] = [],
+): NavigationItem[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
 
   const items = entries
     .filter((entry) => !entry.name.startsWith('.') && entry.name !== 'manifest.json')
+    .filter((entry) => !isExcluded(path.join(relative, entry.name), exclude))
     .map((entry) => {
       const fullPath = path.join(dir, entry.name);
       const relPath = path.join(relative, entry.name);
 
       if (entry.isDirectory()) {
-        const children = walkDocs(fullPath, relPath, searchIndex);
+        const children = walkDocs(fullPath, relPath, searchIndex, exclude);
         if (children.length === 0) return null;
 
         const folderItem: NavigationItem = {
@@ -195,10 +219,13 @@ function walkDocs(dir: string, relative = '', searchIndex: SearchEntry[] = []): 
           isParent: true,
         };
 
-        const indexMd = children.find(
-          (c) =>
-            c.route === `${relPath.replace(/\\/g, '/')}/README` || c.route === `${relPath.replace(/\\/g, '/')}/index`,
-        );
+        const normalizedRelPath = relPath.replace(/\\/g, '/');
+        const readmeMd = children.find((c) => c.route === `${normalizedRelPath}/README`);
+        const indexOnlyMd = children.find((c) => c.route === `${normalizedRelPath}/index`);
+        if (readmeMd && indexOnlyMd) {
+          console.warn(`Warning: both README and index found in ${normalizedRelPath} — README takes precedence`);
+        }
+        const indexMd = readmeMd || indexOnlyMd;
         if (indexMd) {
           folderItem.order = (indexMd as NavigationItem & { order?: number }).order;
           folderItem.icon = (indexMd as NavigationItem & { icon?: string | null }).icon ?? null;
@@ -250,7 +277,7 @@ function walkDocs(dir: string, relative = '', searchIndex: SearchEntry[] = []): 
           item.route = '#';
         }
 
-        if (item.route !== '#' && item.route !== '' && item.route !== null) {
+        if (item.route !== '#' && item.route !== '') {
           searchIndex.push({
             label: item.label,
             description: item.description,
@@ -272,27 +299,50 @@ function walkDocs(dir: string, relative = '', searchIndex: SearchEntry[] = []): 
   return sortItems(items);
 }
 
+function resolveDocsPath(projectPath: string, docsSubfolder: string): string {
+  const docsPath = path.join(projectPath, docsSubfolder);
+  return fs.existsSync(docsPath) && fs.statSync(docsPath).isDirectory() ? docsPath : projectPath;
+}
+
 function generateDocsManifests(
   docsRoot: string,
   optionsOrWalker?:
     | {
         docsSubfolder?: string;
         recursive?: boolean;
-        walkerFn?: (projectPath: string, relative: string, searchIndex: SearchEntry[]) => NavigationItem[];
+        exclude?: string[];
+        projects?: Record<string, ProjectConfig>;
+        dryRun?: boolean;
+        walkerFn?: (
+          projectPath: string,
+          relative: string,
+          searchIndex: SearchEntry[],
+          exclude?: string[],
+        ) => NavigationItem[];
       }
     | ((projectPath: string, relative: string, searchIndex: SearchEntry[]) => NavigationItem[]),
 ): ProcessingResult[] {
   const options = typeof optionsOrWalker === 'function' ? { walkerFn: optionsOrWalker } : optionsOrWalker || {};
-  const { docsSubfolder = 'docs', recursive = false, walkerFn } = options;
-  const discovered = discoverProjects(docsRoot, { docsSubfolder, recursive });
+  const { docsSubfolder = 'docs', recursive = false, exclude = [], projects = {}, dryRun = false, walkerFn } = options;
+  const discovered = discoverProjects(docsRoot, { docsSubfolder, recursive, exclude });
   const results: ProcessingResult[] = [];
 
   discovered.forEach((project) => {
     const searchIndex: SearchEntry[] = [];
     const walker = walkerFn || walkDocs;
 
+    const override = projects[project.name];
+    const docsPath = override?.docsSubfolder
+      ? resolveDocsPath(project.projectPath, override.docsSubfolder)
+      : project.docsPath;
+    const writeDir = override?.outputDir
+      ? path.isAbsolute(override.outputDir)
+        ? override.outputDir
+        : path.join(project.projectPath, override.outputDir)
+      : project.projectPath;
+
     try {
-      const manifest = walker(project.docsPath, '', searchIndex);
+      const manifest = walker(docsPath, '', searchIndex, exclude);
       if (!manifest || !Array.isArray(manifest)) {
         results.push({
           name: project.name,
@@ -302,7 +352,7 @@ function generateDocsManifests(
         return;
       }
 
-      const prefix = computeRoutePrefix(project.projectPath, project.docsPath);
+      const prefix = computeRoutePrefix(writeDir, docsPath);
       if (prefix) {
         applyRoutePrefix(manifest, prefix);
         for (let i = 0; i < searchIndex.length; i++) {
@@ -313,15 +363,20 @@ function generateDocsManifests(
 
       const cleaned = manifest.map(cleanItem);
 
-      fs.writeFileSync(path.join(project.projectPath, 'manifest.json'), JSON.stringify(cleaned, null, 2), 'utf8');
+      const manifestPath = path.join(writeDir, 'manifest.json');
+      const searchIndexPath = path.join(writeDir, 'search-index.json');
 
-      fs.writeFileSync(
-        path.join(project.projectPath, 'search-index.json'),
-        JSON.stringify(searchIndex, null, 2),
-        'utf8',
-      );
+      if (!dryRun) {
+        fs.mkdirSync(writeDir, { recursive: true });
+        fs.writeFileSync(manifestPath, JSON.stringify(cleaned, null, 2), 'utf8');
+        fs.writeFileSync(searchIndexPath, JSON.stringify(searchIndex, null, 2), 'utf8');
+        console.log(`Generated manifest and search index for: ${project.name}`);
+      } else {
+        console.log(
+          `[dry-run] Would write: ${manifestPath} (${cleaned.length} items), ${searchIndexPath} (${searchIndex.length} entries)`,
+        );
+      }
 
-      console.log(`Generated manifest and search index for: ${project.name}`);
       results.push({ name: project.name, processed: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -332,9 +387,9 @@ function generateDocsManifests(
   return results;
 }
 
-function generateManifest(projectPath: string): ManifestResult {
+function generateManifest(projectPath: string, exclude: string[] = []): ManifestResult {
   const searchIndex: SearchEntry[] = [];
-  const manifest = walkDocs(projectPath, '', searchIndex);
+  const manifest = walkDocs(projectPath, '', searchIndex, exclude);
 
   return {
     manifest,
@@ -343,7 +398,7 @@ function generateManifest(projectPath: string): ManifestResult {
 }
 
 function discoverProjects(rootDir: string, options: DiscoveryOptions = {}): DiscoveredProject[] {
-  const { docsSubfolder = 'docs', recursive = false } = options;
+  const { docsSubfolder = 'docs', recursive = false, exclude = [] } = options;
   const discovered: DiscoveredProject[] = [];
   const maxDepth = recursive ? Infinity : 1;
 
@@ -359,7 +414,7 @@ function discoverProjects(rootDir: string, options: DiscoveryOptions = {}): Disc
     }
   }
 
-  function scan(dir: string, depth: number) {
+  function scan(dir: string, depth: number, relative = '') {
     if (depth > maxDepth) return;
 
     try {
@@ -368,12 +423,14 @@ function discoverProjects(rootDir: string, options: DiscoveryOptions = {}): Disc
       for (const entry of entries) {
         if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
 
+        const relPath = path.join(relative, entry.name);
+        if (isExcluded(relPath, exclude)) continue;
+
         const projectPath = path.join(dir, entry.name);
 
         if (isProjectRoot(projectPath)) {
+          const actualDocsPath = resolveDocsPath(projectPath, docsSubfolder);
           const docsPath = path.join(projectPath, docsSubfolder);
-          const actualDocsPath =
-            fs.existsSync(docsPath) && fs.statSync(docsPath).isDirectory() ? docsPath : projectPath;
 
           discovered.push({
             name: entry.name,
@@ -382,7 +439,7 @@ function discoverProjects(rootDir: string, options: DiscoveryOptions = {}): Disc
             type: depth > 1 ? 'recursive' : actualDocsPath === docsPath ? 'subfolder' : 'direct',
           });
         } else if (recursive) {
-          scan(projectPath, depth + 1);
+          scan(projectPath, depth + 1, relPath);
         }
       }
     } catch (error) {
@@ -403,6 +460,9 @@ function generateManifestsWithDiscovery(rootDir: string, options: ManifestGenera
     docsSubfolder = 'docs',
     autoDetect = true,
     recursive = false,
+    exclude = [],
+    projects = {},
+    dryRun = false,
   } = options;
 
   if (route) {
@@ -410,7 +470,7 @@ function generateManifestsWithDiscovery(rootDir: string, options: ManifestGenera
       throw new Error(`Route not found: ${route}`);
     }
 
-    const result = generateManifest(route);
+    const result = generateManifest(route, exclude);
     const outputPath = outputDir || route;
 
     const prefix = outputDir ? computeRoutePrefix(outputDir, route) : '';
@@ -422,15 +482,21 @@ function generateManifestsWithDiscovery(rootDir: string, options: ManifestGenera
       }
     }
 
-    fs.mkdirSync(outputPath, { recursive: true });
-
     const cleaned = result.manifest.map(cleanItem);
+    const manifestPath = path.join(outputPath, 'manifest.json');
+    const searchIndexPath = path.join(outputPath, 'search-index.json');
 
-    fs.writeFileSync(path.join(outputPath, 'manifest.json'), JSON.stringify(cleaned, null, 2), 'utf8');
+    if (!dryRun) {
+      fs.mkdirSync(outputPath, { recursive: true });
+      fs.writeFileSync(manifestPath, JSON.stringify(cleaned, null, 2), 'utf8');
+      fs.writeFileSync(searchIndexPath, JSON.stringify(result.searchIndex, null, 2), 'utf8');
+      console.log(`Generated manifest for route: ${route}`);
+    } else {
+      console.log(
+        `[dry-run] Would write: ${manifestPath} (${cleaned.length} items), ${searchIndexPath} (${result.searchIndex.length} entries)`,
+      );
+    }
 
-    fs.writeFileSync(path.join(outputPath, 'search-index.json'), JSON.stringify(result.searchIndex, null, 2), 'utf8');
-
-    console.log(`Generated manifest for route: ${route}`);
     return [{ name: path.basename(route), processed: true }];
   }
 
@@ -443,7 +509,7 @@ function generateManifestsWithDiscovery(rootDir: string, options: ManifestGenera
     }
 
     const targetPath = fs.existsSync(docsPath) ? docsPath : projectPath;
-    const result = generateManifest(targetPath);
+    const result = generateManifest(targetPath, exclude);
     const outputPath2 = outputDir || projectPath;
 
     const prefix = outputDir ? computeRoutePrefix(outputPath2, targetPath) : '';
@@ -455,20 +521,26 @@ function generateManifestsWithDiscovery(rootDir: string, options: ManifestGenera
       }
     }
 
-    fs.mkdirSync(outputPath2, { recursive: true });
-
     const cleaned = result.manifest.map(cleanItem);
+    const manifestPath2 = path.join(outputPath2, 'manifest.json');
+    const searchIndexPath2 = path.join(outputPath2, 'search-index.json');
 
-    fs.writeFileSync(path.join(outputPath2, 'manifest.json'), JSON.stringify(cleaned, null, 2), 'utf8');
+    if (!dryRun) {
+      fs.mkdirSync(outputPath2, { recursive: true });
+      fs.writeFileSync(manifestPath2, JSON.stringify(cleaned, null, 2), 'utf8');
+      fs.writeFileSync(searchIndexPath2, JSON.stringify(result.searchIndex, null, 2), 'utf8');
+      console.log(`Generated manifest for project: ${project}`);
+    } else {
+      console.log(
+        `[dry-run] Would write: ${manifestPath2} (${cleaned.length} items), ${searchIndexPath2} (${result.searchIndex.length} entries)`,
+      );
+    }
 
-    fs.writeFileSync(path.join(outputPath2, 'search-index.json'), JSON.stringify(result.searchIndex, null, 2), 'utf8');
-
-    console.log(`Generated manifest for project: ${project}`);
     return [{ name: project, processed: true }];
   }
 
   if (autoDetect) {
-    return generateDocsManifests(rootDir, { docsSubfolder, recursive });
+    return generateDocsManifests(rootDir, { docsSubfolder, recursive, exclude, projects, dryRun });
   }
 
   return [];

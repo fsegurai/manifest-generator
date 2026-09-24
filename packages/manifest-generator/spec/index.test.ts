@@ -3,7 +3,6 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import {
-  ALLOWED_FRONTMATTER_KEYS,
   cleanItem,
   dedupeHeadings,
   defineConfig,
@@ -21,7 +20,7 @@ import {
   validateDocs,
   walkDocs,
   watchDocs,
-} from '../src/index.js';
+} from '../src';
 
 let tempDir = '';
 
@@ -99,10 +98,10 @@ describe('parseFrontmatter', () => {
 
   test('handles key with empty value', () => {
     const content = '---\nlabel:\norder: 1\n---\n# Content';
-    const parsed = parseFrontmatter<{ label?: string | null; order: number }>(content);
+    const parsed = parseFrontmatter<{ label?: string; order: number }>(content);
 
     expect(parsed.order).toBe(1);
-    expect(parsed['label']).toBeNull();
+    expect(parsed['label']).toBe('');
   });
 });
 
@@ -269,6 +268,26 @@ Final section with a list:
     expect(searchIndex[0].excerpt).toBeUndefined();
   });
 
+  test('excludes files matching a glob pattern', () => {
+    const docsRoot = path.join(tempDir, 'docs-exclude');
+    writeFile(path.join(docsRoot, 'visible.md'), '# Visible');
+    writeFile(path.join(docsRoot, 'internal.md'), '# Internal');
+
+    const items = walkDocs(docsRoot, '', [], ['internal.md']);
+    expect(items.length).toBe(1);
+    expect(items[0].label).toBe('Visible');
+  });
+
+  test('excludes an entire directory matching a glob pattern', () => {
+    const docsRoot = path.join(tempDir, 'docs-exclude-dir');
+    writeFile(path.join(docsRoot, 'keep.md'), '# Keep');
+    writeFile(path.join(docsRoot, 'drafts', 'wip.md'), '# WIP');
+
+    const items = walkDocs(docsRoot, '', [], ['drafts/**']);
+    expect(items.length).toBe(1);
+    expect(items[0].label).toBe('Keep');
+  });
+
   test('reads new frontmatter fields', () => {
     const docsRoot = path.join(tempDir, 'docs');
 
@@ -399,6 +418,17 @@ describe('discoverProjects', () => {
 
     expect(docsProject?.type).toBe('subfolder');
     expect(directProject?.type).toBe('direct');
+  });
+
+  test('excludes matching directories from project discovery', () => {
+    const root = path.join(tempDir, 'projects-exclude');
+    writeFile(path.join(root, 'project-a', 'docs', 'README.md'), '# A');
+    writeFile(path.join(root, 'project-b', 'docs', 'README.md'), '# B');
+
+    const discovered = discoverProjects(root, { docsSubfolder: 'docs', exclude: ['project-b'] });
+
+    expect(discovered.length).toBe(1);
+    expect(discovered[0].name).toBe('project-a');
   });
 
   test('discovers nested projects with recursive option', () => {
@@ -766,6 +796,48 @@ describe('generateDocsManifests', () => {
     expect(results.length).toBe(1);
     expect(results[0].processed).toBe(false);
     expect(results[0].error).toBe('Invalid manifest generated');
+  });
+
+  test('excludes files across all discovered projects', () => {
+    const root = path.join(tempDir, 'multi-proj-exclude');
+    writeFile(path.join(root, 'proj-a', 'docs', 'README.md'), '# A');
+    writeFile(path.join(root, 'proj-a', 'docs', 'secret.md'), '# Secret');
+
+    generateDocsManifests(root, { docsSubfolder: 'docs', exclude: ['secret.md'] });
+
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, 'proj-a', 'manifest.json'), 'utf8'));
+    expect(manifest.length).toBe(1);
+    expect(manifest[0].label).toBe('README');
+  });
+
+  test('applies per-project docsSubfolder override', () => {
+    const root = path.join(tempDir, 'projects-override-subfolder');
+    writeFile(path.join(root, 'proj-a', 'docs', 'page.md'), '---\nlabel: Default Page\n---\nFrom docs');
+    writeFile(path.join(root, 'proj-a', 'guides', 'page.md'), '---\nlabel: Override Page\n---\nFrom guides');
+
+    generateDocsManifests(root, {
+      docsSubfolder: 'docs',
+      projects: { 'proj-a': { docsSubfolder: 'guides' } },
+    });
+
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, 'proj-a', 'manifest.json'), 'utf8'));
+    expect(manifest.length).toBe(1);
+    expect(manifest[0].label).toBe('Override Page');
+  });
+
+  test('applies per-project outputDir override', () => {
+    const root = path.join(tempDir, 'projects-override-output');
+    writeFile(path.join(root, 'proj-a', 'docs', 'README.md'), '# A');
+
+    generateDocsManifests(root, {
+      docsSubfolder: 'docs',
+      projects: { 'proj-a': { outputDir: 'custom-out' } },
+    });
+
+    const customOutDir = path.join(root, 'proj-a', 'custom-out');
+    expect(fs.existsSync(path.join(customOutDir, 'manifest.json'))).toBe(true);
+    expect(fs.existsSync(path.join(customOutDir, 'search-index.json'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'proj-a', 'manifest.json'))).toBe(false);
   });
 });
 
