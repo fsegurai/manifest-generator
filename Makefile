@@ -1,5 +1,5 @@
 # ---------- Config ----------
-TRIVY_IMAGE ?= aquasec/trivy:0.71.0
+TRIVY_IMAGE ?= aquasec/trivy:0.71.1
 # Pin to an immutable digest for supply-chain safety (recommended for CI):
 #   docker pull aquasec/trivy:0.71.0
 #   docker inspect --format='{{index .RepoDigests 0}}' aquasec/trivy:0.71.0
