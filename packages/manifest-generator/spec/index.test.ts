@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import {
   cleanItem,
   dedupeHeadings,
@@ -15,7 +15,9 @@ import {
   generateManifestsWithDiscovery,
   makeBreadcrumb,
   makeExcerpt,
+  type NavigationItem,
   parseFrontmatter,
+  type SearchEntry,
   sortItems,
   validateDocs,
   walkDocs,
@@ -92,8 +94,8 @@ describe('parseFrontmatter', () => {
     const content = '---\ndescription: >\n  Folded\n  text\n\nnext: value\n---\n# Content';
     const parsed = parseFrontmatter(content);
 
-    expect(parsed['next']).toBe('value');
-    expect(parsed['description']).toBeTruthy();
+    expect(parsed.next).toBe('value');
+    expect(parsed.description).toBeTruthy();
   });
 
   test('handles key with empty value', () => {
@@ -101,7 +103,14 @@ describe('parseFrontmatter', () => {
     const parsed = parseFrontmatter<{ label?: string; order: number }>(content);
 
     expect(parsed.order).toBe(1);
-    expect(parsed['label']).toBe('');
+    expect(parsed.label).toBe('');
+  });
+
+  test('returns empty object when YAML is malformed instead of throwing', () => {
+    // Tab-indented YAML is invalid and makes js-yaml throw a YAMLException.
+    const content = '---\n\tlabel: Broken\n---\n# Content';
+    expect(() => parseFrontmatter(content)).not.toThrow();
+    expect(parseFrontmatter(content)).toEqual({});
   });
 });
 
@@ -132,7 +141,7 @@ describe('walkDocs', () => {
     writeFile(path.join(docsRoot, 'hidden.md'), '---\nhidden: true\n---\nHidden');
     writeFile(path.join(docsRoot, 'section', 'guide.md'), '# Guide');
 
-    const searchIndex: { label: string; route: string }[] = [];
+    const searchIndex: SearchEntry[] = [];
     const manifest = walkDocs(docsRoot, '', searchIndex);
 
     expect(manifest.length).toBe(3);
@@ -151,7 +160,7 @@ describe('walkDocs', () => {
     writeFile(path.join(docsRoot, 'article.mdx'), '---\nlabel: MDX Article\n---\n# Article');
     writeFile(path.join(docsRoot, 'note.md'), '# Note');
 
-    const searchIndex: { label: string; route: string }[] = [];
+    const searchIndex: SearchEntry[] = [];
     const manifest = walkDocs(docsRoot, '', searchIndex);
 
     expect(manifest.length).toBe(2);
@@ -166,7 +175,7 @@ describe('walkDocs', () => {
     writeFile(path.join(docsRoot, 'aaa.md'), '---\nlabel: AAA Mid\norder: 2\n---\n# A');
     writeFile(path.join(docsRoot, 'mmm.md'), '---\nlabel: MMM First\norder: 1\n---\n# M');
 
-    const searchIndex: { label: string; route: string }[] = [];
+    const searchIndex: SearchEntry[] = [];
     const manifest = walkDocs(docsRoot, '', searchIndex);
 
     expect(manifest.length).toBe(3);
@@ -182,7 +191,7 @@ describe('walkDocs', () => {
     writeFile(path.join(docsRoot, 'alpha.md'), '# Alpha');
     writeFile(path.join(docsRoot, 'charlie.md'), '# Charlie');
 
-    const searchIndex: { label: string; route: string }[] = [];
+    const searchIndex: SearchEntry[] = [];
     const manifest = walkDocs(docsRoot, '', searchIndex);
 
     expect(manifest[0].label).toBe('Alpha');
@@ -246,8 +255,7 @@ Final section with a list:
 `,
     );
 
-    const searchIndex: { label: string; route: string; headings?: string[]; excerpt?: string; breadcrumb?: string }[] =
-      [];
+    const searchIndex: SearchEntry[] = [];
     walkDocs(docsRoot, '', searchIndex);
 
     expect(searchIndex[0].headings).toEqual(['Getting Started', 'Configuration', 'Deployment']);
@@ -263,7 +271,7 @@ Final section with a list:
     writeFile(path.join(docsRoot, 'section', 'README.md'), '---\nbreadcrumbTitle: Custom Section Name\n---\nSection');
     writeFile(path.join(docsRoot, 'section', 'page.md'), '# Page');
 
-    const searchIndex: { label: string; route: string; breadcrumb?: string }[] = [];
+    const searchIndex: SearchEntry[] = [];
     walkDocs(docsRoot, '', searchIndex);
 
     const entry = searchIndex.find((e) => e.label === 'Page');
@@ -275,7 +283,7 @@ Final section with a list:
 
     writeFile(path.join(docsRoot, 'getting-started', 'page.md'), '# Page');
 
-    const searchIndex: { label: string; route: string; breadcrumb?: string }[] = [];
+    const searchIndex: SearchEntry[] = [];
     walkDocs(docsRoot, '', searchIndex);
 
     expect(searchIndex[0].breadcrumb).toBe('Getting Started');
@@ -290,7 +298,7 @@ Final section with a list:
     );
     writeFile(path.join(docsRoot, 'grandparent', 'parent', 'page.md'), '# Page');
 
-    const searchIndex: { label: string; route: string; breadcrumb?: string }[] = [];
+    const searchIndex: SearchEntry[] = [];
     walkDocs(docsRoot, '', searchIndex);
 
     expect(searchIndex[0].breadcrumb).toBe('Custom Grandparent > Parent');
@@ -301,7 +309,7 @@ Final section with a list:
 
     writeFile(path.join(docsRoot, 'page.md'), '---\nlabel: Empty\n---\n   \n\n  ');
 
-    const searchIndex: { label: string; route: string; excerpt?: string }[] = [];
+    const searchIndex: SearchEntry[] = [];
     walkDocs(docsRoot, '', searchIndex);
 
     expect(searchIndex[0].excerpt).toBeUndefined();
@@ -349,7 +357,7 @@ keywords: ["key1", "key2"]
 ---`,
     );
 
-    const searchIndex: { label: string; route: string }[] = [];
+    const searchIndex: SearchEntry[] = [];
     const manifest = walkDocs(docsRoot, '', searchIndex);
 
     expect(manifest.length).toBe(1);
@@ -370,6 +378,54 @@ keywords: ["key1", "key2"]
     expect(searchIndex[0].excerpt).toBeUndefined();
     expect(searchIndex[0].breadcrumb).toBeUndefined();
   });
+
+  test('README takes precedence over index.md when both exist, with a warning', () => {
+    const docsRoot = path.join(tempDir, 'docs-readme-index-conflict');
+    writeFile(path.join(docsRoot, 'guides', 'README.md'), '---\nlabel: Guides Readme\norder: 1\n---\nBody');
+    writeFile(path.join(docsRoot, 'guides', 'index.md'), '---\nlabel: Guides Index\norder: 2\n---\nBody');
+    writeFile(path.join(docsRoot, 'guides', 'page.md'), '# Page');
+
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(args.join(' '));
+
+    let manifest: NavigationItem[];
+    try {
+      manifest = walkDocs(docsRoot, '', []);
+    } finally {
+      console.warn = originalWarn;
+    }
+
+    const guidesFolder = manifest.find((i) => i.route === 'guides');
+    expect(guidesFolder).toBeDefined();
+    expect(guidesFolder!.order).toBe(1);
+    expect(warnings.some((w) => w.includes('both README and index found in guides'))).toBe(true);
+  });
+
+  test('skips files with unsupported extensions', () => {
+    const docsRoot = path.join(tempDir, 'docs-unsupported-ext');
+    writeFile(path.join(docsRoot, 'README.md'), '# Home');
+    writeFile(path.join(docsRoot, 'notes.txt'), 'not markdown');
+    writeFile(path.join(docsRoot, 'image.png'), 'binary-ish');
+
+    const manifest = walkDocs(docsRoot, '', []);
+    expect(manifest.length).toBe(1);
+    expect(manifest[0].label).toBe('README');
+  });
+
+  test('falls back to formatTitle when a folder README.md cannot be read (e.g. is a directory)', () => {
+    const docsRoot = path.join(tempDir, 'docs-broken-readme');
+    // Make "README.md" itself a directory so existsSync() is true but readFileSync() throws EISDIR,
+    // exercising resolveFolderBreadcrumbLabel's catch branch indirectly via walkDocs.
+    fs.mkdirSync(path.join(docsRoot, 'getting-started', 'README.md'), { recursive: true });
+    writeFile(path.join(docsRoot, 'getting-started', 'page.md'), '# Page');
+
+    expect(() => walkDocs(docsRoot, '', [])).not.toThrow();
+    const manifest = walkDocs(docsRoot, '', []);
+    const folder = manifest.find((i) => i.route === 'getting-started');
+    expect(folder).toBeDefined();
+    expect(folder!.label).toBe('Getting Started');
+  });
 });
 
 describe('cleanItem', () => {
@@ -387,7 +443,7 @@ describe('cleanItem', () => {
       isParent: false,
     };
 
-    const cleaned = cleanItem(item as any);
+    const cleaned = cleanItem(item as NavigationItem);
 
     expect(cleaned.label).toBe('Test');
     expect(cleaned.description).toBeUndefined();
@@ -407,7 +463,7 @@ describe('cleanItem', () => {
       keywords: ['a'],
     };
 
-    const cleaned = cleanItem(item as any);
+    const cleaned = cleanItem(item as NavigationItem);
 
     expect(cleaned.order).toBe(1);
     expect(cleaned.redirect).toBe('/old');
@@ -416,7 +472,7 @@ describe('cleanItem', () => {
   });
 
   test('recursively cleans children', () => {
-    const item: any = {
+    const item: NavigationItem = {
       label: 'Parent',
       children: [{ label: 'Child', description: '', icon: null }],
     };
@@ -431,7 +487,7 @@ describe('sortItems', () => {
   test('sorts by order then alphabetically', () => {
     const items = [{ label: 'Beta' }, { label: 'Alpha' }, { label: 'Gamma', order: 0 }, { label: 'Delta', order: 1 }];
 
-    const sorted = sortItems(items as any);
+    const sorted = sortItems(items as NavigationItem[]);
 
     expect(sorted[0].label).toBe('Gamma');
     expect(sorted[1].label).toBe('Delta');
@@ -489,6 +545,41 @@ describe('discoverProjects', () => {
     expect(recursive.length).toBe(3);
     expect(recursive.find((p) => p.name === 'project-1')?.type).toBe('recursive');
     expect(recursive.find((p) => p.name === 'standalone')?.type).toBe('direct');
+  });
+
+  test('skips a candidate directory that cannot be read, without crashing (isProjectRoot catch)', () => {
+    const root = path.join(tempDir, 'projects-locked-candidate');
+    writeFile(path.join(root, 'project-a', 'docs', 'README.md'), '# A');
+    const lockedDir = path.join(root, 'locked-project');
+    fs.mkdirSync(lockedDir, { recursive: true });
+    fs.chmodSync(lockedDir, 0o000);
+
+    try {
+      const discovered = discoverProjects(root, { docsSubfolder: 'docs' });
+      expect(discovered.length).toBe(1);
+      expect(discovered[0].name).toBe('project-a');
+    } finally {
+      fs.chmodSync(lockedDir, 0o755);
+    }
+  });
+
+  test('warns and continues when a root directory cannot be scanned (scan catch)', () => {
+    const lockedRoot = path.join(tempDir, 'locked-root');
+    fs.mkdirSync(lockedRoot, { recursive: true });
+    fs.chmodSync(lockedRoot, 0o000);
+
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(args.join(' '));
+
+    try {
+      const discovered = discoverProjects(lockedRoot);
+      expect(discovered).toEqual([]);
+      expect(warnings.some((w) => w.includes('Could not scan directory'))).toBe(true);
+    } finally {
+      console.warn = originalWarn;
+      fs.chmodSync(lockedRoot, 0o755);
+    }
   });
 });
 
@@ -710,6 +801,45 @@ Content`,
     expect(results[0].warnings.length).toBe(0);
     expect(results[0].errors.length).toBe(0);
   });
+
+  test('recurses into nested subdirectories', () => {
+    const root = path.join(tempDir, 'docs-nested-validate');
+    writeFile(path.join(root, 'top.md'), '---\nlabel: Top\n---\nContent');
+    writeFile(path.join(root, 'guides', 'nested.md'), '---\nlabel: Nested\n---\nContent');
+
+    const results = validateDocs(root);
+    const files = results.map((r) => r.file);
+    expect(files).toContain(path.join('guides', 'nested.md'));
+  });
+
+  test('returns no results (without throwing) when the root directory cannot be read', () => {
+    const root = path.join(tempDir, 'docs-locked-validate');
+    fs.mkdirSync(root, { recursive: true });
+    fs.chmodSync(root, 0o000);
+
+    try {
+      expect(() => validateDocs(root)).not.toThrow();
+      expect(validateDocs(root)).toEqual([]);
+    } finally {
+      fs.chmodSync(root, 0o755);
+    }
+  });
+
+  test('reports a parse error when a markdown file cannot be read', () => {
+    const root = path.join(tempDir, 'docs-unreadable-file');
+    const filePath = path.join(root, 'locked.md');
+    writeFile(filePath, '---\nlabel: Locked\n---\nContent');
+    fs.chmodSync(filePath, 0o000);
+
+    try {
+      const results = validateDocs(root);
+      expect(results.length).toBe(1);
+      expect(results[0].valid).toBe(false);
+      expect(results[0].errors.some((e) => e.startsWith('Parse error:'))).toBe(true);
+    } finally {
+      fs.chmodSync(filePath, 0o644);
+    }
+  });
 });
 
 describe('generateManifestsWithDiscovery', () => {
@@ -824,6 +954,65 @@ describe('generateManifestsWithDiscovery', () => {
       generateManifestsWithDiscovery(root, { project: 'nonexistent' });
     }).toThrow('Project not found');
   });
+
+  test('prefixes routes (including nested children) when outputDir is an ancestor of the route', () => {
+    const versionRoot = path.join(tempDir, 'route-prefix', 'v1');
+    const docsPath = path.join(versionRoot, 'content');
+    writeFile(path.join(docsPath, 'page.md'), '---\nlabel: Page\n---\nC');
+    writeFile(path.join(docsPath, 'guide', 'nested.md'), '---\nlabel: Nested\n---\nC');
+
+    const results = generateManifestsWithDiscovery(tempDir, {
+      route: docsPath,
+      outputDir: versionRoot,
+    });
+
+    expect(results[0].processed).toBe(true);
+    const manifest = JSON.parse(fs.readFileSync(path.join(versionRoot, 'manifest.json'), 'utf8'));
+    const searchIndex = JSON.parse(fs.readFileSync(path.join(versionRoot, 'search-index.json'), 'utf8'));
+
+    expect(manifest.find((i: { route?: string }) => i.route === 'content/page')).toBeDefined();
+    const guideFolder = manifest.find((i: { route?: string }) => i.route === 'content/guide');
+    expect(guideFolder.children[0].route).toBe('content/guide/nested');
+    expect(searchIndex.every((e: { route: string }) => e.route.startsWith('content/'))).toBe(true);
+  });
+
+  test('does not write files in route mode when dryRun is set', () => {
+    const docsPath = path.join(tempDir, 'route-dry-run');
+    writeFile(path.join(docsPath, 'page.md'), '---\nlabel: Page\n---\nC');
+
+    const results = generateManifestsWithDiscovery(tempDir, { route: docsPath, dryRun: true });
+
+    expect(results[0].processed).toBe(true);
+    expect(fs.existsSync(path.join(docsPath, 'manifest.json'))).toBe(false);
+    expect(fs.existsSync(path.join(docsPath, 'search-index.json'))).toBe(false);
+  });
+
+  test('prefixes routes when outputDir is an ancestor of the project path', () => {
+    const root = path.join(tempDir, 'project-prefix');
+    const projectPath = path.join(root, 'proj-a');
+    writeFile(path.join(projectPath, 'docs', 'page.md'), '---\nlabel: Page\n---\nC');
+
+    const results = generateManifestsWithDiscovery(root, {
+      project: 'proj-a',
+      docsSubfolder: 'docs',
+      outputDir: root,
+    });
+
+    expect(results[0].processed).toBe(true);
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
+    // Prefix is relative from outputDir (root) to the resolved docs path (proj-a/docs), not the project root.
+    expect(manifest.find((i: { route?: string }) => i.route === 'proj-a/docs/page')).toBeDefined();
+  });
+
+  test('does not write files in project mode when dryRun is set', () => {
+    const root = path.join(tempDir, 'project-dry-run');
+    writeFile(path.join(root, 'proj-a', 'docs', 'page.md'), '---\nlabel: Page\n---\nC');
+
+    const results = generateManifestsWithDiscovery(root, { project: 'proj-a', docsSubfolder: 'docs', dryRun: true });
+
+    expect(results[0].processed).toBe(true);
+    expect(fs.existsSync(path.join(root, 'proj-a', 'manifest.json'))).toBe(false);
+  });
 });
 
 describe('generateDocsManifests', () => {
@@ -843,7 +1032,7 @@ describe('generateDocsManifests', () => {
 
     const results = generateDocsManifests(root, {
       docsSubfolder: 'docs',
-      walkerFn: () => null as any,
+      walkerFn: () => null as unknown as NavigationItem[],
     });
 
     expect(results.length).toBe(1);
@@ -891,6 +1080,27 @@ describe('generateDocsManifests', () => {
     expect(fs.existsSync(path.join(customOutDir, 'manifest.json'))).toBe(true);
     expect(fs.existsSync(path.join(customOutDir, 'search-index.json'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'proj-a', 'manifest.json'))).toBe(false);
+  });
+
+  test('records a failure without aborting other projects when a walker throws', () => {
+    const root = path.join(tempDir, 'multi-proj-throw');
+    writeFile(path.join(root, 'proj-a', 'docs', 'README.md'), '# A');
+    writeFile(path.join(root, 'proj-b', 'docs', 'README.md'), '# B');
+
+    const results = generateDocsManifests(root, {
+      docsSubfolder: 'docs',
+      walkerFn: (projectPath) => {
+        if (projectPath.includes('proj-b')) throw new Error('boom');
+        return [];
+      },
+    });
+
+    expect(results.length).toBe(2);
+    const failed = results.find((r) => r.name === 'proj-b');
+    const succeeded = results.find((r) => r.name === 'proj-a');
+    expect(failed?.processed).toBe(false);
+    expect(failed?.error).toBe('boom');
+    expect(succeeded?.processed).toBe(true);
   });
 });
 
@@ -972,6 +1182,20 @@ describe('watchDocs', () => {
     writeFile(path.join(docsRoot, 'page.md'), '# Modified');
 
     await Bun.sleep(50);
+
+    expect(callCount).toBe(0);
+  });
+
+  test('does not throw when a watched entry cannot be stat-ed (e.g. a dangling symlink)', async () => {
+    const docsRoot = path.join(tempDir, 'watch-dangling-symlink');
+    fs.mkdirSync(docsRoot, { recursive: true });
+    fs.symlinkSync(path.join(docsRoot, 'does-not-exist.md'), path.join(docsRoot, 'dangling.md'));
+
+    let callCount = 0;
+    const watcher = watchDocs(docsRoot, () => callCount++, 20);
+
+    await Bun.sleep(40);
+    watcher.close();
 
     expect(callCount).toBe(0);
   });
@@ -1076,6 +1300,22 @@ describe('makeExcerpt', () => {
 
   test('returns empty string for empty body', () => {
     expect(makeExcerpt('')).toBe('');
+  });
+
+  test('truncates at the last space when no sentence boundary is found', () => {
+    // No punctuation anywhere, but spaces every 5 chars, so lastIndexOf(' ') within the
+    // truncated window is well past the 30-char minimum.
+    const body = 'word '.repeat(40).trim();
+    const excerpt = makeExcerpt(body);
+    expect(excerpt.endsWith('...')).toBe(true);
+    expect(excerpt).not.toContain('  ');
+  });
+
+  test('falls back to a hard cut when no space or sentence boundary is found', () => {
+    // A single long run with no spaces or punctuation at all.
+    const body = 'a'.repeat(200);
+    const excerpt = makeExcerpt(body);
+    expect(excerpt).toBe(`${'a'.repeat(150)}...`);
   });
 });
 

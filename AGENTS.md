@@ -69,12 +69,15 @@ scripts/test-all-packages.ts   # optional summary runner
 
 - Entry: `packages/manifest-generator/src/cli.ts`. Run with: `bun ./packages/manifest-generator/src/cli.ts --help`.
 - `maybeRunCli()` prevents auto-run under `BUN_TEST`/`NODE_ENV=test`/`VITEST`.
-- Flags: `--discover`, `--validate`, `--recursive`, `--watch`, `--all`, `--project`, `--route`, `--docs-root`, `--output`, `--docs-subfolder`.
+- Flags: `--discover`, `--validate`, `--recursive`, `--watch`, `--init`, `--all`, `--project`, `--route`, `--docs-root`, `--output`, `--docs-subfolder`, `--config <path>`, `--json`, `--dry-run`, `--quiet`/`-q`.
 - Discovery: looks for `docs/` subfolder per project dir, falls back to direct `.md`/`.mdx` files.
 - `--recursive` discovers projects in nested directories (stops at project roots).
-- `--validate` checks frontmatter (date validity, conflicting flags, missing alternatives).
+- `--validate` checks frontmatter (date validity, conflicting flags, missing alternatives, unknown keys, duplicate `redirect` targets); output is colorized and TTY/`NO_COLOR`-aware.
 - `--watch` polls for file changes and regenerates.
-- Frontmatter keys (18 total): `label`, `description`, `tags`, `keywords`, `order`, `isTitle`, `isParent`, `icon`, `iconType`, `badge`, `badgeColor`, `breadcrumbTitle`, `layout`, `redirect`, `externalUrl`, `deprecated`, `deprecatedAlternative`, `publishedAt`, `updatedAt`, `draft`, `hidden`.
+- `--init` scaffolds a config file + sample docs structure; prompts interactively when stdin is a TTY.
+- `--validate`/`--discover`/`--watch`/`--init` are mutually exclusive.
+- `--config <path>` loads an exact config file instead of auto-detecting `manifest-generator.config.{json,js,ts}`; that config supports `docsRoot`, `docsSubfolder`, `outputDir`, `recursive`, `exclude` (globs), and per-project `projects` overrides.
+- Frontmatter keys (21 total, see `ALLOWED_FRONTMATTER_KEYS` in `index.ts`): `label`, `description`, `tags`, `keywords`, `order`, `isTitle`, `isParent`, `icon`, `iconType`, `badge`, `badgeColor`, `breadcrumbTitle`, `layout`, `redirect`, `externalUrl`, `deprecated`, `deprecatedAlternative`, `publishedAt`, `updatedAt`, `draft`, `hidden`.
 - Output: `manifest.json` + `search-index.json` written to `--output` dir (or source root if omitted). In this repo, output lives at `docs/<version>/` (not inside `content/`). Items sorted by `order` then label. Null/false fields stripped via `cleanItem()`.
 - Supports `.md` and `.mdx` files.
 

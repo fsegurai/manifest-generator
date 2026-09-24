@@ -1,6 +1,6 @@
 {
   "name": "@fsegurai/manifest-generator",
-  "version": "1.0.0-beta.3",
+  "version": "1.0.0",
   "description": "A simple manifest and search-index generator based on project documentation.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -22,6 +22,14 @@
   "files": [
     "dist/"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fsegurai/manifest-generator.git"
+  },
+  "homepage": "https://github.com/fsegurai/manifest-generator#readme",
+  "bugs": {
+    "url": "https://github.com/fsegurai/manifest-generator/issues"
+  },
   "keywords": [
     "cli",
     "docs",
@@ -43,6 +51,11 @@
     "url": "https://www.fsegurai.com/"
   },
   "license": "MIT",
+  "engines": {
+    "node": ">=24",
+    "bun": ">=1.4.0",
+    "npm": ">=11"
+  },
   "scripts": {
     "pkg:build": "vite build",
     "pkg:test": "bun test",

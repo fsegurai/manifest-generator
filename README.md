@@ -93,12 +93,17 @@ bun ./packages/manifest-generator/src/cli.ts \
 --validate        Validate frontmatter across all discovered projects
 --recursive       Discover projects in nested directories
 --watch           Watch for file changes and regenerate
+--init            Scaffold a docs structure + config file (interactive on a TTY)
 --all             Process all discovered projects
 --project <name>  Target a specific project by name
 --route <path>    Target a single documentation route
 --docs-root <dir> Root directory for documentation discovery
 --output <dir>    Output directory for generated manifests
 --docs-subfolder  Custom subfolder name inside project dirs (default: docs)
+--config <path>   Load an exact config file, skipping auto-detection
+--json            Machine-readable JSON output (--discover / --validate)
+--dry-run         Run generation without writing files to disk
+--quiet, -q       Suppress banner/progress output (errors still show)
 ```
 
 ## Programmatic API

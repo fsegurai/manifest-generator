@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import { defineConfig, loadConfig, mergeConfig } from '../src/config.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { defineConfig, loadConfig, loadConfigFromFile, mergeConfig } from '../src/config.js';
 
 let tempDir = '';
 
@@ -112,6 +112,32 @@ describe('loadConfig', () => {
   });
 });
 
+describe('loadConfigFromFile', () => {
+  test('loads an exact config path regardless of filename', () => {
+    const configPath = path.join(tempDir, 'custom-name.config.json');
+    fs.writeFileSync(configPath, JSON.stringify({ docsSubfolder: 'custom' }), 'utf8');
+
+    const config = loadConfigFromFile(configPath);
+    expect(config.docsSubfolder).toBe('custom');
+  });
+
+  test('warns and returns an empty object when the file does not exist', () => {
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(args.join(' '));
+
+    let config: ReturnType<typeof loadConfigFromFile>;
+    try {
+      config = loadConfigFromFile(path.join(tempDir, 'does-not-exist.config.json'));
+    } finally {
+      console.warn = originalWarn;
+    }
+
+    expect(config).toEqual({});
+    expect(warnings.some((w) => w.includes('Config file not found'))).toBe(true);
+  });
+});
+
 describe('mergeConfig', () => {
   test('defaults win when both CLI and config are undefined', () => {
     const result = mergeConfig({}, {}, { docsSubfolder: 'docs', recursive: false, output: null as string | null });
@@ -140,10 +166,10 @@ describe('mergeConfig', () => {
   });
 
   test('CLI undefined values do not override config', () => {
-    const result = mergeConfig(
-      { docsSubfolder: undefined, recursive: undefined } as any,
+    const result = mergeConfig<{ docsSubfolder: string; recursive: boolean; output: string | null }>(
+      { docsSubfolder: undefined, recursive: undefined },
       { docsSubfolder: 'config-sub', recursive: true },
-      { docsSubfolder: 'docs', recursive: false, output: null as string | null },
+      { docsSubfolder: 'docs', recursive: false, output: null },
     );
     expect(result.docsSubfolder).toBe('config-sub');
     expect(result.recursive).toBe(true);

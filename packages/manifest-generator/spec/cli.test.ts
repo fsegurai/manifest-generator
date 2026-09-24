@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { maybeRunCli, runCli } from '../src/cli.js';
 
 let tempDir = '';
@@ -275,6 +275,29 @@ describe('runCli', () => {
     expect(logs.join('\n')).not.toContain('version unknown');
   });
 
+  test('--version falls back to "(version unknown)" when its own package.json cannot be found', () => {
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    const existsSyncSpy = spyOn(fs, 'existsSync').mockReturnValue(false);
+    try {
+      runCli(['--version'], exitFn);
+    } finally {
+      existsSyncSpy.mockRestore();
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(logs.join('\n')).toContain('@fsegurai/manifest-generator (version unknown)');
+  });
+
   test('--discover shows no projects in empty directory', () => {
     const empty = path.join(tempDir, 'empty');
     fs.mkdirSync(empty, { recursive: true });
@@ -517,6 +540,85 @@ describe('runCli', () => {
       process.removeAllListeners('SIGINT');
       process.removeAllListeners('SIGTERM');
     }
+  });
+
+  test('--watch logs a generation error but keeps the watcher alive', () => {
+    const root = path.join(tempDir, 'watch-error');
+    fs.mkdirSync(root, { recursive: true });
+
+    const logs: string[] = [];
+    const errors: string[] = [];
+    const originalLog = console.log;
+    const originalError = console.error;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+    console.error = (...args: unknown[]) => errors.push(args.join(' '));
+
+    const exitFn = ((_code?: number): never => undefined as never) as (code?: number) => never;
+
+    try {
+      runCli(['--watch', '--docs-root', root, '--project', 'nonexistent'], exitFn);
+      expect(errors.join('\n')).toContain('Error during generation:');
+      expect(errors.join('\n')).toContain('Project not found');
+    } finally {
+      process.emit('SIGINT');
+      console.log = originalLog;
+      console.error = originalError;
+      process.removeAllListeners('SIGINT');
+      process.removeAllListeners('SIGTERM');
+    }
+  });
+
+  test('--watch regenerates when a file changes', async () => {
+    const root = path.join(tempDir, 'watch-change');
+    writeFile(path.join(root, 'proj', 'docs', 'README.md'), '# Project');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    const exitFn = ((_code?: number): never => undefined as never) as (code?: number) => never;
+
+    try {
+      runCli(['--watch', '--docs-root', root], exitFn);
+      // watchDocs polls every 1000ms by default in the CLI; wait past one poll cycle.
+      writeFile(path.join(root, 'proj', 'docs', 'README.md'), '# Project Updated');
+      await Bun.sleep(1200);
+      expect(logs.join('\n')).toContain('Change detected:');
+    } finally {
+      process.emit('SIGINT');
+      console.log = originalLog;
+      process.removeAllListeners('SIGINT');
+      process.removeAllListeners('SIGTERM');
+    }
+  }, 3000);
+
+  test('--watch with --dry-run warns and falls back to a single dry-run pass', () => {
+    const root = path.join(tempDir, 'watch-dry-run');
+    writeFile(path.join(root, 'proj', 'docs', 'README.md'), '# Project');
+
+    const logs: string[] = [];
+    const errors: string[] = [];
+    const originalLog = console.log;
+    const originalError = console.error;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+    console.error = (...args: unknown[]) => errors.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--watch', '--dry-run', '--docs-root', root], exitFn);
+    } finally {
+      console.log = originalLog;
+      console.error = originalError;
+    }
+
+    expect(errors.join('\n')).toContain('--dry-run only applies to a single generation pass');
+    expect(logs.join('\n')).toContain('Dry run: enabled');
+    expect(exitCode).toBe(0);
   });
 
   test('--watch stops on SIGTERM', () => {

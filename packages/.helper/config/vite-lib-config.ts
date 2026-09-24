@@ -18,7 +18,7 @@ export function createLibraryConfig(options: {
   external?: string[];
   globals?: Record<string, string>;
 }) {
-  const { umdGlobalName, styleFiles = [], external = ['marked'], globals = {} } = options;
+  const { umdGlobalName, external = ['marked'], globals = {} } = options;
 
   // Build globals object with defaults for known packages
   const defaultGlobals: Record<string, string> = {

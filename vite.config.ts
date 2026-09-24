@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
       assetsDir: 'assets',
       emptyOutDir: true,
       target: 'es2022',
-      sourcemap: env['NODE_ENV'] !== 'production',
+      sourcemap: env.NODE_ENV !== 'production',
       minify: 'terser',
       rollupOptions: {
         input: {
