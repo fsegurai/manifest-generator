@@ -93,8 +93,8 @@ describe('parseFrontmatter', () => {
     const content = '---\ndescription: >\n  Folded\n  text\n\nnext: value\n---\n# Content';
     const parsed = parseFrontmatter(content);
 
-    expect(parsed.next).toBe('value');
-    expect(parsed.description).toBeTruthy();
+    expect(parsed["next"]).toBe('value');
+    expect(parsed["description"]).toBeTruthy();
   });
 
   test('handles key with empty value', () => {
@@ -102,7 +102,7 @@ describe('parseFrontmatter', () => {
     const parsed = parseFrontmatter<{ label?: string | null; order: number }>(content);
 
     expect(parsed.order).toBe(1);
-    expect(parsed.label).toBeNull();
+    expect(parsed["label"]).toBeNull();
   });
 });
 
