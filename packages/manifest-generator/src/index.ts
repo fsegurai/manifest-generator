@@ -16,7 +16,10 @@ import type {
 export { defineConfig } from './config.js';
 
 function formatTitle(name: string): string {
-  return name.replace(/\.(md|mdx)$/, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  return name
+    .replace(/\.(md|mdx)$/, '')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function parseFrontmatter<T = Record<string, unknown>>(content: string): T {
@@ -70,17 +73,23 @@ function getBody(content: string): string {
 function diceSimilarity(a: string, b: string): number {
   const bigramsA = new Set<string>();
   const bigramsB = new Set<string>();
-  for (let i = 0; i < a.length - 1; i++) { bigramsA.add(a.slice(i, i + 2).toLowerCase()); }
-  for (let i = 0; i < b.length - 1; i++) { bigramsB.add(b.slice(i, i + 2).toLowerCase()); }
+  for (let i = 0; i < a.length - 1; i++) {
+    bigramsA.add(a.slice(i, i + 2).toLowerCase());
+  }
+  for (let i = 0; i < b.length - 1; i++) {
+    bigramsB.add(b.slice(i, i + 2).toLowerCase());
+  }
   let intersection = 0;
-  for (const bg of bigramsA) { if (bigramsB.has(bg)) intersection++; }
+  for (const bg of bigramsA) {
+    if (bigramsB.has(bg)) intersection++;
+  }
   return (2 * intersection) / (bigramsA.size + bigramsB.size);
 }
 
 function dedupeHeadings(headings: string[], threshold = 0.7): string[] {
   const result: string[] = [];
   for (const h of headings) {
-    if (!result.some(existing => diceSimilarity(existing, h) > threshold)) result.push(h);
+    if (!result.some((existing) => diceSimilarity(existing, h) > threshold)) result.push(h);
   }
   return result;
 }
@@ -139,15 +148,13 @@ function makeBreadcrumb(route: string): string | undefined {
   const segments = route.split('/');
   if (segments.length <= 1) return undefined;
   segments.pop();
-  return segments
-    .map(s => s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))
-    .join(' > ');
+  return segments.map((s) => s.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())).join(' > ');
 }
 
 const VALID_MARKDOWN_EXTENSIONS = ['.md', '.mdx'];
 
 function isMarkdownFile(name: string): boolean {
-  return VALID_MARKDOWN_EXTENSIONS.some(ext => name.endsWith(ext));
+  return VALID_MARKDOWN_EXTENSIONS.some((ext) => name.endsWith(ext));
 }
 
 function computeRoutePrefix(outputDir: string, sourceDir: string): string {
@@ -157,7 +164,7 @@ function computeRoutePrefix(outputDir: string, sourceDir: string): string {
 }
 
 function applyRoutePrefix(items: NavigationItem[], prefix: string): NavigationItem[] {
-  return items.map(item => {
+  return items.map((item) => {
     if (item.route && item.route !== '#') {
       item.route = `${prefix}/${item.route}`;
     }
@@ -172,8 +179,8 @@ function walkDocs(dir: string, relative = '', searchIndex: SearchEntry[] = []): 
   const entries = fs.readdirSync(dir, { withFileTypes: true });
 
   const items = entries
-    .filter(entry => !entry.name.startsWith('.') && entry.name !== 'manifest.json')
-    .map(entry => {
+    .filter((entry) => !entry.name.startsWith('.') && entry.name !== 'manifest.json')
+    .map((entry) => {
       const fullPath = path.join(dir, entry.name);
       const relPath = path.join(relative, entry.name);
 
@@ -187,8 +194,10 @@ function walkDocs(dir: string, relative = '', searchIndex: SearchEntry[] = []): 
           isParent: true,
         };
 
-        const indexMd = children.find(c => c.route === relPath.replace(/\\/g, '/') + '/README'
-          || c.route === relPath.replace(/\\/g, '/') + '/index');
+        const indexMd = children.find(
+          (c) =>
+            c.route === relPath.replace(/\\/g, '/') + '/README' || c.route === relPath.replace(/\\/g, '/') + '/index',
+        );
         if (indexMd) {
           folderItem.order = (indexMd as NavigationItem & { order?: number }).order;
           folderItem.icon = (indexMd as NavigationItem & { icon?: string | null }).icon ?? null;
@@ -272,12 +281,12 @@ function generateDocsManifests(
       }
     | ((projectPath: string, relative: string, searchIndex: SearchEntry[]) => NavigationItem[]),
 ): ProcessingResult[] {
-  const options = typeof optionsOrWalker === 'function' ? { walkerFn: optionsOrWalker } : (optionsOrWalker || {});
+  const options = typeof optionsOrWalker === 'function' ? { walkerFn: optionsOrWalker } : optionsOrWalker || {};
   const { docsSubfolder = 'docs', recursive = false, walkerFn } = options;
   const discovered = discoverProjects(docsRoot, { docsSubfolder, recursive });
   const results: ProcessingResult[] = [];
 
-  discovered.forEach(project => {
+  discovered.forEach((project) => {
     const searchIndex: SearchEntry[] = [];
     const walker = walkerFn || walkDocs;
 
@@ -303,11 +312,7 @@ function generateDocsManifests(
 
       const cleaned = manifest.map(cleanItem);
 
-      fs.writeFileSync(
-        path.join(project.projectPath, 'manifest.json'),
-        JSON.stringify(cleaned, null, 2),
-        'utf8',
-      );
+      fs.writeFileSync(path.join(project.projectPath, 'manifest.json'), JSON.stringify(cleaned, null, 2), 'utf8');
 
       fs.writeFileSync(
         path.join(project.projectPath, 'search-index.json'),
@@ -315,7 +320,7 @@ function generateDocsManifests(
         'utf8',
       );
 
-      console.log(`Generated manifest and search index for: ${ project.name }`);
+      console.log(`Generated manifest and search index for: ${project.name}`);
       results.push({ name: project.name, processed: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -347,8 +352,7 @@ function discoverProjects(rootDir: string, options: DiscoveryOptions = {}): Disc
       if (fs.existsSync(docsPath) && fs.statSync(docsPath).isDirectory()) {
         return true;
       }
-      return fs.readdirSync(dir, { withFileTypes: true })
-        .some(file => file.isFile() && isMarkdownFile(file.name));
+      return fs.readdirSync(dir, { withFileTypes: true }).some((file) => file.isFile() && isMarkdownFile(file.name));
     } catch {
       return false;
     }
@@ -367,15 +371,14 @@ function discoverProjects(rootDir: string, options: DiscoveryOptions = {}): Disc
 
         if (isProjectRoot(projectPath)) {
           const docsPath = path.join(projectPath, docsSubfolder);
-          const actualDocsPath = fs.existsSync(docsPath) && fs.statSync(docsPath).isDirectory()
-            ? docsPath
-            : projectPath;
+          const actualDocsPath =
+            fs.existsSync(docsPath) && fs.statSync(docsPath).isDirectory() ? docsPath : projectPath;
 
           discovered.push({
             name: entry.name,
             projectPath,
             docsPath: actualDocsPath,
-            type: depth > 1 ? 'recursive' : (actualDocsPath === docsPath ? 'subfolder' : 'direct'),
+            type: depth > 1 ? 'recursive' : actualDocsPath === docsPath ? 'subfolder' : 'direct',
           });
         } else if (recursive) {
           scan(projectPath, depth + 1);
@@ -383,7 +386,7 @@ function discoverProjects(rootDir: string, options: DiscoveryOptions = {}): Disc
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.warn(`Warning: Could not scan directory ${ dir }: ${ message }`);
+      console.warn(`Warning: Could not scan directory ${dir}: ${message}`);
     }
   }
 
@@ -391,10 +394,7 @@ function discoverProjects(rootDir: string, options: DiscoveryOptions = {}): Disc
   return discovered;
 }
 
-function generateManifestsWithDiscovery(
-  rootDir: string,
-  options: ManifestGenerationOptions = {},
-): ProcessingResult[] {
+function generateManifestsWithDiscovery(rootDir: string, options: ManifestGenerationOptions = {}): ProcessingResult[] {
   const {
     project = null,
     route = null,
@@ -406,7 +406,7 @@ function generateManifestsWithDiscovery(
 
   if (route) {
     if (!fs.existsSync(route)) {
-      throw new Error(`Route not found: ${ route }`);
+      throw new Error(`Route not found: ${route}`);
     }
 
     const result = generateManifest(route);
@@ -425,19 +425,11 @@ function generateManifestsWithDiscovery(
 
     const cleaned = result.manifest.map(cleanItem);
 
-    fs.writeFileSync(
-      path.join(outputPath, 'manifest.json'),
-      JSON.stringify(cleaned, null, 2),
-      'utf8',
-    );
+    fs.writeFileSync(path.join(outputPath, 'manifest.json'), JSON.stringify(cleaned, null, 2), 'utf8');
 
-    fs.writeFileSync(
-      path.join(outputPath, 'search-index.json'),
-      JSON.stringify(result.searchIndex, null, 2),
-      'utf8',
-    );
+    fs.writeFileSync(path.join(outputPath, 'search-index.json'), JSON.stringify(result.searchIndex, null, 2), 'utf8');
 
-    console.log(`Generated manifest for route: ${ route }`);
+    console.log(`Generated manifest for route: ${route}`);
     return [{ name: path.basename(route), processed: true }];
   }
 
@@ -446,7 +438,7 @@ function generateManifestsWithDiscovery(
     const docsPath = path.join(projectPath, docsSubfolder);
 
     if (!fs.existsSync(projectPath)) {
-      throw new Error(`Project not found: ${ project }`);
+      throw new Error(`Project not found: ${project}`);
     }
 
     const targetPath = fs.existsSync(docsPath) ? docsPath : projectPath;
@@ -466,19 +458,11 @@ function generateManifestsWithDiscovery(
 
     const cleaned = result.manifest.map(cleanItem);
 
-    fs.writeFileSync(
-      path.join(outputPath2, 'manifest.json'),
-      JSON.stringify(cleaned, null, 2),
-      'utf8',
-    );
+    fs.writeFileSync(path.join(outputPath2, 'manifest.json'), JSON.stringify(cleaned, null, 2), 'utf8');
 
-    fs.writeFileSync(
-      path.join(outputPath2, 'search-index.json'),
-      JSON.stringify(result.searchIndex, null, 2),
-      'utf8',
-    );
+    fs.writeFileSync(path.join(outputPath2, 'search-index.json'), JSON.stringify(result.searchIndex, null, 2), 'utf8');
 
-    console.log(`Generated manifest for project: ${ project }`);
+    console.log(`Generated manifest for project: ${project}`);
     return [{ name: project, processed: true }];
   }
 
@@ -490,10 +474,27 @@ function generateManifestsWithDiscovery(
 }
 
 export const ALLOWED_FRONTMATTER_KEYS: ReadonlySet<string> = new Set([
-  'label', 'description', 'tags', 'keywords', 'order', 'isTitle', 'isParent',
-  'icon', 'iconType', 'badge', 'badgeColor', 'breadcrumbTitle', 'layout',
-  'redirect', 'externalUrl', 'deprecated', 'deprecatedAlternative',
-  'publishedAt', 'updatedAt', 'draft', 'hidden',
+  'label',
+  'description',
+  'tags',
+  'keywords',
+  'order',
+  'isTitle',
+  'isParent',
+  'icon',
+  'iconType',
+  'badge',
+  'badgeColor',
+  'breadcrumbTitle',
+  'layout',
+  'redirect',
+  'externalUrl',
+  'deprecated',
+  'deprecatedAlternative',
+  'publishedAt',
+  'updatedAt',
+  'draft',
+  'hidden',
 ]);
 
 function validateDocs(rootDir: string): ValidateResult[] {
@@ -553,12 +554,12 @@ function validateDocs(rootDir: string): ValidateResult[] {
           }
 
           if (frontmatter.publishedAt && isNaN(Date.parse(frontmatter.publishedAt))) {
-            result.errors.push(`publishedAt "${ frontmatter.publishedAt }" is not a valid date`);
+            result.errors.push(`publishedAt "${frontmatter.publishedAt}" is not a valid date`);
             result.valid = false;
           }
 
           if (frontmatter.updatedAt && isNaN(Date.parse(frontmatter.updatedAt))) {
-            result.errors.push(`updatedAt "${ frontmatter.updatedAt }" is not a valid date`);
+            result.errors.push(`updatedAt "${frontmatter.updatedAt}" is not a valid date`);
             result.valid = false;
           }
 
@@ -570,30 +571,34 @@ function validateDocs(rootDir: string): ValidateResult[] {
             const published = Date.parse(frontmatter.publishedAt);
             const updated = Date.parse(frontmatter.updatedAt);
             if (!isNaN(published) && !isNaN(updated) && published > updated) {
-              result.warnings.push(`publishedAt (${ frontmatter.publishedAt }) is after updatedAt (${ frontmatter.updatedAt }) — dates may be reversed`);
+              result.warnings.push(
+                `publishedAt (${frontmatter.publishedAt}) is after updatedAt (${frontmatter.updatedAt}) — dates may be reversed`,
+              );
             }
           }
 
           if (frontmatter.publishedAt) {
             const published = Date.parse(frontmatter.publishedAt);
             if (!isNaN(published) && published > Date.now()) {
-              result.warnings.push(`publishedAt (${ frontmatter.publishedAt }) is in the future — document will not appear as published`);
+              result.warnings.push(
+                `publishedAt (${frontmatter.publishedAt}) is in the future — document will not appear as published`,
+              );
             }
           }
 
           if (frontmatter.order !== undefined && !Number.isInteger(frontmatter.order)) {
-            result.warnings.push(`order "${ frontmatter.order }" is not an integer — sort order may be unexpected`);
+            result.warnings.push(`order "${frontmatter.order}" is not an integer — sort order may be unexpected`);
           }
 
           if (frontmatter.order !== undefined && frontmatter.order < 0) {
-            result.errors.push(`order "${ frontmatter.order }" is negative — must be >= 0`);
+            result.errors.push(`order "${frontmatter.order}" is negative — must be >= 0`);
             result.valid = false;
           }
 
           if (frontmatter.tags && frontmatter.keywords) {
-            const overlap = frontmatter.tags.filter(t => frontmatter.keywords?.includes(t));
+            const overlap = frontmatter.tags.filter((t) => frontmatter.keywords?.includes(t));
             if (overlap.length > 0) {
-              result.warnings.push(`tags and keywords overlap: [${ overlap.join(', ') }] — redundant data`);
+              result.warnings.push(`tags and keywords overlap: [${overlap.join(', ')}] — redundant data`);
             }
           }
 
@@ -606,22 +611,29 @@ function validateDocs(rootDir: string): ValidateResult[] {
           }
 
           if (frontmatter.externalUrl && !frontmatter.externalUrl.includes('://')) {
-            result.warnings.push(`externalUrl "${ frontmatter.externalUrl }" may be invalid — expected a URL with scheme`);
+            result.warnings.push(
+              `externalUrl "${frontmatter.externalUrl}" may be invalid — expected a URL with scheme`,
+            );
           }
 
-          if (frontmatter.redirect && !frontmatter.redirect.startsWith('/') && !frontmatter.redirect.startsWith('http')) {
-            result.warnings.push(`redirect "${ frontmatter.redirect }" does not start with "/" — may resolve to unexpected path`);
+          if (
+            frontmatter.redirect &&
+            !frontmatter.redirect.startsWith('/') &&
+            !frontmatter.redirect.startsWith('http')
+          ) {
+            result.warnings.push(
+              `redirect "${frontmatter.redirect}" does not start with "/" — may resolve to unexpected path`,
+            );
           }
 
           for (const key of Object.keys(frontmatter)) {
             if (!ALLOWED_FRONTMATTER_KEYS.has(key)) {
-              result.warnings.push(`Unknown frontmatter key "${ key }" — possible typo`);
+              result.warnings.push(`Unknown frontmatter key "${key}" — possible typo`);
             }
           }
-
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          result.errors.push(`Parse error: ${ message }`);
+          result.errors.push(`Parse error: ${message}`);
           result.valid = false;
         }
 
@@ -634,18 +646,15 @@ function validateDocs(rootDir: string): ValidateResult[] {
   return results;
 }
 
-function watchDocs(
-  rootDir: string,
-  onChange: (changedFile: string) => void,
-  interval = 1000,
-): { close: () => void } {
+function watchDocs(rootDir: string, onChange: (changedFile: string) => void, interval = 1000): { close: () => void } {
   const watched = new Set<string>();
 
   function collectFiles(dir: string) {
     try {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       for (const entry of entries) {
-        if (entry.name.startsWith('.') || entry.name === 'manifest.json' || entry.name === 'search-index.json') continue;
+        if (entry.name.startsWith('.') || entry.name === 'manifest.json' || entry.name === 'search-index.json')
+          continue;
         const fullPath = path.join(dir, entry.name);
         watched.add(fullPath);
         if (entry.isDirectory()) {
@@ -691,35 +700,34 @@ function watchDocs(
   };
 }
 
-export {
-  formatTitle,
-  parseFrontmatter,
-  walkDocs,
-  cleanItem,
-  sortItems,
-  generateDocsManifests,
-  generateManifest,
-  discoverProjects,
-  generateManifestsWithDiscovery,
-  validateDocs,
-  watchDocs,
-  diceSimilarity,
-  dedupeHeadings,
-  extractHeadings,
-  makeExcerpt,
-  makeBreadcrumb,
-};
-
 export type {
   ConfigFile,
-  NavigationItem,
-  SearchEntry,
-  ManifestResult,
   DiscoveredProject,
-  ProcessingResult,
   DiscoveryOptions,
-  ManifestGenerationOptions,
-  ProjectConfig,
   Frontmatter,
+  ManifestGenerationOptions,
+  ManifestResult,
+  NavigationItem,
+  ProcessingResult,
+  ProjectConfig,
+  SearchEntry,
   ValidateResult,
 } from './types.js';
+export {
+  cleanItem,
+  dedupeHeadings,
+  diceSimilarity,
+  discoverProjects,
+  extractHeadings,
+  formatTitle,
+  generateDocsManifests,
+  generateManifest,
+  generateManifestsWithDiscovery,
+  makeBreadcrumb,
+  makeExcerpt,
+  parseFrontmatter,
+  sortItems,
+  validateDocs,
+  walkDocs,
+  watchDocs,
+};

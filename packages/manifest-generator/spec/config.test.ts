@@ -32,10 +32,14 @@ describe('loadConfig', () => {
 
   test('loads JSON config', () => {
     const configPath = path.join(tempDir, 'manifest-generator.config.json');
-    fs.writeFileSync(configPath, JSON.stringify({
-      docsSubfolder: 'documents',
-      recursive: true,
-    }), 'utf8');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        docsSubfolder: 'documents',
+        recursive: true,
+      }),
+      'utf8',
+    );
 
     const config = loadConfig(tempDir);
     expect(config.docsSubfolder).toBe('documents');
@@ -44,11 +48,15 @@ describe('loadConfig', () => {
 
   test('loads JSON config with optional fields', () => {
     const configPath = path.join(tempDir, 'manifest-generator.config.json');
-    fs.writeFileSync(configPath, JSON.stringify({
-      docsRoot: './my-docs',
-      outputDir: './dist',
-      exclude: ['node_modules'],
-    }), 'utf8');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        docsRoot: './my-docs',
+        outputDir: './dist',
+        exclude: ['node_modules'],
+      }),
+      'utf8',
+    );
 
     const config = loadConfig(tempDir);
     expect(config.docsRoot).toBe('./my-docs');
@@ -113,7 +121,11 @@ describe('mergeConfig', () => {
   });
 
   test('config file overrides defaults', () => {
-    const result = mergeConfig({}, { docsSubfolder: 'guides' }, { docsSubfolder: 'docs', recursive: false, output: null as string | null });
+    const result = mergeConfig(
+      {},
+      { docsSubfolder: 'guides' },
+      { docsSubfolder: 'docs', recursive: false, output: null as string | null },
+    );
     expect(result.docsSubfolder).toBe('guides');
     expect(result.recursive).toBe(false);
   });

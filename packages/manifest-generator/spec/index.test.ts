@@ -59,7 +59,7 @@ describe('parseFrontmatter', () => {
   });
 
   test('handles quoted strings', () => {
-    const content = "---\nlabel: \"Page Title\"\ndescription: 'A short description'\n---\n# Content";
+    const content = '---\nlabel: "Page Title"\ndescription: \'A short description\'\n---\n# Content';
     const parsed = parseFrontmatter<{ label: string; description: string }>(content);
 
     expect(parsed.label).toBe('Page Title');
@@ -139,10 +139,10 @@ describe('walkDocs', () => {
     expect(manifest.length).toBe(3);
     expect(searchIndex.length).toBe(2);
 
-    const titleEntry = manifest.find(item => item.label === 'Title');
+    const titleEntry = manifest.find((item) => item.label === 'Title');
     expect(titleEntry?.route).toBe('#');
 
-    const sectionEntry = manifest.find(item => item.label === 'Section');
+    const sectionEntry = manifest.find((item) => item.label === 'Section');
     expect(sectionEntry?.isParent).toBe(true);
     expect(sectionEntry?.children?.length).toBe(1);
   });
@@ -156,8 +156,8 @@ describe('walkDocs', () => {
     const manifest = walkDocs(docsRoot, '', searchIndex);
 
     expect(manifest.length).toBe(2);
-    expect(manifest.find(i => i.label === 'MDX Article')).toBeTruthy();
-    expect(manifest.find(i => i.label === 'Note')).toBeTruthy();
+    expect(manifest.find((i) => i.label === 'MDX Article')).toBeTruthy();
+    expect(manifest.find((i) => i.label === 'Note')).toBeTruthy();
   });
 
   test('respects order property for sorting', () => {
@@ -204,11 +204,14 @@ describe('walkDocs', () => {
 
   test('folder inherits props from README.md', () => {
     const docsRoot = path.join(tempDir, 'docs-inherit');
-    writeFile(path.join(docsRoot, 'section', 'README.md'), '---\norder: 1\nicon: folder-icon\nbadge: New\nbadgeColor: green\niconType: filled\n---\nSection');
+    writeFile(
+      path.join(docsRoot, 'section', 'README.md'),
+      '---\norder: 1\nicon: folder-icon\nbadge: New\nbadgeColor: green\niconType: filled\n---\nSection',
+    );
     writeFile(path.join(docsRoot, 'section', 'page.md'), '# Page');
 
     const items = walkDocs(docsRoot);
-    const section = items.find(i => i.isParent);
+    const section = items.find((i) => i.isParent);
     expect(section).toBeTruthy();
     expect(section?.order).toBe(1);
     expect(section?.icon).toBe('folder-icon');
@@ -220,7 +223,9 @@ describe('walkDocs', () => {
   test('includes headings, excerpt, and breadcrumb in search index', () => {
     const docsRoot = path.join(tempDir, 'docs-search');
 
-    writeFile(path.join(docsRoot, 'guides', 'advanced.md'), `---
+    writeFile(
+      path.join(docsRoot, 'guides', 'advanced.md'),
+      `---
 label: Advanced Guide
 tags: ["guide"]
 ---
@@ -239,9 +244,11 @@ Final section with a list:
 
 - item one
 - item two
-`);
+`,
+    );
 
-    const searchIndex: { label: string; route: string; headings?: string[]; excerpt?: string; breadcrumb?: string }[] = [];
+    const searchIndex: { label: string; route: string; headings?: string[]; excerpt?: string; breadcrumb?: string }[] =
+      [];
     walkDocs(docsRoot, '', searchIndex);
 
     expect(searchIndex[0].headings).toEqual(['Getting Started', 'Configuration', 'Deployment']);
@@ -265,7 +272,9 @@ Final section with a list:
   test('reads new frontmatter fields', () => {
     const docsRoot = path.join(tempDir, 'docs');
 
-    writeFile(path.join(docsRoot, 'page.md'), `---
+    writeFile(
+      path.join(docsRoot, 'page.md'),
+      `---
 label: Full Page
 description: Desc
 tags: ["tag1"]
@@ -279,7 +288,8 @@ deprecatedAlternative: /new-page
 publishedAt: 2024-01-15
 updatedAt: 2024-06-01
 keywords: ["key1", "key2"]
----`);
+---`,
+    );
 
     const searchIndex: { label: string; route: string }[] = [];
     const manifest = walkDocs(docsRoot, '', searchIndex);
@@ -350,9 +360,7 @@ describe('cleanItem', () => {
   test('recursively cleans children', () => {
     const item: any = {
       label: 'Parent',
-      children: [
-        { label: 'Child', description: '', icon: null },
-      ],
+      children: [{ label: 'Child', description: '', icon: null }],
     };
 
     const cleaned = cleanItem(item);
@@ -363,12 +371,7 @@ describe('cleanItem', () => {
 
 describe('sortItems', () => {
   test('sorts by order then alphabetically', () => {
-    const items = [
-      { label: 'Beta' },
-      { label: 'Alpha' },
-      { label: 'Gamma', order: 0 },
-      { label: 'Delta', order: 1 },
-    ];
+    const items = [{ label: 'Beta' }, { label: 'Alpha' }, { label: 'Gamma', order: 0 }, { label: 'Delta', order: 1 }];
 
     const sorted = sortItems(items as any);
 
@@ -391,8 +394,8 @@ describe('discoverProjects', () => {
     const discovered = discoverProjects(root, { docsSubfolder: 'docs' });
 
     expect(discovered.length).toBe(2);
-    const docsProject = discovered.find(item => item.name === 'project-a');
-    const directProject = discovered.find(item => item.name === 'project-b');
+    const docsProject = discovered.find((item) => item.name === 'project-a');
+    const directProject = discovered.find((item) => item.name === 'project-b');
 
     expect(docsProject?.type).toBe('subfolder');
     expect(directProject?.type).toBe('direct');
@@ -415,8 +418,8 @@ describe('discoverProjects', () => {
 
     const recursive = discoverProjects(root, { docsSubfolder: 'docs', recursive: true });
     expect(recursive.length).toBe(3);
-    expect(recursive.find(p => p.name === 'project-1')?.type).toBe('recursive');
-    expect(recursive.find(p => p.name === 'standalone')?.type).toBe('direct');
+    expect(recursive.find((p) => p.name === 'project-1')?.type).toBe('recursive');
+    expect(recursive.find((p) => p.name === 'standalone')?.type).toBe('direct');
   });
 });
 
@@ -440,7 +443,7 @@ describe('validateDocs', () => {
 
     expect(results.length).toBe(1);
     expect(results[0].valid).toBe(true);
-    expect(results[0].warnings.some(w => w.includes('Both draft and hidden'))).toBe(true);
+    expect(results[0].warnings.some((w) => w.includes('Both draft and hidden'))).toBe(true);
   });
 
   test('warns on deprecated without alternative', () => {
@@ -450,7 +453,7 @@ describe('validateDocs', () => {
     const results = validateDocs(root);
 
     expect(results.length).toBe(1);
-    expect(results[0].warnings.some(w => w.includes('deprecatedAlternative'))).toBe(true);
+    expect(results[0].warnings.some((w) => w.includes('deprecatedAlternative'))).toBe(true);
   });
 
   test('reports invalid dates', () => {
@@ -461,7 +464,7 @@ describe('validateDocs', () => {
 
     expect(results.length).toBe(1);
     expect(results[0].valid).toBe(false);
-    expect(results[0].errors.some(e => e.includes('not a valid date'))).toBe(true);
+    expect(results[0].errors.some((e) => e.includes('not a valid date'))).toBe(true);
   });
 
   test('reports isTitle+isParent conflict', () => {
@@ -470,28 +473,28 @@ describe('validateDocs', () => {
 
     const results = validateDocs(root);
 
-    expect(results[0].warnings.some(w => w.includes('Both isTitle and isParent'))).toBe(true);
+    expect(results[0].warnings.some((w) => w.includes('Both isTitle and isParent'))).toBe(true);
   });
 
   test('warns on badge without badgeColor', () => {
     const root = path.join(tempDir, 'docs-badge');
     writeFile(path.join(root, 'badge.md'), '---\nbadge: New\n---\nContent');
     const results = validateDocs(root);
-    expect(results[0].warnings.some(w => w.includes('badgeColor'))).toBe(true);
+    expect(results[0].warnings.some((w) => w.includes('badgeColor'))).toBe(true);
   });
 
   test('warns on externalUrl with redirect', () => {
     const root = path.join(tempDir, 'docs-ext');
     writeFile(path.join(root, 'both.md'), '---\nexternalUrl: https://example.com\nredirect: /old\n---\nContent');
     const results = validateDocs(root);
-    expect(results[0].warnings.some(w => w.includes('externalUrl and redirect'))).toBe(true);
+    expect(results[0].warnings.some((w) => w.includes('externalUrl and redirect'))).toBe(true);
   });
 
   test('warns on redirect with route', () => {
     const root = path.join(tempDir, 'docs-redir');
     writeFile(path.join(root, 'both.md'), '---\nredirect: /new\nroute: /old\n---\nContent');
     const results = validateDocs(root);
-    expect(results[0].warnings.some(e => e.includes('Unknown frontmatter key') && e.includes('route'))).toBe(true);
+    expect(results[0].warnings.some((e) => e.includes('Unknown frontmatter key') && e.includes('route'))).toBe(true);
   });
 
   test('handles parse errors gracefully', () => {
@@ -507,35 +510,35 @@ describe('validateDocs', () => {
     writeFile(path.join(root, 'bad.md'), '---\nupdatedAt: not-a-date\n---\nContent');
     const results = validateDocs(root);
     expect(results[0].valid).toBe(false);
-    expect(results[0].errors.some(e => e.includes('not a valid date'))).toBe(true);
+    expect(results[0].errors.some((e) => e.includes('not a valid date'))).toBe(true);
   });
 
   test('warns when no label is set', () => {
     const root = path.join(tempDir, 'docs-nolabel');
     writeFile(path.join(root, 'no-label.md'), '---\ndescription: No label\n---\nContent');
     const results = validateDocs(root);
-    expect(results[0].warnings.some(w => w.includes('No label set'))).toBe(true);
+    expect(results[0].warnings.some((w) => w.includes('No label set'))).toBe(true);
   });
 
   test('warns when publishedAt is after updatedAt', () => {
     const root = path.join(tempDir, 'docs-reversed');
     writeFile(path.join(root, 'reversed.md'), '---\npublishedAt: 2024-06-01\nupdatedAt: 2024-01-15\n---\nContent');
     const results = validateDocs(root);
-    expect(results[0].warnings.some(w => w.includes('dates may be reversed'))).toBe(true);
+    expect(results[0].warnings.some((w) => w.includes('dates may be reversed'))).toBe(true);
   });
 
   test('warns when publishedAt is in the future', () => {
     const root = path.join(tempDir, 'docs-future');
     writeFile(path.join(root, 'future.md'), '---\npublishedAt: 2099-01-01\n---\nContent');
     const results = validateDocs(root);
-    expect(results[0].warnings.some(w => w.includes('future'))).toBe(true);
+    expect(results[0].warnings.some((w) => w.includes('future'))).toBe(true);
   });
 
   test('warns when order is not an integer', () => {
     const root = path.join(tempDir, 'docs-order-float');
     writeFile(path.join(root, 'float.md'), '---\norder: 1.5\n---\nContent');
     const results = validateDocs(root);
-    expect(results[0].warnings.some(w => w.includes('not an integer'))).toBe(true);
+    expect(results[0].warnings.some((w) => w.includes('not an integer'))).toBe(true);
   });
 
   test('errors when order is negative', () => {
@@ -543,55 +546,60 @@ describe('validateDocs', () => {
     writeFile(path.join(root, 'neg.md'), '---\norder: -1\n---\nContent');
     const results = validateDocs(root);
     expect(results[0].valid).toBe(false);
-    expect(results[0].errors.some(e => e.includes('negative'))).toBe(true);
+    expect(results[0].errors.some((e) => e.includes('negative'))).toBe(true);
   });
 
   test('warns when tags and keywords overlap', () => {
     const root = path.join(tempDir, 'docs-overlap');
-    writeFile(path.join(root, 'overlap.md'), '---\ntags: ["guide", "api"]\nkeywords: ["api", "reference"]\n---\nContent');
+    writeFile(
+      path.join(root, 'overlap.md'),
+      '---\ntags: ["guide", "api"]\nkeywords: ["api", "reference"]\n---\nContent',
+    );
     const results = validateDocs(root);
-    expect(results[0].warnings.some(w => w.includes('tags and keywords overlap'))).toBe(true);
+    expect(results[0].warnings.some((w) => w.includes('tags and keywords overlap'))).toBe(true);
   });
 
   test('warns when iconType set without icon', () => {
     const root = path.join(tempDir, 'docs-icon');
     writeFile(path.join(root, 'icon.md'), '---\niconType: filled\n---\nContent');
     const results = validateDocs(root);
-    expect(results[0].warnings.some(w => w.includes('iconType set without icon'))).toBe(true);
+    expect(results[0].warnings.some((w) => w.includes('iconType set without icon'))).toBe(true);
   });
 
   test('warns when badgeColor set without badge', () => {
     const root = path.join(tempDir, 'docs-badgecolor');
     writeFile(path.join(root, 'bc.md'), '---\nbadgeColor: red\n---\nContent');
     const results = validateDocs(root);
-    expect(results[0].warnings.some(w => w.includes('badgeColor set without badge'))).toBe(true);
+    expect(results[0].warnings.some((w) => w.includes('badgeColor set without badge'))).toBe(true);
   });
 
   test('warns on malformed externalUrl', () => {
     const root = path.join(tempDir, 'docs-url');
     writeFile(path.join(root, 'url.md'), '---\nexternalUrl: not-a-url\n---\nContent');
     const results = validateDocs(root);
-    expect(results[0].warnings.some(w => w.includes('expected a URL with scheme'))).toBe(true);
+    expect(results[0].warnings.some((w) => w.includes('expected a URL with scheme'))).toBe(true);
   });
 
   test('warns on redirect without leading slash', () => {
     const root = path.join(tempDir, 'docs-redir2');
     writeFile(path.join(root, 'redir.md'), '---\nredirect: old-path\n---\nContent');
     const results = validateDocs(root);
-    expect(results[0].warnings.some(w => w.includes('does not start with "/"'))).toBe(true);
+    expect(results[0].warnings.some((w) => w.includes('does not start with "/"'))).toBe(true);
   });
 
   test('warns on unknown frontmatter keys (typos)', () => {
     const root = path.join(tempDir, 'docs-typo');
     writeFile(path.join(root, 'typo.md'), '---\nlable: My Page\ndescripton: A typo\n---\nContent');
     const results = validateDocs(root);
-    expect(results[0].warnings.some(w => w.includes('"lable"'))).toBe(true);
-    expect(results[0].warnings.some(w => w.includes('"descripton"'))).toBe(true);
+    expect(results[0].warnings.some((w) => w.includes('"lable"'))).toBe(true);
+    expect(results[0].warnings.some((w) => w.includes('"descripton"'))).toBe(true);
   });
 
   test('passes on valid frontmatter with all non-conflicting keys', () => {
     const root = path.join(tempDir, 'docs-all-valid');
-    writeFile(path.join(root, 'full.md'), `---
+    writeFile(
+      path.join(root, 'full.md'),
+      `---
 label: Full Page
 description: All keys present
 tags: ["a"]
@@ -612,7 +620,8 @@ updatedAt: 2024-06-01
 draft: false
 hidden: false
 ---
-Content`);
+Content`,
+    );
     const results = validateDocs(root);
     expect(results[0].valid).toBe(true);
     expect(results[0].warnings.length).toBe(0);
@@ -742,7 +751,7 @@ describe('generateDocsManifests', () => {
 
     const results = generateDocsManifests(root);
     expect(results.length).toBe(2);
-    expect(results.every(r => r.processed)).toBe(true);
+    expect(results.every((r) => r.processed)).toBe(true);
   });
 
   test('handles invalid manifest from custom walker', () => {
@@ -789,8 +798,8 @@ describe('discoverProjects', () => {
     writeFile(path.join(root, 'visible', 'docs', 'README.md'), '# visible');
 
     const discovered = discoverProjects(root, { recursive: true });
-    expect(discovered.some(d => d.name === '.hidden')).toBe(false);
-    expect(discovered.some(d => d.name === 'visible')).toBe(true);
+    expect(discovered.some((d) => d.name === '.hidden')).toBe(false);
+    expect(discovered.some((d) => d.name === 'visible')).toBe(true);
   });
 });
 
@@ -800,9 +809,13 @@ describe('watchDocs', () => {
     writeFile(path.join(docsRoot, 'page.md'), '# Original');
 
     const changes: string[] = [];
-    const watcher = watchDocs(docsRoot, (file) => {
-      changes.push(file);
-    }, 20);
+    const watcher = watchDocs(
+      docsRoot,
+      (file) => {
+        changes.push(file);
+      },
+      20,
+    );
 
     await Bun.sleep(50);
 
@@ -821,9 +834,13 @@ describe('watchDocs', () => {
     writeFile(path.join(docsRoot, 'page.md'), '# Original');
 
     let callCount = 0;
-    const watcher = watchDocs(docsRoot, () => {
-      callCount++;
-    }, 10);
+    const watcher = watchDocs(
+      docsRoot,
+      () => {
+        callCount++;
+      },
+      10,
+    );
 
     watcher.close();
 
@@ -915,7 +932,8 @@ describe('dedupeHeadings', () => {
 
 describe('makeExcerpt', () => {
   test('strips markdown and truncates to 150 chars', () => {
-    const body = '## Intro\n\nThis is a **long** document with [a link](https://example.com). ' +
+    const body =
+      '## Intro\n\nThis is a **long** document with [a link](https://example.com). ' +
       'It has multiple sentences that should all be captured in the excerpt. ' +
       'And more text to push past the 150 char limit.';
     const excerpt = makeExcerpt(body);

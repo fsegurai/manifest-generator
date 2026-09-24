@@ -611,9 +611,13 @@ describe('runCli', () => {
     }) as (code?: number) => never;
 
     const configPath = path.join(tempDir, 'manifest-generator.config.json');
-    fs.writeFileSync(configPath, JSON.stringify({
-      docsSubfolder: 'documents',
-    }), 'utf8');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        docsSubfolder: 'documents',
+      }),
+      'utf8',
+    );
 
     try {
       runCli(['--all', '--docs-root', root, '--config', configPath], exitFn);
@@ -641,9 +645,13 @@ describe('runCli', () => {
     }) as (code?: number) => never;
 
     const configPath = path.join(tempDir, 'manifest-generator.config.json');
-    fs.writeFileSync(configPath, JSON.stringify({
-      docsSubfolder: 'wrong-folder',
-    }), 'utf8');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        docsSubfolder: 'wrong-folder',
+      }),
+      'utf8',
+    );
 
     try {
       runCli(['--all', '--docs-root', root, '--config', configPath, '--docs-subfolder', 'custom-docs'], exitFn);

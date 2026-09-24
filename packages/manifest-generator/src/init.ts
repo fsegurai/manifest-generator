@@ -119,7 +119,7 @@ export function scaffoldInit(rootDir: string): void {
   write(path.join(docsDir, 'guides', 'setup.md'), DOCS_GUIDES_SETUP);
   write(path.join(docsDir, 'guides', 'advanced.md'), DOCS_ADVANCED);
 
-  console.log(`✅ Initialized documentation structure in ${ rootDir }`);
+  console.log(`✅ Initialized documentation structure in ${rootDir}`);
   console.log('');
   console.log('Created:');
   console.log('  manifest-generator.config.ts');
