@@ -1,6 +1,6 @@
 # 📦 Changelog
 
-All notable changes to this project will be documented in this file.  
+All notable changes to this project will be documented in this file.
 This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
@@ -11,7 +11,7 @@ No changes yet.
 
 ---
 
-## [1.0.0-beta.3] - 2026-06-xx
+## [1.0.0] - 2026-xx-xx
 
 ### 🚀 Added
 
@@ -67,7 +67,29 @@ No changes yet.
 - **AGENTS.md**: updated with output location, route prefix behavior, test counts, and build scripts.
 - All `.github/` files rewritten to reference manifest-generator.
 
-- [Full Changelog](https://github.com/fsegurai/manifest-generator/commits/1.0.0-beta.3)
+### 🔐 Security
+
+- Updated `trivy` to version `0.71.1` to address vulnerabilities in previous versions.
+- **Added dependencies**.
+	- Dev Dependencies
+		- `@biomejs/biome` - `2.5.14` - needed for linting and formatting - replaces ESLint toolchain.
+		- `husky` - `9.1.7` - needed for Git hooks to enforce code quality and pre-commit checks.
+		- `vite-plugin-dts` - `5.1.1` - needed for generating TypeScript declaration files for the package.
+- **Update dependencies** — address potential vulnerabilities and/or improvements in development dependencies.
+	- Dependencies
+		- `@material/web` from `2.4.1` to `2.5.0`
+		- `marked` from `18.0.5` to `18.0.14`
+	- Dev Dependencies
+		- `@types/node` from `25.9.2` to `26.6.2`
+		- `bun-types` from `1.3.14` to `1.4.2`
+		- `portless` from `0.14.0` to `0.15.6`
+		- `terser` from `5.48.0` to `5.51.2`
+		- `typescript` from `6.0.3` to `7.0.2`
+		- `vite` from `8.0.16` to `8.3.0`
+	- Removed: `@eslint/js`, `@typescript-eslint/eslint-plugin`, `@typescript-eslint/parser`, `eslint`, `globals`,
+	  `typescript-eslint`
+
+- [Full Changelog](https://github.com/fsegurai/manifest-generator/commits/1.0.0)
 
 ---
 
@@ -300,9 +322,9 @@ No changes yet.
 
 ---
 
-[unreleased]: https://github.com/fsegurai/manifest-generator/compare/v1.0.0-beta.3...HEAD
+[unreleased]: https://github.com/fsegurai/manifest-generator/compare/v1.0.0...HEAD
 
-[1.0.0-beta.3]: https://github.com/fsegurai/manifest-generator/compare/v1.0.0-beta.2...v1.0.0-beta.3
+[1.0.0]: https://github.com/fsegurai/manifest-generator/compare/v1.0.0-beta.2...v1.0.0
 
 [1.0.0-beta.2]: https://github.com/fsegurai/manifest-generator/compare/v1.0.0-beta.1...v1.0.0-beta.2
 

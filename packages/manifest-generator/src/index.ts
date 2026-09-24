@@ -97,9 +97,10 @@ function dedupeHeadings(headings: string[], threshold = 0.7): string[] {
 function extractHeadings(body: string): string[] {
   const headings: string[] = [];
   const regex = /^#{2,3}\s+(.+)$/gm;
-  let match;
-  while ((match = regex.exec(body)) !== null) {
+  let match: RegExpExecArray | null = regex.exec(body);
+  while (match !== null) {
     headings.push(match[1].trim());
+    match = regex.exec(body);
   }
   return dedupeHeadings(headings);
 }
@@ -138,10 +139,10 @@ function makeExcerpt(body: string, maxLength = 150): string {
 
   const lastSpace = truncated.lastIndexOf(' ');
   if (lastSpace > 30) {
-    return truncated.slice(0, lastSpace) + '...';
+    return `${truncated.slice(0, lastSpace)}...`;
   }
 
-  return truncated + '...';
+  return `${truncated}...`;
 }
 
 function makeBreadcrumb(route: string): string | undefined {
@@ -196,7 +197,7 @@ function walkDocs(dir: string, relative = '', searchIndex: SearchEntry[] = []): 
 
         const indexMd = children.find(
           (c) =>
-            c.route === relPath.replace(/\\/g, '/') + '/README' || c.route === relPath.replace(/\\/g, '/') + '/index',
+            c.route === `${relPath.replace(/\\/g, '/')}/README` || c.route === `${relPath.replace(/\\/g, '/')}/index`,
         );
         if (indexMd) {
           folderItem.order = (indexMd as NavigationItem & { order?: number }).order;
@@ -553,12 +554,12 @@ function validateDocs(rootDir: string): ValidateResult[] {
             result.warnings.push('deprecated set without deprecatedAlternative — consider suggesting a migration path');
           }
 
-          if (frontmatter.publishedAt && isNaN(Date.parse(frontmatter.publishedAt))) {
+          if (frontmatter.publishedAt && Number.isNaN(Date.parse(frontmatter.publishedAt))) {
             result.errors.push(`publishedAt "${frontmatter.publishedAt}" is not a valid date`);
             result.valid = false;
           }
 
-          if (frontmatter.updatedAt && isNaN(Date.parse(frontmatter.updatedAt))) {
+          if (frontmatter.updatedAt && Number.isNaN(Date.parse(frontmatter.updatedAt))) {
             result.errors.push(`updatedAt "${frontmatter.updatedAt}" is not a valid date`);
             result.valid = false;
           }
@@ -570,7 +571,7 @@ function validateDocs(rootDir: string): ValidateResult[] {
           if (frontmatter.publishedAt && frontmatter.updatedAt) {
             const published = Date.parse(frontmatter.publishedAt);
             const updated = Date.parse(frontmatter.updatedAt);
-            if (!isNaN(published) && !isNaN(updated) && published > updated) {
+            if (!Number.isNaN(published) && !Number.isNaN(updated) && published > updated) {
               result.warnings.push(
                 `publishedAt (${frontmatter.publishedAt}) is after updatedAt (${frontmatter.updatedAt}) — dates may be reversed`,
               );
@@ -579,7 +580,7 @@ function validateDocs(rootDir: string): ValidateResult[] {
 
           if (frontmatter.publishedAt) {
             const published = Date.parse(frontmatter.publishedAt);
-            if (!isNaN(published) && published > Date.now()) {
+            if (!Number.isNaN(published) && published > Date.now()) {
               result.warnings.push(
                 `publishedAt (${frontmatter.publishedAt}) is in the future — document will not appear as published`,
               );
