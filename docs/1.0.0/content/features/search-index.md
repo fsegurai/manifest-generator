@@ -26,7 +26,16 @@ hierarchical manifest, the search index provides a linear list of all documents 
         "Configuration"
     ],
     "excerpt": "A step-by-step guide to get your project up and running with the Manifest Generator.",
-    "breadcrumb": "Getting Started"
+    "breadcrumb": [
+        {
+            "label": "Getting Started",
+            "route": "getting-started"
+        },
+        {
+            "label": "Getting Started Guide",
+            "route": "getting-started/getting-started-guide"
+        }
+    ]
 }
 ```
 
@@ -40,7 +49,13 @@ relative path from output to source. For example, with `--output ./docs/v1 --rou
 [
     {
         "label": "README",
-        "route": "content/README"
+        "route": "content/README",
+        "breadcrumb": [
+            {
+                "label": "README",
+                "route": "content/README"
+            }
+        ]
     },
     {
         "label": "Installation",
@@ -55,7 +70,16 @@ relative path from output to source. For example, with `--output ./docs/v1 --rou
             "Next step"
         ],
         "excerpt": "Use one of these paths depending on how you want to run the generator.",
-        "breadcrumb": "Getting Started"
+        "breadcrumb": [
+            {
+                "label": "Getting Started",
+                "route": "content/getting-started"
+            },
+            {
+                "label": "Installation",
+                "route": "content/getting-started/installation"
+            }
+        ]
     },
     {
         "label": "API Reference",
@@ -70,7 +94,16 @@ relative path from output to source. For example, with `--output ./docs/v1 --rou
             "watchDocs"
         ],
         "excerpt": "The package exports its programmatic API from the package root.",
-        "breadcrumb": "Api"
+        "breadcrumb": [
+            {
+                "label": "Api",
+                "route": "content/api"
+            },
+            {
+                "label": "API Reference",
+                "route": "content/api/reference"
+            }
+        ]
     },
     {
         "label": "Configuration",
@@ -80,29 +113,39 @@ relative path from output to source. For example, with `--output ./docs/v1 --rou
             "advanced"
         ],
         "excerpt": "Configuration is driven by CLI flags, a config file, or the programmatic API.",
-        "breadcrumb": "Guides"
+        "breadcrumb": [
+            {
+                "label": "Guides",
+                "route": "content/guides"
+            },
+            {
+                "label": "Configuration",
+                "route": "content/guides/configuration"
+            }
+        ]
     }
 ]
 ```
 
-Note that top-level pages like `README` (no parent folder) have **no `breadcrumb` key at all** —
-`makeBreadcrumb()` returns `undefined` for an empty ancestor chain, and `JSON.stringify` simply omits `undefined`
-values. This is different from `cleanItem()`, which strips empty fields from `manifest.json`; search-index entries
-aren't run through `cleanItem()`, but in practice their optional fields (`tags`, `headings`, `excerpt`, `breadcrumb`)
-are only ever set to a real value or left `undefined` — never an empty string.
+Note that every entry — including a top-level page like `README` with no parent folder — **always has a
+`breadcrumb` array**, ending with the item's own segment. `README` above gets a single-segment array containing just
+itself, since it has no ancestors. This is different from `cleanItem()`, which strips empty fields from
+`manifest.json`; search-index entries aren't run through `cleanItem()`, but in practice their optional fields
+(`tags`, `headings`, `excerpt`) are only ever set to a real value or left `undefined` — never an empty string —
+while `breadcrumb` is never optional or `undefined` at all.
 
 ### Search Index Fields
 
 Each entry in the search index contains these fields:
 
-| Field        | Type     | Description                                                    |
-|--------------|----------|------------------------------------------------------------------|
-| `label`      | string   | Document title used in navigation                              |
-| `route`      | string   | Relative path (no leading `/`)                                 |
-| `tags`       | string[] | Search tags from frontmatter                                   |
-| `headings`   | string[] | Deduplicated `h2`/`h3` headings extracted from the body        |
-| `excerpt`    | string   | First ~150 characters of body content, stripped of markup      |
-| `breadcrumb` | string   | Auto-generated breadcrumb context from the route path segments (omitted for single-segment routes) |
+| Field        | Type                  | Description                                                    |
+|--------------|-----------------------|------------------------------------------------------------------|
+| `label`      | string                | Document title used in navigation                              |
+| `route`      | string                | Relative path (no leading `/`)                                 |
+| `tags`       | string[]              | Search tags from frontmatter                                   |
+| `headings`   | string[]              | Deduplicated `h2`/`h3` headings extracted from the body        |
+| `excerpt`    | string                | First ~150 characters of body content, stripped of markup      |
+| `breadcrumb` | `BreadcrumbSegment[]` | Always-present, non-empty array of `{ label, route }` segments, ending with the item's own segment; a root-level entry with no ancestors gets a single-segment array |
 
 `headings` are deduplicated using Dice coefficient (bigram similarity, threshold 0.7) so near-identical headings like
 "Installation" and "Installation Guide" collapse into one entry. This keeps the index lean without losing meaningful
@@ -111,7 +154,10 @@ nav points.
 `excerpt` is truncated at word or sentence boundaries to avoid mid-word cuts. It does **not** include the full document
 body — the search index stays small enough to ship to browsers.
 
-`breadcrumb` is derived from the route path: `getting-started/installation` → `"Getting Started"`.
+`breadcrumb` is derived from each ancestor folder's `README.md`/`index.md` frontmatter (its `breadcrumbTitle`, falling
+back to a title-cased folder name), not from the raw route path segments — a folder's `breadcrumbTitle` can make its
+label differ entirely from its route/folder name. The array ends with the item's own segment, whose label likewise
+falls back to the item's own resolved label unless overridden by that item's own `breadcrumbTitle`.
 
 ## Search Index vs Manifest
 
@@ -322,5 +368,6 @@ console.log('Available tags:', availableTags);
 6. **Search Highlighting**: Highlight matching terms in results
 7. **Performance**: Consider indexing for large documentation sets
 8. **Mobile Friendly**: Ensure search works well on mobile devices
-9. **Optional fields**: always guard `tags`/`headings`/`excerpt`/`breadcrumb` with a fallback (`|| []` / `?.`) — they
-   may be entirely absent on a given entry.
+9. **Optional fields**: always guard `tags`/`headings`/`excerpt` with a fallback (`|| []` / `?.`) — they may be
+   entirely absent on a given entry. `breadcrumb` is the exception: it's always present and non-empty, so it's safe
+   to read directly (e.g. `entry.breadcrumb[entry.breadcrumb.length - 1]` for the item's own segment).

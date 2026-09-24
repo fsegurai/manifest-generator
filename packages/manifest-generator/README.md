@@ -386,13 +386,15 @@ Sørensen–Dice coefficient (bigram-based similarity, 0–1) between two string
 Strips Markdown syntax and truncates to roughly `maxLength` characters (default `150`), preferring a sentence or word
 boundary.
 
-##### `makeBreadcrumb(labelChain: string[]): string | undefined`
+##### `makeBreadcrumb(chain: BreadcrumbSegment[], self: BreadcrumbSegment): BreadcrumbSegment[]`
 
-Joins a pre-resolved chain of ancestor folder labels with `" > "`; returns `undefined` for an empty chain.
-`walkDocs()` builds and passes this chain internally — see [migration notes](#-since-beta-migration-notes) if you
-call this directly.
+Appends `self` — the item's own `{ label, route }` segment — to `chain` (the already-resolved ancestor segments),
+returning `[...chain, self]`. Every item (folder or leaf) ends up with a non-empty breadcrumb array whose last
+segment is itself; a root-level page with no ancestors gets a single-segment array containing just itself.
+`walkDocs()` builds and passes the ancestor chain internally — see
+[migration notes](#-since-beta-breadcrumb-migration-notes) if you call this directly.
 
-##### `walkDocs(dir: string, relative?: string, searchIndex?: SearchEntry[], exclude?: string[], labelChain?: string[]): NavigationItem[]`
+##### `walkDocs(dir: string, relative?: string, searchIndex?: SearchEntry[], exclude?: string[], chain?: BreadcrumbSegment[]): NavigationItem[]`
 
 The recursive directory walker that builds the navigation tree and populates `searchIndex` as a side effect. Exposed
 for advanced/custom pipelines.
@@ -405,6 +407,11 @@ for external validation tooling.
 #### TypeScript Types
 
 ```ts
+interface BreadcrumbSegment {
+    label: string;
+    route: string;
+}
+
 interface NavigationItem {
     label: string;
     route?: string;
@@ -420,6 +427,7 @@ interface NavigationItem {
     redirect?: string;
     externalUrl?: string;
     breadcrumbTitle?: string;
+    breadcrumb?: BreadcrumbSegment[];
     layout?: string;
     deprecated?: boolean;
     deprecatedAlternative?: string;
@@ -436,7 +444,7 @@ interface SearchEntry {
     tags?: string[];
     headings?: string[];
     excerpt?: string;
-    breadcrumb?: string;
+    breadcrumb?: BreadcrumbSegment[];
 }
 
 interface ManifestResult {
@@ -500,6 +508,27 @@ interface ValidateResult {
 
 > `loadConfig`, `loadConfigFromFile`, `mergeConfig`, and `parseConfigFile` live in `src/config.ts` but are **not**
 > re-exported from the package root — only `defineConfig` is public.
+
+#### 🔄 Since Beta: Breadcrumb Migration Notes
+
+`breadcrumb` data has changed shape twice in this pre-1.0 window; this note describes only the **current** (final)
+shape rather than walking through both intermediate states.
+
+- `breadcrumb` is now a **structured array of segments** (`BreadcrumbSegment[]`, `{ label, route }`), not a
+  `" > "`-joined string.
+- Every item — folder or leaf — **always** has a non-empty `breadcrumb` array, and that array now includes the item
+  **itself** as its final segment, not just its ancestors. A root-level page with no ancestors gets a single-segment
+  array containing just itself; there is no more `undefined`/omitted case.
+- `NavigationItem` (in `manifest.json`) now also carries `breadcrumb`, alongside `SearchEntry` (in
+  `search-index.json`), which had it already.
+- A leaf file's own `breadcrumbTitle` frontmatter now overrides that file's own final breadcrumb segment's label — it
+  is no longer inert for its own entry. A folder's `breadcrumbTitle` (via that folder's `README.md`/`index.md`) still
+  only affects how that folder's segment appears in **descendants'** breadcrumbs.
+- `makeBreadcrumb()`'s signature is now `makeBreadcrumb(chain: BreadcrumbSegment[], self: BreadcrumbSegment):
+  BreadcrumbSegment[]`, returning `[...chain, self]`. If you call it directly instead of relying on `walkDocs()`,
+  build the ancestor `chain` yourself and pass your own resolved `self` segment.
+- Route-prefix rewriting (`outputDir` different from the source dir) now also rewrites every breadcrumb segment's
+  `route`, so breadcrumb links stay correct in prefixed/multi-project output.
 
 ## 📁 Project Structure Detection
 
@@ -599,7 +628,16 @@ Contains flattened search data (`SearchEntry[]`), including derived `headings`, 
             "Next steps"
         ],
         "excerpt": "This guide walks through installing and configuring the CLI for your project.",
-        "breadcrumb": "Guides > Getting Started"
+        "breadcrumb": [
+            {
+                "label": "Guides",
+                "route": "guides"
+            },
+            {
+                "label": "Getting Started",
+                "route": "guides/getting-started"
+            }
+        ]
     },
     {
         "label": "Authentication",
@@ -608,7 +646,17 @@ Contains flattened search data (`SearchEntry[]`), including derived `headings`, 
             "api",
             "security"
         ],
-        "excerpt": "Authenticate requests using an API key or bearer token."
+        "excerpt": "Authenticate requests using an API key or bearer token.",
+        "breadcrumb": [
+            {
+                "label": "Api",
+                "route": "api"
+            },
+            {
+                "label": "Authentication",
+                "route": "api/auth"
+            }
+        ]
     }
 ]
 ```
@@ -764,7 +812,7 @@ The package reads YAML frontmatter from `.md` and `.mdx` files. All 21 keys reco
 | `iconType`              | Icon variant/type (has no effect without `icon`)                     |
 | `badge`                 | Badge text shown next to the item                                     |
 | `badgeColor`            | Badge color (has no effect without `badge`)                          |
-| `breadcrumbTitle`       | Overrides this folder's label in descendants' breadcrumbs            |
+| `breadcrumbTitle`       | On a folder's README/index: overrides that folder's label in descendants' breadcrumbs. On a leaf file: overrides that file's own final breadcrumb segment label |
 | `layout`                | Layout template identifier for the rendering app                     |
 | `redirect`              | Redirect target path/URL (takes precedence over `externalUrl`)       |
 | `externalUrl`           | External URL for this item                                            |

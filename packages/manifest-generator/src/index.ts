@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as yaml from 'js-yaml';
 import type {
+  BreadcrumbSegment,
   DiscoveredProject,
   DiscoveryOptions,
   Frontmatter,
@@ -146,8 +147,8 @@ function makeExcerpt(body: string, maxLength = 150): string {
   return `${truncated}...`;
 }
 
-function makeBreadcrumb(labelChain: string[]): string | undefined {
-  return labelChain.length > 0 ? labelChain.join(' > ') : undefined;
+function makeBreadcrumb(chain: BreadcrumbSegment[], self: BreadcrumbSegment): BreadcrumbSegment[] {
+  return [...chain, self];
 }
 
 function resolveFolderBreadcrumbLabel(dirFullPath: string, folderName: string): string {
@@ -195,11 +196,23 @@ function computeRoutePrefix(outputDir: string, sourceDir: string): string {
   return rel.split(path.sep).join('/');
 }
 
+function prefixBreadcrumb(
+  breadcrumb: BreadcrumbSegment[] | undefined,
+  prefix: string,
+): BreadcrumbSegment[] | undefined {
+  if (!breadcrumb) return breadcrumb;
+  return breadcrumb.map((segment) => ({
+    ...segment,
+    route: segment.route && segment.route !== '#' ? `${prefix}/${segment.route}` : segment.route,
+  }));
+}
+
 function applyRoutePrefix(items: NavigationItem[], prefix: string): NavigationItem[] {
   return items.map((item) => {
     if (item.route && item.route !== '#') {
       item.route = `${prefix}/${item.route}`;
     }
+    item.breadcrumb = prefixBreadcrumb(item.breadcrumb, prefix);
     if (item.children) {
       item.children = applyRoutePrefix(item.children, prefix);
     }
@@ -212,7 +225,7 @@ function walkDocs(
   relative = '',
   searchIndex: SearchEntry[] = [],
   exclude: string[] = [],
-  labelChain: string[] = [],
+  chain: BreadcrumbSegment[] = [],
 ): NavigationItem[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
 
@@ -225,14 +238,22 @@ function walkDocs(
 
       if (entry.isDirectory()) {
         const folderLabel = resolveFolderBreadcrumbLabel(fullPath, entry.name);
-        const children = walkDocs(fullPath, relPath, searchIndex, exclude, [...labelChain, folderLabel]);
+        const folderRoute = relPath.replace(/\\/g, '/');
+        const children = walkDocs(fullPath, relPath, searchIndex, exclude, [
+          ...chain,
+          { label: folderLabel, route: folderRoute },
+        ]);
         if (children.length === 0) return null;
 
         const folderItem: NavigationItem = {
           label: formatTitle(entry.name),
-          route: relPath.replace(/\\/g, '/'),
+          route: folderRoute,
           isParent: true,
         };
+        folderItem.breadcrumb = makeBreadcrumb(chain, {
+          label: folderItem.breadcrumbTitle || folderItem.label,
+          route: folderItem.route ?? '',
+        });
 
         const normalizedRelPath = relPath.replace(/\\/g, '/');
         const readmeMd = children.find((c) => c.route === `${normalizedRelPath}/README`);
@@ -263,7 +284,6 @@ function walkDocs(
         const body = getBody(content);
         const headings = extractHeadings(body);
         const excerpt = makeExcerpt(body);
-        const breadcrumb = makeBreadcrumb(labelChain);
 
         const item: NavigationItem = {
           label: meta.label || formatTitle(entry.name),
@@ -292,6 +312,11 @@ function walkDocs(
           item.route = '#';
         }
 
+        item.breadcrumb = makeBreadcrumb(chain, {
+          label: item.breadcrumbTitle || item.label,
+          route: item.route ?? '',
+        });
+
         if (item.route !== '#' && item.route !== '') {
           searchIndex.push({
             label: item.label,
@@ -300,7 +325,7 @@ function walkDocs(
             tags: item.tags,
             headings: headings.length > 0 ? headings : undefined,
             excerpt: excerpt || undefined,
-            breadcrumb: breadcrumb || undefined,
+            breadcrumb: item.breadcrumb,
           });
         }
 
@@ -372,7 +397,13 @@ function generateDocsManifests(
         applyRoutePrefix(manifest, prefix);
         for (let i = 0; i < searchIndex.length; i++) {
           const entry = searchIndex[i];
-          if (entry.route) searchIndex[i] = { ...entry, route: `${prefix}/${entry.route}` };
+          if (entry.route) {
+            searchIndex[i] = {
+              ...entry,
+              route: `${prefix}/${entry.route}`,
+              breadcrumb: prefixBreadcrumb(entry.breadcrumb, prefix),
+            };
+          }
         }
       }
 
@@ -493,7 +524,13 @@ function generateManifestsWithDiscovery(rootDir: string, options: ManifestGenera
       applyRoutePrefix(result.manifest, prefix);
       for (let i = 0; i < result.searchIndex.length; i++) {
         const entry = result.searchIndex[i];
-        if (entry.route) result.searchIndex[i] = { ...entry, route: `${prefix}/${entry.route}` };
+        if (entry.route) {
+          result.searchIndex[i] = {
+            ...entry,
+            route: `${prefix}/${entry.route}`,
+            breadcrumb: prefixBreadcrumb(entry.breadcrumb, prefix),
+          };
+        }
       }
     }
 
@@ -532,7 +569,13 @@ function generateManifestsWithDiscovery(rootDir: string, options: ManifestGenera
       applyRoutePrefix(result.manifest, prefix);
       for (let i = 0; i < result.searchIndex.length; i++) {
         const entry = result.searchIndex[i];
-        if (entry.route) result.searchIndex[i] = { ...entry, route: `${prefix}/${entry.route}` };
+        if (entry.route) {
+          result.searchIndex[i] = {
+            ...entry,
+            route: `${prefix}/${entry.route}`,
+            breadcrumb: prefixBreadcrumb(entry.breadcrumb, prefix),
+          };
+        }
       }
     }
 
@@ -808,6 +851,7 @@ function watchDocs(rootDir: string, onChange: (changedFile: string) => void, int
 }
 
 export type {
+  BreadcrumbSegment,
   ConfigFile,
   DiscoveredProject,
   DiscoveryOptions,

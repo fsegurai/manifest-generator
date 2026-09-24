@@ -259,13 +259,16 @@ Final section with a list:
     walkDocs(docsRoot, '', searchIndex);
 
     expect(searchIndex[0].headings).toEqual(['Getting Started', 'Configuration', 'Deployment']);
-    expect(searchIndex[0].breadcrumb).toBe('Guides');
+    expect(searchIndex[0].breadcrumb).toEqual([
+      { label: 'Guides', route: 'guides' },
+      { label: 'Advanced Guide', route: 'guides/advanced' },
+    ]);
     expect(searchIndex[0].excerpt).toBeTruthy();
     expect(searchIndex[0].excerpt?.toLowerCase()).toContain('bold');
     expect(searchIndex[0].tags).toEqual(['guide']);
   });
 
-  test('breadcrumbTitle in a folder README overrides the derived breadcrumb label', () => {
+  test('breadcrumbTitle in a folder README overrides the derived ancestor breadcrumb label for descendants', () => {
     const docsRoot = path.join(tempDir, 'docs-breadcrumb-override');
 
     writeFile(path.join(docsRoot, 'section', 'README.md'), '---\nbreadcrumbTitle: Custom Section Name\n---\nSection');
@@ -275,7 +278,26 @@ Final section with a list:
     walkDocs(docsRoot, '', searchIndex);
 
     const entry = searchIndex.find((e) => e.label === 'Page');
-    expect(entry?.breadcrumb).toBe('Custom Section Name');
+    expect(entry?.breadcrumb).toEqual([
+      { label: 'Custom Section Name', route: 'section' },
+      { label: 'Page', route: 'section/page' },
+    ]);
+  });
+
+  test('a leaf file breadcrumbTitle overrides only its own final breadcrumb segment label', () => {
+    const docsRoot = path.join(tempDir, 'docs-breadcrumb-leaf-override');
+
+    writeFile(path.join(docsRoot, 'section', 'README.md'), '# Section');
+    writeFile(path.join(docsRoot, 'section', 'page.md'), '---\nbreadcrumbTitle: Custom Page Name\n---\n# Page');
+
+    const searchIndex: SearchEntry[] = [];
+    walkDocs(docsRoot, '', searchIndex);
+
+    const entry = searchIndex.find((e) => e.route === 'section/page');
+    expect(entry?.breadcrumb).toEqual([
+      { label: 'Section', route: 'section' },
+      { label: 'Custom Page Name', route: 'section/page' },
+    ]);
   });
 
   test('breadcrumb falls back to the derived folder label without breadcrumbTitle override', () => {
@@ -286,7 +308,10 @@ Final section with a list:
     const searchIndex: SearchEntry[] = [];
     walkDocs(docsRoot, '', searchIndex);
 
-    expect(searchIndex[0].breadcrumb).toBe('Getting Started');
+    expect(searchIndex[0].breadcrumb).toEqual([
+      { label: 'Getting Started', route: 'getting-started' },
+      { label: 'Page', route: 'getting-started/page' },
+    ]);
   });
 
   test('chains multiple ancestor labels, some overridden and some derived', () => {
@@ -301,7 +326,39 @@ Final section with a list:
     const searchIndex: SearchEntry[] = [];
     walkDocs(docsRoot, '', searchIndex);
 
-    expect(searchIndex[0].breadcrumb).toBe('Custom Grandparent > Parent');
+    expect(searchIndex[0].breadcrumb).toEqual([
+      { label: 'Custom Grandparent', route: 'grandparent' },
+      { label: 'Parent', route: 'grandparent/parent' },
+      { label: 'Page', route: 'grandparent/parent/page' },
+    ]);
+  });
+
+  test('root-level file breadcrumb is a single segment containing only itself', () => {
+    const docsRoot = path.join(tempDir, 'docs-breadcrumb-root');
+
+    writeFile(path.join(docsRoot, 'page.md'), '---\nlabel: Root Page\n---\n# Page');
+
+    const searchIndex: SearchEntry[] = [];
+    const manifest = walkDocs(docsRoot, '', searchIndex);
+
+    expect(searchIndex[0].breadcrumb).toEqual([{ label: 'Root Page', route: 'page' }]);
+    expect(manifest[0].breadcrumb).toEqual([{ label: 'Root Page', route: 'page' }]);
+  });
+
+  test('manifest.json items (NavigationItem) carry breadcrumb, including folder items', () => {
+    const docsRoot = path.join(tempDir, 'docs-breadcrumb-manifest');
+
+    writeFile(path.join(docsRoot, 'section', 'page.md'), '# Page');
+
+    const manifest = walkDocs(docsRoot, '', []);
+    const sectionItem = manifest.find((i) => i.isParent);
+    expect(sectionItem?.breadcrumb).toEqual([{ label: 'Section', route: 'section' }]);
+
+    const pageItem = sectionItem?.children?.find((i) => i.label === 'Page');
+    expect(pageItem?.breadcrumb).toEqual([
+      { label: 'Section', route: 'section' },
+      { label: 'Page', route: 'section/page' },
+    ]);
   });
 
   test('omits excerpt for file with only frontmatter', () => {
@@ -376,7 +433,7 @@ keywords: ["key1", "key2"]
 
     expect(searchIndex[0].headings).toBeUndefined();
     expect(searchIndex[0].excerpt).toBeUndefined();
-    expect(searchIndex[0].breadcrumb).toBeUndefined();
+    expect(searchIndex[0].breadcrumb).toEqual([{ label: 'Bread', route: 'page' }]);
   });
 
   test('README takes precedence over index.md when both exist, with a warning', () => {
@@ -976,6 +1033,37 @@ describe('generateManifestsWithDiscovery', () => {
     expect(searchIndex.every((e: { route: string }) => e.route.startsWith('content/'))).toBe(true);
   });
 
+  test('prefixes breadcrumb segment routes alongside item/searchIndex routes when outputDir differs from source', () => {
+    const versionRoot = path.join(tempDir, 'route-prefix-breadcrumb', 'v1');
+    const docsPath = path.join(versionRoot, 'content');
+    writeFile(path.join(docsPath, 'guide', 'nested.md'), '---\nlabel: Nested\n---\nC');
+
+    const results = generateManifestsWithDiscovery(tempDir, {
+      route: docsPath,
+      outputDir: versionRoot,
+    });
+
+    expect(results[0].processed).toBe(true);
+    const manifest = JSON.parse(fs.readFileSync(path.join(versionRoot, 'manifest.json'), 'utf8'));
+    const searchIndex = JSON.parse(fs.readFileSync(path.join(versionRoot, 'search-index.json'), 'utf8'));
+
+    const guideFolder = manifest.find((i: { route?: string }) => i.route === 'content/guide');
+    expect(guideFolder.breadcrumb).toEqual([{ label: 'Guide', route: 'content/guide' }]);
+
+    const nestedItem = guideFolder.children[0];
+    expect(nestedItem.route).toBe('content/guide/nested');
+    expect(nestedItem.breadcrumb).toEqual([
+      { label: 'Guide', route: 'content/guide' },
+      { label: 'Nested', route: 'content/guide/nested' },
+    ]);
+
+    const entry = searchIndex.find((e: { route: string }) => e.route === 'content/guide/nested');
+    expect(entry.breadcrumb).toEqual([
+      { label: 'Guide', route: 'content/guide' },
+      { label: 'Nested', route: 'content/guide/nested' },
+    ]);
+  });
+
   test('does not write files in route mode when dryRun is set', () => {
     const docsPath = path.join(tempDir, 'route-dry-run');
     writeFile(path.join(docsPath, 'page.md'), '---\nlabel: Page\n---\nC');
@@ -1320,20 +1408,21 @@ describe('makeExcerpt', () => {
 });
 
 describe('makeBreadcrumb', () => {
-  test('derives from a single-label chain', () => {
-    expect(makeBreadcrumb(['Guides'])).toBe('Guides');
+  test('appends self to an empty chain', () => {
+    expect(makeBreadcrumb([], { label: 'Guides', route: 'guides' })).toEqual([{ label: 'Guides', route: 'guides' }]);
   });
 
-  test('handles deep nesting', () => {
-    expect(makeBreadcrumb(['Api', 'V2'])).toBe('Api > V2');
+  test('appends self to an existing chain (deep nesting)', () => {
+    expect(makeBreadcrumb([{ label: 'Api', route: 'api' }], { label: 'V2', route: 'api/v2' })).toEqual([
+      { label: 'Api', route: 'api' },
+      { label: 'V2', route: 'api/v2' },
+    ]);
   });
 
-  test('handles multi-word segments', () => {
-    expect(makeBreadcrumb(['Getting Started'])).toBe('Getting Started');
-  });
-
-  test('returns undefined for an empty chain (root-level files)', () => {
-    expect(makeBreadcrumb([])).toBeUndefined();
+  test('handles multi-word segment labels', () => {
+    expect(makeBreadcrumb([], { label: 'Getting Started', route: 'getting-started' })).toEqual([
+      { label: 'Getting Started', route: 'getting-started' },
+    ]);
   });
 });
 

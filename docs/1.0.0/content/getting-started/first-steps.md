@@ -96,17 +96,22 @@ why a page with no `tags` set simply omits the field instead of showing `"tags":
 [
   {
     "label": "README",
-    "route": "README"
+    "route": "README",
+    "breadcrumb": [{ "label": "README", "route": "README" }]
   },
   {
     "label": "Getting Started Guide",
     "route": "getting-started",
-    "tags": ["guide", "beginner"]
+    "tags": ["guide", "beginner"],
+    "breadcrumb": [{ "label": "Getting Started Guide", "route": "getting-started" }]
   },
   {
     "label": "Reference",
     "route": "api/reference",
-    "breadcrumb": "Api"
+    "breadcrumb": [
+      { "label": "Api", "route": "api" },
+      { "label": "Reference", "route": "api/reference" }
+    ]
   }
 ]
 ```

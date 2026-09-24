@@ -166,15 +166,18 @@ Computes the Sørensen–Dice coefficient (bigram-based similarity, 0–1) betwe
 Strips Markdown syntax from a document body and truncates it to roughly `maxLength` characters (default `150`),
 preferring a sentence or word boundary over a hard mid-word cut.
 
-### `makeBreadcrumb(labelChain: string[]): string | undefined`
+### `makeBreadcrumb(chain: BreadcrumbSegment[], self: BreadcrumbSegment): BreadcrumbSegment[]`
 
-Joins a pre-resolved chain of ancestor folder labels with `" > "`. Returns `undefined` for an empty chain (root-level
-pages). Each ancestor folder's label is its own `breadcrumbTitle` (from that folder's `README.md`/`index.md`
-frontmatter) when set, falling back to the title-cased folder name otherwise — see
-[Frontmatter](../guides/frontmatter.md#breadcrumbtitle). `walkDocs()` builds and passes this chain internally as it
-recurses; if you call `makeBreadcrumb()` directly, you're responsible for resolving the chain yourself.
+Appends `self` — the item's own `{ label, route }` segment — onto `chain` (the already-resolved ancestor segments),
+returning `[...chain, self]`. Every item (folder or leaf) ends up with a non-empty breadcrumb array whose final
+segment is itself; a root-level page with no ancestors gets a single-segment array containing just itself. Each
+ancestor folder's label is its own `breadcrumbTitle` (from that folder's `README.md`/`index.md` frontmatter) when set,
+falling back to the title-cased folder name otherwise; a leaf's own `breadcrumbTitle` overrides its own final
+segment's label — see [Frontmatter](../guides/frontmatter.md#breadcrumbtitle). `walkDocs()` builds the ancestor chain
+and resolves each item's own segment internally as it recurses; if you call `makeBreadcrumb()` directly, you're
+responsible for resolving both the chain and the `self` segment yourself.
 
-### `walkDocs(dir: string, relative?: string, searchIndex?: SearchEntry[], exclude?: string[]): NavigationItem[]`
+### `walkDocs(dir: string, relative?: string, searchIndex?: SearchEntry[], exclude?: string[], chain?: BreadcrumbSegment[]): NavigationItem[]`
 
 The recursive directory walker that builds the navigation tree and populates `searchIndex` as a side effect. Used
 internally by `generateManifest()`; exposed for advanced/custom pipelines.

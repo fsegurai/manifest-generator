@@ -13,7 +13,16 @@
       "Next step"
     ],
     "excerpt": "Use one of these paths depending on how you want to run the generator.",
-    "breadcrumb": "Getting Started"
+    "breadcrumb": [
+      {
+        "label": "Getting Started",
+        "route": "content/getting-started"
+      },
+      {
+        "label": "Installation",
+        "route": "content/getting-started/installation"
+      }
+    ]
   },
   {
     "label": "First Steps",
@@ -53,7 +62,16 @@
       "Quick Reference"
     ],
     "excerpt": "Let's create your first documentation manifest in just a few simple steps!",
-    "breadcrumb": "Getting Started"
+    "breadcrumb": [
+      {
+        "label": "Getting Started",
+        "route": "content/getting-started"
+      },
+      {
+        "label": "First Steps",
+        "route": "content/getting-started/first-steps"
+      }
+    ]
   },
   {
     "label": "Getting Started with Manifest Generator",
@@ -72,7 +90,16 @@
       "Next steps"
     ],
     "excerpt": "Getting Started with Manifest Generator\n\nThis is a practical walkthrough for external users integrating the package into their own documentation...",
-    "breadcrumb": "Getting Started"
+    "breadcrumb": [
+      {
+        "label": "Getting Started",
+        "route": "content/getting-started"
+      },
+      {
+        "label": "Getting Started with Manifest Generator",
+        "route": "content/getting-started/getting-started"
+      }
+    ]
   },
   {
     "label": "Getting Started Overview",
@@ -87,7 +114,16 @@
       "Need code-level usage?"
     ],
     "excerpt": "This section is for external users who want to install and use quickly.",
-    "breadcrumb": "Getting Started"
+    "breadcrumb": [
+      {
+        "label": "Getting Started",
+        "route": "content/getting-started"
+      },
+      {
+        "label": "Getting Started Overview",
+        "route": "content/getting-started/README"
+      }
+    ]
   },
   {
     "label": "Troubleshooting",
@@ -112,7 +148,16 @@
       "Still blocked?"
     ],
     "excerpt": "Use this page when generation fails or outputs are empty.",
-    "breadcrumb": "Help"
+    "breadcrumb": [
+      {
+        "label": "Help",
+        "route": "content/help"
+      },
+      {
+        "label": "Troubleshooting",
+        "route": "content/help/troubleshooting"
+      }
+    ]
   },
   {
     "label": "FAQ",
@@ -139,7 +184,16 @@
       "Where should I go next?"
     ],
     "excerpt": "What does this package generate?",
-    "breadcrumb": "Help"
+    "breadcrumb": [
+      {
+        "label": "Help",
+        "route": "content/help"
+      },
+      {
+        "label": "FAQ",
+        "route": "content/help/faq"
+      }
+    ]
   },
   {
     "label": "README",
@@ -156,7 +210,16 @@
       "More help"
     ],
     "excerpt": "Use this page when CLI runs fail, when no docs are discovered, or when output files are missing.",
-    "breadcrumb": "Help"
+    "breadcrumb": [
+      {
+        "label": "Help",
+        "route": "content/help"
+      },
+      {
+        "label": "README",
+        "route": "content/help/README"
+      }
+    ]
   },
   {
     "label": "Search Index",
@@ -181,7 +244,16 @@
       "Best Practices"
     ],
     "excerpt": "Search Index\n\nThe Manifest Generator creates comprehensive search indexes alongside navigation manifests, enabling powerful search\nfunctionality for...",
-    "breadcrumb": "Features"
+    "breadcrumb": [
+      {
+        "label": "Features",
+        "route": "content/features"
+      },
+      {
+        "label": "Search Index",
+        "route": "content/features/search-index"
+      }
+    ]
   },
   {
     "label": "Features Overview",
@@ -190,7 +262,16 @@
     "tags": ["features", "capabilities", "overview"],
     "headings": ["Core capabilities", "Current behaviour highlights", "What changed from 1.0.0-beta.3", "Next step"],
     "excerpt": "Features Overview\n\nThe current release turns Markdown and MDX documentation into a manifest and a search index, with a growing set of\nnavigation,...",
-    "breadcrumb": "Features"
+    "breadcrumb": [
+      {
+        "label": "Features",
+        "route": "content/features"
+      },
+      {
+        "label": "Features Overview",
+        "route": "content/features/README"
+      }
+    ]
   },
   {
     "label": "Build Systems",
@@ -219,7 +300,16 @@
       "Next Steps"
     ],
     "excerpt": "Integrate the Manifest Generator into your build tools and development workflows for automated documentation processing.",
-    "breadcrumb": "Integration"
+    "breadcrumb": [
+      {
+        "label": "Integration",
+        "route": "content/integration"
+      },
+      {
+        "label": "Build Systems",
+        "route": "content/integration/build-systems"
+      }
+    ]
   },
   {
     "label": "Ci Cd",
@@ -250,7 +340,16 @@
       "Next Steps"
     ],
     "excerpt": "Automate manifest generation in your continuous integration and deployment pipelines for seamless documentation workflows.",
-    "breadcrumb": "Integration"
+    "breadcrumb": [
+      {
+        "label": "Integration",
+        "route": "content/integration"
+      },
+      {
+        "label": "Ci Cd",
+        "route": "content/integration/ci-cd"
+      }
+    ]
   },
   {
     "label": "Frameworks",
@@ -280,7 +379,16 @@
       "Next Steps"
     ],
     "excerpt": "Integrate the Manifest Generator with popular frontend frameworks and libraries for seamless documentation workflows.",
-    "breadcrumb": "Integration"
+    "breadcrumb": [
+      {
+        "label": "Integration",
+        "route": "content/integration"
+      },
+      {
+        "label": "Frameworks",
+        "route": "content/integration/frameworks"
+      }
+    ]
   },
   {
     "label": "README",
@@ -302,7 +410,16 @@
       "Best Practices"
     ],
     "excerpt": "Learn how to integrate the Manifest Generator into your development workflows, build systems, and CI/CD pipelines.",
-    "breadcrumb": "Integration"
+    "breadcrumb": [
+      {
+        "label": "Integration",
+        "route": "content/integration"
+      },
+      {
+        "label": "README",
+        "route": "content/integration/README"
+      }
+    ]
   },
   {
     "label": "Basic Usage",
@@ -336,7 +453,16 @@
       "Next Steps"
     ],
     "excerpt": "Simple examples to get you started with the Manifest Generator quickly.",
-    "breadcrumb": "Examples"
+    "breadcrumb": [
+      {
+        "label": "Examples",
+        "route": "content/examples"
+      },
+      {
+        "label": "Basic Usage",
+        "route": "content/examples/basic-usage"
+      }
+    ]
   },
   {
     "label": "Advanced",
@@ -359,7 +485,16 @@
       "Next Steps"
     ],
     "excerpt": "Complex scenarios and advanced workflows for using the Manifest Generator in sophisticated documentation systems.",
-    "breadcrumb": "Examples"
+    "breadcrumb": [
+      {
+        "label": "Examples",
+        "route": "content/examples"
+      },
+      {
+        "label": "Advanced",
+        "route": "content/examples/advanced"
+      }
+    ]
   },
   {
     "label": "Frameworks",
@@ -383,7 +518,16 @@
       "Next Steps"
     ],
     "excerpt": "Real-world examples showing how to integrate the Manifest Generator with popular frontend frameworks and static site generators.",
-    "breadcrumb": "Examples"
+    "breadcrumb": [
+      {
+        "label": "Examples",
+        "route": "content/examples"
+      },
+      {
+        "label": "Frameworks",
+        "route": "content/examples/frameworks"
+      }
+    ]
   },
   {
     "label": "README",
@@ -408,7 +552,16 @@
       "Next Steps"
     ],
     "excerpt": "Real-world examples and practical scenarios for using the Manifest Generator across different project types and workflows.",
-    "breadcrumb": "Examples"
+    "breadcrumb": [
+      {
+        "label": "Examples",
+        "route": "content/examples"
+      },
+      {
+        "label": "README",
+        "route": "content/examples/README"
+      }
+    ]
   },
   {
     "label": "Frontmatter",
@@ -433,7 +586,16 @@
       "Next step"
     ],
     "excerpt": "Frontmatter\n\nThe parser reads a YAML block at the top of each Markdown or MDX file and maps it to navigation items and search\nentries. The parser...",
-    "breadcrumb": "Guides"
+    "breadcrumb": [
+      {
+        "label": "Guides",
+        "route": "content/guides"
+      },
+      {
+        "label": "Frontmatter",
+        "route": "content/guides/frontmatter"
+      }
+    ]
   },
   {
     "label": "Cli Usage",
@@ -455,7 +617,16 @@
       "Next step"
     ],
     "excerpt": "This guide describes the public CLI for external users.",
-    "breadcrumb": "Guides"
+    "breadcrumb": [
+      {
+        "label": "Guides",
+        "route": "content/guides"
+      },
+      {
+        "label": "Cli Usage",
+        "route": "content/guides/cli-usage"
+      }
+    ]
   },
   {
     "label": "Project Structure",
@@ -479,7 +650,16 @@
       "Next step"
     ],
     "excerpt": "Project Structure\n\nDiscovery looks for documentation in two shapes:\n\nA docs subfolder such as \nMarkdown files directly in the project root\n\nIf a docs...",
-    "breadcrumb": "Guides"
+    "breadcrumb": [
+      {
+        "label": "Guides",
+        "route": "content/guides"
+      },
+      {
+        "label": "Project Structure",
+        "route": "content/guides/project-structure"
+      }
+    ]
   },
   {
     "label": "Configuration",
@@ -506,7 +686,16 @@
       "Next step"
     ],
     "excerpt": "Configuration is driven by CLI flags, a config file, or the programmatic API.",
-    "breadcrumb": "Guides"
+    "breadcrumb": [
+      {
+        "label": "Guides",
+        "route": "content/guides"
+      },
+      {
+        "label": "Configuration",
+        "route": "content/guides/configuration"
+      }
+    ]
   },
   {
     "label": "README",
@@ -515,7 +704,16 @@
     "tags": [],
     "headings": ["Available guides", "Recommended reading order", "Related sections"],
     "excerpt": "Detailed usage guides for external users of .",
-    "breadcrumb": "Guides"
+    "breadcrumb": [
+      {
+        "label": "Guides",
+        "route": "content/guides"
+      },
+      {
+        "label": "README",
+        "route": "content/guides/README"
+      }
+    ]
   },
   {
     "label": "API Examples",
@@ -543,7 +741,16 @@
       "Next Steps"
     ],
     "excerpt": "Practical examples showing how to use the Manifest Generator API in different scenarios and applications.",
-    "breadcrumb": "Api"
+    "breadcrumb": [
+      {
+        "label": "Api",
+        "route": "content/api"
+      },
+      {
+        "label": "API Examples",
+        "route": "content/api/examples"
+      }
+    ]
   },
   {
     "label": "Typescript",
@@ -567,7 +774,16 @@
       "Next step"
     ],
     "excerpt": "All public interfaces live in and are re-exported from the package root.",
-    "breadcrumb": "Api"
+    "breadcrumb": [
+      {
+        "label": "Api",
+        "route": "content/api"
+      },
+      {
+        "label": "Typescript",
+        "route": "content/api/typescript"
+      }
+    ]
   },
   {
     "label": "Reference",
@@ -590,8 +806,8 @@
       "`dedupeHeadings(headings: string[], threshold?: number): string[]`",
       "`diceSimilarity(a: string, b: string): number`",
       "`makeExcerpt(body: string, maxLength?: number): string`",
-      "`makeBreadcrumb(labelChain: string[]): string | undefined`",
-      "`walkDocs(dir: string, relative?: string, searchIndex?: SearchEntry[], exclude?: string[]): NavigationItem[]`",
+      "`makeBreadcrumb(chain: BreadcrumbSegment[], self: BreadcrumbSegment): BreadcrumbSegment[]`",
+      "`walkDocs(dir: string, relative?: string, searchIndex?: SearchEntry[], exclude?: string[], chain?: BreadcrumbSegment[]): NavigationItem[]`",
       "`defineConfig(config: ConfigFile): ConfigFile`",
       "`ALLOWED_FRONTMATTER_KEYS`",
       "Current behaviour",
@@ -602,7 +818,16 @@
       "Next step"
     ],
     "excerpt": "API Reference\n\nThe package exports its programmatic API from the package root ( , built from\n ). It is designed for Node.js and Bun-based tooling,...",
-    "breadcrumb": "Api"
+    "breadcrumb": [
+      {
+        "label": "Api",
+        "route": "content/api"
+      },
+      {
+        "label": "Reference",
+        "route": "content/api/reference"
+      }
+    ]
   },
   {
     "label": "API Reference",
@@ -611,7 +836,16 @@
     "tags": ["api", "reference", "typescript"],
     "headings": ["Quick start", "What you can do", "Current notes", "Next step"],
     "excerpt": "API Reference\n\nUse the package root exports to generate manifests, discover projects, validate frontmatter, load config, and inspect\nthe current...",
-    "breadcrumb": "Api"
+    "breadcrumb": [
+      {
+        "label": "Api",
+        "route": "content/api"
+      },
+      {
+        "label": "API Reference",
+        "route": "content/api/README"
+      }
+    ]
   },
   {
     "label": "Documentation Home",
@@ -619,6 +853,12 @@
     "route": "content/README",
     "tags": ["documentation", "overview", "manifest-generator"],
     "headings": ["Quick start", "Who this is for", "Documentation map", "Current release notes"],
-    "excerpt": "@fsegurai/manifest-generator Docs\n\n generates two JSON files from Markdown and MDX documentation:\n\nfor hierarchical navigation\nfor search data\n\nThis..."
+    "excerpt": "@fsegurai/manifest-generator Docs\n\n generates two JSON files from Markdown and MDX documentation:\n\nfor hierarchical navigation\nfor search data\n\nThis...",
+    "breadcrumb": [
+      {
+        "label": "Documentation Home",
+        "route": "content/README"
+      }
+    ]
   }
 ]

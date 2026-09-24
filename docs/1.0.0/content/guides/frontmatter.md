@@ -34,7 +34,7 @@ This is the exact list from the package's `ALLOWED_FRONTMATTER_KEYS` export:
 | `iconType`              | string   | Optional icon source/type                                                  |
 | `badge`                 | string   | Optional badge text                                                        |
 | `badgeColor`            | string   | Optional badge color                                                       |
-| `breadcrumbTitle`       | string   | Overrides this folder's own label in descendants' breadcrumbs; see [note](#breadcrumbtitle) below |
+| `breadcrumbTitle`       | string   | On a folder: overrides its own label in descendants' breadcrumbs. On a leaf: overrides its own final breadcrumb segment; see [note](#breadcrumbtitle) below |
 | `layout`                | string   | Custom page layout identifier for the consuming frontend                   |
 | `redirect`              | string   | URL to redirect this page to                                               |
 | `externalUrl`           | string   | Link to an external resource instead of a doc page                        |
@@ -47,11 +47,16 @@ This is the exact list from the package's `ALLOWED_FRONTMATTER_KEYS` export:
 
 ### `breadcrumbTitle`
 
-Set on a folder's own `README.md`/`index.md` (README wins if both exist), `breadcrumbTitle` overrides what that
-folder's segment shows in every descendant page's auto-generated `breadcrumb` field (`search-index.json`), instead of
-falling back to the title-cased folder name. It's also still carried through onto the generated `NavigationItem`
-(`item.breadcrumbTitle`) for a consuming frontend to read directly. A page's own `breadcrumbTitle` only affects
-descendants — it has no effect on that page's own breadcrumb entry.
+`breadcrumbTitle` has two mechanics depending on where it's set:
+
+1. **On a folder's own `README.md`/`index.md`** (README wins if both exist), it overrides what that folder's segment
+   shows in every **descendant** page's auto-generated `breadcrumb` array (`search-index.json` and, now,
+   `manifest.json`), instead of falling back to the title-cased folder name. It's also still carried through onto the
+   generated `NavigationItem` (`item.breadcrumbTitle`) for a consuming frontend to read directly.
+2. **On a leaf (non-index) file**, it overrides that file's **own** final breadcrumb segment label. This is new:
+   previously a leaf's `breadcrumbTitle` had no effect on its own breadcrumb entry — it only worked as a folder-level
+   mechanic. Both mechanics can apply at once: a folder's `breadcrumbTitle` shapes how it appears in its descendants'
+   breadcrumbs, and a leaf's own `breadcrumbTitle` shapes only its own final segment.
 
 ```yaml
 # docs/api-reference/README.md
@@ -60,8 +65,25 @@ breadcrumbTitle: API
 ---
 ```
 
-A nested page at `docs/api-reference/authentication.md` then gets `"breadcrumb": "API"` instead of the auto-derived
-`"Api Reference"`.
+```yaml
+# docs/api-reference/authentication.md
+---
+breadcrumbTitle: Auth
+---
+```
+
+With both files above, `authentication.md`'s breadcrumb becomes:
+
+```json
+"breadcrumb": [
+  { "label": "API", "route": "api-reference" },
+  { "label": "Auth", "route": "api-reference/authentication" }
+]
+```
+
+The folder's `README.md` `breadcrumbTitle` ("API") overrides the ancestor segment, and the leaf's own
+`breadcrumbTitle` ("Auth") overrides its own final segment — without it, the final segment would fall back to the
+auto-derived `"Authentication"`.
 
 ## Validation
 
@@ -113,7 +135,9 @@ In addition to `label`, `description`, `route`, and `tags`, each search entry in
 
 - `headings[]` — deduplicated `h2`/`h3` headings extracted from the document body
 - `excerpt` — first ~150 characters of body content, stripped of markup
-- `breadcrumb` — auto-generated breadcrumb context from the route path segments (omitted for single-segment routes)
+- `breadcrumb` — an always-present, non-empty `BreadcrumbSegment[]` (`{ label, route }`) built from ancestor folder
+  README/index frontmatter, ending with the item's own segment; a root-level page with no ancestors gets a
+  single-segment array containing just itself
 
 ## Rich frontmatter examples
 
@@ -184,10 +208,11 @@ badgeColor: green
 ## Output
 
 The `cleanItem()` function strips all empty (`null`, `false`, `''`, `undefined`) fields from navigation items before
-writing to `manifest.json`, producing minimal output. It does **not** run over `search-index.json` entries — those are
-written as-is, so an `undefined` field (e.g. `breadcrumb` on a single-segment route) is simply omitted by
-`JSON.stringify`, while an explicit `''` in a search entry would still show up. In practice, all current `SearchEntry`
-fields (`headings`, `excerpt`, `breadcrumb`) are only ever set to a real value or left `undefined`, never `''`.
+writing to `manifest.json`, producing minimal output; `breadcrumb` is always a non-empty array, so it's never stripped
+by this pass. It does **not** run over `search-index.json` entries — those are written as-is, so an `undefined` field
+(e.g. `excerpt` when the body is empty) is simply omitted by `JSON.stringify`, while an explicit `''` in a search
+entry would still show up. In practice, `headings` and `excerpt` are only ever set to a real value or left
+`undefined`, never `''`; `breadcrumb` is always present and never `undefined`.
 
 ## Next step
 
