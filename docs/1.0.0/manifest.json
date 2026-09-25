@@ -1,0 +1,501 @@
+[
+  {
+    "label": "Api",
+    "route": "content/api",
+    "isParent": true,
+    "breadcrumb": [
+      {
+        "label": "Api",
+        "route": "content/api"
+      }
+    ],
+    "children": [
+      {
+        "label": "API Examples",
+        "route": "content/api/examples",
+        "tags": ["api", "examples", "advanced", "usage", "batch"],
+        "breadcrumb": [
+          {
+            "label": "Api",
+            "route": "content/api"
+          },
+          {
+            "label": "API Examples",
+            "route": "content/api/examples"
+          }
+        ]
+      },
+      {
+        "label": "API Reference",
+        "description": "Programmatic use of the current Manifest Generator release.",
+        "route": "content/api/README",
+        "tags": ["api", "reference", "typescript"],
+        "breadcrumb": [
+          {
+            "label": "Api",
+            "route": "content/api"
+          },
+          {
+            "label": "API Reference",
+            "route": "content/api/README"
+          }
+        ]
+      },
+      {
+        "label": "Reference",
+        "route": "content/api/reference",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Api",
+            "route": "content/api"
+          },
+          {
+            "label": "Reference",
+            "route": "content/api/reference"
+          }
+        ]
+      },
+      {
+        "label": "Typescript",
+        "route": "content/api/typescript",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Api",
+            "route": "content/api"
+          },
+          {
+            "label": "Typescript",
+            "route": "content/api/typescript"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "Documentation Home",
+    "description": "External-user documentation for @fsegurai/manifest-generator 1.0.0.",
+    "route": "content/README",
+    "tags": ["documentation", "overview", "manifest-generator"],
+    "breadcrumb": [
+      {
+        "label": "Documentation Home",
+        "route": "content/README"
+      }
+    ]
+  },
+  {
+    "label": "Examples",
+    "route": "content/examples",
+    "isParent": true,
+    "breadcrumb": [
+      {
+        "label": "Examples",
+        "route": "content/examples"
+      }
+    ],
+    "children": [
+      {
+        "label": "Advanced",
+        "route": "content/examples/advanced",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Examples",
+            "route": "content/examples"
+          },
+          {
+            "label": "Advanced",
+            "route": "content/examples/advanced"
+          }
+        ]
+      },
+      {
+        "label": "Basic Usage",
+        "route": "content/examples/basic-usage",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Examples",
+            "route": "content/examples"
+          },
+          {
+            "label": "Basic Usage",
+            "route": "content/examples/basic-usage"
+          }
+        ]
+      },
+      {
+        "label": "Frameworks",
+        "route": "content/examples/frameworks",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Examples",
+            "route": "content/examples"
+          },
+          {
+            "label": "Frameworks",
+            "route": "content/examples/frameworks"
+          }
+        ]
+      },
+      {
+        "label": "README",
+        "route": "content/examples/README",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Examples",
+            "route": "content/examples"
+          },
+          {
+            "label": "README",
+            "route": "content/examples/README"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "Features",
+    "route": "content/features",
+    "isParent": true,
+    "breadcrumb": [
+      {
+        "label": "Features",
+        "route": "content/features"
+      }
+    ],
+    "children": [
+      {
+        "label": "Features Overview",
+        "description": "Current capabilities of the Manifest Generator release.",
+        "route": "content/features/README",
+        "tags": ["features", "capabilities", "overview"],
+        "breadcrumb": [
+          {
+            "label": "Features",
+            "route": "content/features"
+          },
+          {
+            "label": "Features Overview",
+            "route": "content/features/README"
+          }
+        ]
+      },
+      {
+        "label": "Search Index",
+        "route": "content/features/search-index",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Features",
+            "route": "content/features"
+          },
+          {
+            "label": "Search Index",
+            "route": "content/features/search-index"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "Getting Started",
+    "route": "content/getting-started",
+    "isParent": true,
+    "breadcrumb": [
+      {
+        "label": "Getting Started",
+        "route": "content/getting-started"
+      }
+    ],
+    "children": [
+      {
+        "label": "First Steps",
+        "route": "content/getting-started/first-steps",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Getting Started",
+            "route": "content/getting-started"
+          },
+          {
+            "label": "First Steps",
+            "route": "content/getting-started/first-steps"
+          }
+        ]
+      },
+      {
+        "label": "Getting Started Overview",
+        "description": "Install and use @fsegurai/manifest-generator as an external package.",
+        "route": "content/getting-started/README",
+        "tags": ["getting-started", "overview", "manifest-generator"],
+        "breadcrumb": [
+          {
+            "label": "Getting Started",
+            "route": "content/getting-started"
+          },
+          {
+            "label": "Getting Started Overview",
+            "route": "content/getting-started/README"
+          }
+        ]
+      },
+      {
+        "label": "Getting Started with Manifest Generator",
+        "description": "Complete guide to getting started with the Manifest Generator library",
+        "route": "content/getting-started/getting-started",
+        "tags": ["getting-started", "installation", "tutorial", "quickstart"],
+        "breadcrumb": [
+          {
+            "label": "Getting Started",
+            "route": "content/getting-started"
+          },
+          {
+            "label": "Getting Started with Manifest Generator",
+            "route": "content/getting-started/getting-started"
+          }
+        ]
+      },
+      {
+        "label": "Installation",
+        "route": "content/getting-started/installation",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Getting Started",
+            "route": "content/getting-started"
+          },
+          {
+            "label": "Installation",
+            "route": "content/getting-started/installation"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "Guides",
+    "route": "content/guides",
+    "isParent": true,
+    "breadcrumb": [
+      {
+        "label": "Guides",
+        "route": "content/guides"
+      }
+    ],
+    "children": [
+      {
+        "label": "Cli Usage",
+        "route": "content/guides/cli-usage",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Guides",
+            "route": "content/guides"
+          },
+          {
+            "label": "Cli Usage",
+            "route": "content/guides/cli-usage"
+          }
+        ]
+      },
+      {
+        "label": "Configuration",
+        "route": "content/guides/configuration",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Guides",
+            "route": "content/guides"
+          },
+          {
+            "label": "Configuration",
+            "route": "content/guides/configuration"
+          }
+        ]
+      },
+      {
+        "label": "Frontmatter",
+        "route": "content/guides/frontmatter",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Guides",
+            "route": "content/guides"
+          },
+          {
+            "label": "Frontmatter",
+            "route": "content/guides/frontmatter"
+          }
+        ]
+      },
+      {
+        "label": "Project Structure",
+        "route": "content/guides/project-structure",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Guides",
+            "route": "content/guides"
+          },
+          {
+            "label": "Project Structure",
+            "route": "content/guides/project-structure"
+          }
+        ]
+      },
+      {
+        "label": "README",
+        "route": "content/guides/README",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Guides",
+            "route": "content/guides"
+          },
+          {
+            "label": "README",
+            "route": "content/guides/README"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "Help",
+    "route": "content/help",
+    "isParent": true,
+    "breadcrumb": [
+      {
+        "label": "Help",
+        "route": "content/help"
+      }
+    ],
+    "children": [
+      {
+        "label": "FAQ",
+        "description": "Frequently asked questions for external users of @fsegurai/manifest-generator.",
+        "route": "content/help/faq",
+        "tags": ["faq", "help", "support"],
+        "breadcrumb": [
+          {
+            "label": "Help",
+            "route": "content/help"
+          },
+          {
+            "label": "FAQ",
+            "route": "content/help/faq"
+          }
+        ]
+      },
+      {
+        "label": "README",
+        "route": "content/help/README",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Help",
+            "route": "content/help"
+          },
+          {
+            "label": "README",
+            "route": "content/help/README"
+          }
+        ]
+      },
+      {
+        "label": "Troubleshooting",
+        "description": "Diagnose and fix common CLI and generation issues.",
+        "route": "content/help/troubleshooting",
+        "tags": ["troubleshooting", "help", "cli"],
+        "breadcrumb": [
+          {
+            "label": "Help",
+            "route": "content/help"
+          },
+          {
+            "label": "Troubleshooting",
+            "route": "content/help/troubleshooting"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "Integration",
+    "route": "content/integration",
+    "isParent": true,
+    "breadcrumb": [
+      {
+        "label": "Integration",
+        "route": "content/integration"
+      }
+    ],
+    "children": [
+      {
+        "label": "Build Systems",
+        "route": "content/integration/build-systems",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Integration",
+            "route": "content/integration"
+          },
+          {
+            "label": "Build Systems",
+            "route": "content/integration/build-systems"
+          }
+        ]
+      },
+      {
+        "label": "Ci Cd",
+        "route": "content/integration/ci-cd",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Integration",
+            "route": "content/integration"
+          },
+          {
+            "label": "Ci Cd",
+            "route": "content/integration/ci-cd"
+          }
+        ]
+      },
+      {
+        "label": "Frameworks",
+        "route": "content/integration/frameworks",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Integration",
+            "route": "content/integration"
+          },
+          {
+            "label": "Frameworks",
+            "route": "content/integration/frameworks"
+          }
+        ]
+      },
+      {
+        "label": "README",
+        "route": "content/integration/README",
+        "tags": [],
+        "breadcrumb": [
+          {
+            "label": "Integration",
+            "route": "content/integration"
+          },
+          {
+            "label": "README",
+            "route": "content/integration/README"
+          }
+        ]
+      }
+    ]
+  }
+]
