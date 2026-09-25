@@ -120,7 +120,7 @@
     line-height: 1.8;
   }
 
-  & p.intro > img[alt*="Marked Extensions Logo"] {
+  & p.intro > img[alt*="Manifest Generator Logo"] {
     border-radius: 12px;
     max-width: 200px;
   }
