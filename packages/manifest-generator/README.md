@@ -22,12 +22,10 @@
   <img alt="Forks" src="https://img.shields.io/github/forks/fsegurai/manifest-generator?style=square&labelColor=343b41"/>
 </p>
 
-# @fsegurai/manifest-generator
+**A library and CLI for generating navigation manifests and search indexes from Markdown/MDX documentation.**
 
-**A library and CLI tool for generating documentation manifests and search indexes from Markdown files.**
-
-A powerful and flexible documentation manifest generator that automatically creates
-navigation structures and search indexes for your Markdown documentation.
+`@fsegurai/manifest-generator` is a CLI and library that scans Markdown/MDX documentation and generates hierarchical navigation manifests and search
+indexes. Built with TypeScript, powered by Bun.
 
 ### 📋 Table of Contents
 

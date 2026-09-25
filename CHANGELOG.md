@@ -11,7 +11,30 @@ No changes yet.
 
 ---
 
-## [1.0.0] - 2026-xx-xx
+## [1.0.0] - 2026-09-25
+
+### 🚀 Added
+
+- **Breadcrumb segments** — every item in `manifest.json` and `search-index.json` now includes a
+  `breadcrumb` field: a `BreadcrumbSegment[]` (`{label, route}`) with one segment per navigation level,
+  always ending in the item's own segment.
+- **Config exclusions** — `exclude` globs in the config file now skip matching files during manifest
+  generation.
+
+### 🔧 Changes
+
+- **`--init` CLI hardening** — new tests for the `--init` scaffold; `README.md`/`index.md` precedence
+  clarified; unsupported extensions skipped; more robust error handling in manifest generation.
+- **Monorepo restructure** — workspace renamed to `manifest-generator-monorepo`, lockfile upgraded to
+  v2, package marked `sideEffects: false`, `js-yaml` bumped to `5.4.2`.
+- **`vite-plugin-dts` build** — replaced the custom declaration plugins with `vite-plugin-dts`;
+  simplified build options and cleaned up unused Vite config.
+- **Husky Git hooks** — pre-commit and pre-push hooks enforce linting and formatting.
+- **Docs for 1.0.0** — comprehensive advanced/basic usage and build-system integration examples;
+  `.js` → `.ts` Vite config examples; breadcrumb and YAML example cleanup.
+- **Demo & workflows** — new changelog demo (markdown rendering, light/dark themes); release/build/PR
+  pipelines; Appwrite Terraform configuration; perf-monitor workflow path fix; removed stale demo
+  files, configs, and skill-registry artifacts.
 
 ### 🔐 Security
 
@@ -31,11 +54,11 @@ No changes yet.
 		- `portless` from `0.14.0` to `0.15.6`
 		- `terser` from `5.48.0` to `5.51.2`
 		- `typescript` from `6.0.3` to `7.0.2`
-		- `vite` from `8.0.16` to `8.3.0`
+		- `vite` from `8.0.16` to `8.3.1`
 	- Removed: `@eslint/js`, `@typescript-eslint/eslint-plugin`, `@typescript-eslint/parser`, `eslint`, `globals`,
 	  `typescript-eslint`
 
-- [Full Changelog](https://github.com/fsegurai/manifest-generator/commits/1.0.0)
+**Full Changelog**: https://github.com/fsegurai/manifest-generator/commits/1.0.0
 
 ---
 
@@ -95,7 +118,7 @@ No changes yet.
 - **AGENTS.md**: updated with output location, route prefix behavior, test counts, and build scripts.
 - All `.github/` files rewritten to reference manifest-generator.
 
-- [Full Changelog](https://github.com/fsegurai/manifest-generator/commits/1.0.0-beta.3)
+**Full Changelog**: https://github.com/fsegurai/manifest-generator/commits/1.0.0-beta.3
 
 ---
 
@@ -205,7 +228,7 @@ No changes yet.
 - Updated `AGENTS.md` with new CLI flags, frontmatter keys, and behavior notes.
 - Updated root `CHANGELOG.md` and `README.md` with feature summaries.
 
-- [Full Changelog](https://github.com/fsegurai/manifest-generator/commits/v1.0.0-beta.2)
+**Full Changelog**: https://github.com/fsegurai/manifest-generator/commits/v1.0.0-beta.2
 
 ---
 
@@ -243,7 +266,7 @@ No changes yet.
         - `rollup` from `4.52.3` to `4.53.3`
         - `typescript-eslint` from `8.45.0` to `8.47.0`
 
-- [Full Changelog](https://github.com/fsegurai/manifest-generator/commits/v1.0.0-beta.1)
+**Full Changelog**: https://github.com/fsegurai/manifest-generator/commits/v1.0.0-beta.1
 
 ---
 
@@ -280,7 +303,7 @@ No changes yet.
 
 - N/A (initial release)
 
-- [Full Changelog](https://github.com/fsegurai/manifest-generator/commits/v0.0.0-alpha.3)
+**Full Changelog**: https://github.com/fsegurai/manifest-generator/commits/v0.0.0-alpha.3
 
 ---
 
