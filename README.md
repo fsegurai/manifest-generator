@@ -27,17 +27,150 @@
 A CLI and library that scans Markdown/MDX documentation and generates hierarchical navigation manifests and search
 indexes. Built with TypeScript, powered by Bun.
 
+## Table of Contents
+
+- [What the package does](#what-the-package-does)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [CLI reference](#cli-reference)
+  - [Programmatic API](#programmatic-api)
+- [Frontmatter fields](#frontmatter-fields)
+- [Documentation](#documentation)
+- [Demo](#demo)
+- [Local Development](#local-development)
+- [Semantic Versioning](#semantic-versioning)
+- [License](#license)
+
 ## What the package does
 
 Given a directory of Markdown or MDX files with YAML frontmatter, `@fsegurai/manifest-generator` produces two artifacts:
 
 - **`manifest.json`** — hierarchical navigation tree with sorting, frontmatter metadata, draft/hidden filtering, and
   folder inheritance
-- **`search-index.json`** — flat search entries with keywords and descriptions
+- **`search-index.json`** — flat search entries with headings, excerpts, and structured breadcrumb trails
 
-Supports 18 frontmatter keys, recursive project discovery, file watching, and frontmatter validation.
+Supports 21 frontmatter keys, recursive project discovery, file watching, frontmatter validation, and per-project
+config overrides.
 
-## Run locally (contributors)
+## Installation
+
+```bash
+npm install @fsegurai/manifest-generator
+```
+
+Or run it without installing:
+
+```bash
+npx @fsegurai/manifest-generator --help
+```
+
+## Usage
+
+### CLI reference
+
+```text
+--discover        Auto-detect documentation projects in --docs-root
+--validate        Validate frontmatter across all discovered projects
+--recursive       Discover projects in nested directories
+--watch           Watch for file changes and regenerate
+--init            Scaffold a docs structure + config file (interactive on a TTY)
+--all             Process all discovered projects
+--project <name>  Target a specific project by name
+--route <path>    Target a single documentation route
+--docs-root <dir> Root directory for documentation discovery
+--output <dir>    Output directory for generated manifests
+--docs-subfolder  Custom subfolder name inside project dirs (default: docs)
+--config <path>   Load an exact config file, skipping auto-detection
+--json            Machine-readable JSON output (--discover / --validate)
+--dry-run         Run generation without writing files to disk
+--quiet, -q       Suppress banner/progress output (errors still show)
+```
+
+`--validate`, `--discover`, `--watch`, and `--init` are mutually exclusive. Exit codes are `0` (success) or `1`
+(failure) throughout.
+
+```bash
+npx @fsegurai/manifest-generator --route ./docs
+npx @fsegurai/manifest-generator --discover --docs-root ./documentation --recursive
+```
+
+### Programmatic API
+
+Every function below is **synchronous** — none return Promises.
+
+```ts
+import {
+  generateManifest,
+  generateDocsManifests,
+  discoverProjects,
+  validateDocs,
+  watchDocs,
+  type NavigationItem,
+} from '@fsegurai/manifest-generator'
+
+// In-memory manifest generation for a single directory
+const { manifest, searchIndex } = generateManifest('./docs')
+
+// Discover projects under a root, then generate manifests for each
+const projects = discoverProjects('./docs', { recursive: true })
+const results = generateDocsManifests('./docs', { recursive: true, outputDir: './dist' })
+
+// Validate frontmatter
+const validation = validateDocs('./docs')
+const hasErrors = validation.some((r) => !r.valid)
+
+// Watch for changes
+const watcher = watchDocs('./docs', (changedFile) => {
+  console.log('Changed:', changedFile)
+})
+watcher.close()
+```
+
+See [Frontmatter fields](#frontmatter-fields) below for the shape of what gets read, and
+[`packages/manifest-generator/README.md`](./packages/manifest-generator/README.md) for the full type/API reference
+(`NavigationItem`, `SearchEntry`, `ConfigFile`, and every exported function).
+
+## Frontmatter fields
+
+The package reads YAML frontmatter from `.md` and `.mdx` files. Supported keys:
+
+| Key                                    | Type           | Description                              |
+|-----------------------------------------|----------------|------------------------------------------|
+| `label`                                | string         | Display name in navigation               |
+| `description`                          | string         | Short description (used in search index) |
+| `tags`                                 | string[]       | Content tags                             |
+| `keywords`                             | string[]       | Search keywords                          |
+| `order`                                | number         | Sort position in navigation              |
+| `isTitle`                              | boolean        | Use as section title                     |
+| `isParent`                             | boolean        | Mark as parent node                      |
+| `icon` / `iconType`                    | string         | Icon reference                           |
+| `badge` / `badgeColor`                 | string         | Badge text and color                     |
+| `breadcrumbTitle`                      | string         | Override breadcrumb label (folder index files override descendants' segment; any file overrides its own) |
+| `layout`                               | string         | Layout template                          |
+| `redirect` / `externalUrl`             | string         | URL redirects                            |
+| `deprecated` / `deprecatedAlternative` | boolean/string | Deprecation status                       |
+| `publishedAt` / `updatedAt`            | date           | Publication metadata                     |
+| `draft`                                | boolean        | Hide from production                     |
+| `hidden`                               | boolean        | Exclude from navigation                  |
+
+## Documentation
+
+For full documentation — including config file schema, output JSON shapes, and a complete API reference — start with:
+
+- [`docs/1.0.0/content/README.md`](./docs/1.0.0/content/README.md) — the versioned docs site source
+- [`packages/manifest-generator/README.md`](./packages/manifest-generator/README.md) — the package's own README (published to npm)
+
+## Demo
+
+A small Vite demo app lives under `demo/`. There's no hosted live instance — run it locally:
+
+```bash
+bun install
+bun run start        # dev server (vite)
+bun run start:prod   # preview a production build
+```
+
+## Local Development
 
 ### Requirements
 
@@ -81,97 +214,23 @@ bun ./packages/manifest-generator/src/cli.ts --discover --docs-root ./docs
 ### Regenerate versioned docs (maintainers)
 
 ```bash
-bun ./packages/manifest-generator/src/cli.ts \
-  --docs-root ./docs/1.0.0-beta.2 \
-  --output ./docs/1.0.0-beta.2
+bun run generate:manifest
 ```
 
-## CLI reference
+This runs the CLI against `docs/$npm_package_version/content` and writes `manifest.json`/`search-index.json` back
+into `docs/$npm_package_version/` — i.e. it always targets the docs folder matching the current package version.
 
-```text
---discover        Auto-detect documentation projects in --docs-root
---validate        Validate frontmatter across all discovered projects
---recursive       Discover projects in nested directories
---watch           Watch for file changes and regenerate
---init            Scaffold a docs structure + config file (interactive on a TTY)
---all             Process all discovered projects
---project <name>  Target a specific project by name
---route <path>    Target a single documentation route
---docs-root <dir> Root directory for documentation discovery
---output <dir>    Output directory for generated manifests
---docs-subfolder  Custom subfolder name inside project dirs (default: docs)
---config <path>   Load an exact config file, skipping auto-detection
---json            Machine-readable JSON output (--discover / --validate)
---dry-run         Run generation without writing files to disk
---quiet, -q       Suppress banner/progress output (errors still show)
-```
+## Semantic Versioning
 
-## Programmatic API
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-```ts
-import {
-    generateManifest,
-    generateDocsManifests,
-    discoverProjects,
-    validateDocs,
-    watchDocs,
-    type NavigationItem,
-} from '@fsegurai/manifest-generator'
-
-// In-memory manifest generation
-const result = await generateManifest('./docs')
-console.log(result.navigation)
-console.log(result.searchIndex)
-
-// Discover projects then generate
-const projects = await discoverProjects('./docs', {recursive: true})
-await generateDocsManifests(projects, {outputDir: './dist'})
-
-// Validate frontmatter
-const {errors, warnings} = await validateDocs('./docs')
-
-// Watch for changes
-const watcher = await watchDocs('./docs', {
-    outputDir: './dist',
-    onGenerate: (result) => console.log('Regenerated:', result.project),
-})
-watcher.close()
-```
-
-## Use as an external user
-
-```bash
-npx @fsegurai/manifest-generator --help
-npx @fsegurai/manifest-generator --route ./docs
-npx @fsegurai/manifest-generator --discover --docs-root ./documentation
-```
-
-For full documentation, start with the versioned docs:
-
-- `docs/1.0.0-beta.2/content/README.md`
-
-## Frontmatter fields
-
-The package reads YAML frontmatter from `.md` and `.mdx` files. Supported keys:
-
-| Key                                    | Type           | Description                              |
-|----------------------------------------|----------------|------------------------------------------|
-| `label`                                | string         | Display name in navigation               |
-| `description`                          | string         | Short description (used in search index) |
-| `tags`                                 | string[]       | Content tags                             |
-| `keywords`                             | string[]       | Search keywords                          |
-| `order`                                | number         | Sort position in navigation              |
-| `isTitle`                              | boolean        | Use as section title                     |
-| `isParent`                             | boolean        | Mark as parent node                      |
-| `icon` / `iconType`                    | string         | Icon reference                           |
-| `badge` / `badgeColor`                 | string         | Badge text and color                     |
-| `breadcrumbTitle`                      | string         | Override breadcrumb text                 |
-| `layout`                               | string         | Layout template                          |
-| `redirect` / `externalUrl`             | string         | URL redirects                            |
-| `deprecated` / `deprecatedAlternative` | boolean/string | Deprecation status                       |
-| `publishedAt` / `updatedAt`            | date           | Publication metadata                     |
-| `draft`                                | boolean        | Hide from production                     |
-| `hidden`                               | boolean        | Exclude from navigation                  |
+- `feat` — a new feature
+- `fix` — a bug fix
+- `docs` — documentation-only changes
+- `refactor` — code change that neither fixes a bug nor adds a feature
+- `test` — adding or correcting tests
+- `chore` — tooling, dependencies, build config
+- `del` — removing code, files, or features
 
 ## License
 
