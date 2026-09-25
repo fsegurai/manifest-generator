@@ -24,6 +24,8 @@ packages/manifest-generator/   # the only real package (@fsegurai/manifest-gener
   src/index.ts                 # library entrypoint (exports)
   src/cli.ts                   # CLI entrypoint (maybeRunCli guards test env)
   src/types.ts                 # shared types
+  src/config.ts                # config file loading/merging (manifest-generator.config.{json,js,ts})
+  src/init.ts                  # --init scaffolding (config file + sample docs structure)
   spec/                        # tests (bun:test, temp dir fixtures)
   vite.config.ts               # uses shared config from packages/.helper/config/vite-lib-config.ts
 packages/.helper/config/       # shared Vite library build helper (ESM+CJS+UMD + tsc declarations)
@@ -47,7 +49,7 @@ scripts/test-all-packages.ts   # optional summary runner
 - Update snapshots: `bun test --update-snapshots`.
 - Run all packages with summary: `bun run test:summary`.
 - CLI tests mock `console.log`/`console.error` and pass a custom `exitFn`. `maybeRunCli()` returns `false` under `BUN_TEST` env.
-- 32+ tests across 2 test files.
+- 175 tests across 4 test files (`cli.test.ts`, `config.test.ts`, `index.test.ts`, `init.test.ts`).
 
 ## CI flow
 
@@ -58,11 +60,11 @@ scripts/test-all-packages.ts   # optional summary runner
 
 ## Style
 
-- **2-space indent** (eslint + editorconfig for JS/TS)
+- **2-space indent** (Biome + editorconfig for JS/TS)
 - **Single quotes**, semicolons required
 - `comma-dangle: always-multiline`, `object-curly-spacing: always`
 - `space-before-function-paren: never`
-- ESLint flat config (`eslint.config.js`)
+- Biome (`biome.json`) — handles both lint and format from one config; `noExplicitAny` is a warning, not an error; import organizing runs via Biome's assist actions
 - Conventional commits (feat/fix/docs/refactor/test/chore/del)
 
 ## CLI details
@@ -79,6 +81,7 @@ scripts/test-all-packages.ts   # optional summary runner
 - `--config <path>` loads an exact config file instead of auto-detecting `manifest-generator.config.{json,js,ts}`; that config supports `docsRoot`, `docsSubfolder`, `outputDir`, `recursive`, `exclude` (globs), and per-project `projects` overrides.
 - Frontmatter keys (21 total, see `ALLOWED_FRONTMATTER_KEYS` in `index.ts`): `label`, `description`, `tags`, `keywords`, `order`, `isTitle`, `isParent`, `icon`, `iconType`, `badge`, `badgeColor`, `breadcrumbTitle`, `layout`, `redirect`, `externalUrl`, `deprecated`, `deprecatedAlternative`, `publishedAt`, `updatedAt`, `draft`, `hidden`.
 - Output: `manifest.json` + `search-index.json` written to `--output` dir (or source root if omitted). In this repo, output lives at `docs/<version>/` (not inside `content/`). Items sorted by `order` then label. Null/false fields stripped via `cleanItem()`.
+- Both outputs carry a `breadcrumb: BreadcrumbSegment[]` field (`{label, route}` per segment) on every item/entry — always present, ends with the item's own segment.
 - Supports `.md` and `.mdx` files.
 
 ## Important constraints
