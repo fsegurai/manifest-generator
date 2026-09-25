@@ -1,3 +1,8 @@
+export interface BreadcrumbSegment {
+  label: string;
+  route: string;
+}
+
 export interface NavigationItem {
   label: string;
   route?: string;
@@ -13,6 +18,7 @@ export interface NavigationItem {
   redirect?: string;
   externalUrl?: string;
   breadcrumbTitle?: string;
+  breadcrumb?: BreadcrumbSegment[];
   layout?: string;
   deprecated?: boolean;
   deprecatedAlternative?: string;
@@ -29,7 +35,7 @@ export interface SearchEntry {
   tags?: string[];
   headings?: string[];
   excerpt?: string;
-  breadcrumb?: string;
+  breadcrumb?: BreadcrumbSegment[];
 }
 
 export interface ManifestResult {
@@ -53,6 +59,7 @@ export interface ProcessingResult {
 export interface DiscoveryOptions {
   docsSubfolder?: string;
   recursive?: boolean;
+  exclude?: string[];
 }
 
 export interface ManifestGenerationOptions {
@@ -62,6 +69,9 @@ export interface ManifestGenerationOptions {
   docsSubfolder?: string;
   autoDetect?: boolean;
   recursive?: boolean;
+  exclude?: string[];
+  projects?: Record<string, ProjectConfig>;
+  dryRun?: boolean;
 }
 
 export interface Frontmatter {

@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import type {
+  BreadcrumbSegment,
   DiscoveredProject,
   DiscoveryOptions,
   Frontmatter,
@@ -9,6 +10,7 @@ import type {
   ManifestResult,
   NavigationItem,
   ProcessingResult,
+  ProjectConfig,
   SearchEntry,
   ValidateResult,
 } from './types.js';
@@ -16,7 +18,10 @@ import type {
 export { defineConfig } from './config.js';
 
 function formatTitle(name: string): string {
-  return name.replace(/\.(md|mdx)$/, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  return name
+    .replace(/\.(md|mdx)$/, '')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function parseFrontmatter<T = Record<string, unknown>>(content: string): T {
@@ -70,17 +75,23 @@ function getBody(content: string): string {
 function diceSimilarity(a: string, b: string): number {
   const bigramsA = new Set<string>();
   const bigramsB = new Set<string>();
-  for (let i = 0; i < a.length - 1; i++) { bigramsA.add(a.slice(i, i + 2).toLowerCase()); }
-  for (let i = 0; i < b.length - 1; i++) { bigramsB.add(b.slice(i, i + 2).toLowerCase()); }
+  for (let i = 0; i < a.length - 1; i++) {
+    bigramsA.add(a.slice(i, i + 2).toLowerCase());
+  }
+  for (let i = 0; i < b.length - 1; i++) {
+    bigramsB.add(b.slice(i, i + 2).toLowerCase());
+  }
   let intersection = 0;
-  for (const bg of bigramsA) { if (bigramsB.has(bg)) intersection++; }
+  for (const bg of bigramsA) {
+    if (bigramsB.has(bg)) intersection++;
+  }
   return (2 * intersection) / (bigramsA.size + bigramsB.size);
 }
 
 function dedupeHeadings(headings: string[], threshold = 0.7): string[] {
   const result: string[] = [];
   for (const h of headings) {
-    if (!result.some(existing => diceSimilarity(existing, h) > threshold)) result.push(h);
+    if (!result.some((existing) => diceSimilarity(existing, h) > threshold)) result.push(h);
   }
   return result;
 }
@@ -88,9 +99,10 @@ function dedupeHeadings(headings: string[], threshold = 0.7): string[] {
 function extractHeadings(body: string): string[] {
   const headings: string[] = [];
   const regex = /^#{2,3}\s+(.+)$/gm;
-  let match;
-  while ((match = regex.exec(body)) !== null) {
+  let match: RegExpExecArray | null = regex.exec(body);
+  while (match !== null) {
     headings.push(match[1].trim());
+    match = regex.exec(body);
   }
   return dedupeHeadings(headings);
 }
@@ -129,25 +141,53 @@ function makeExcerpt(body: string, maxLength = 150): string {
 
   const lastSpace = truncated.lastIndexOf(' ');
   if (lastSpace > 30) {
-    return truncated.slice(0, lastSpace) + '...';
+    return `${truncated.slice(0, lastSpace)}...`;
   }
 
-  return truncated + '...';
+  return `${truncated}...`;
 }
 
-function makeBreadcrumb(route: string): string | undefined {
-  const segments = route.split('/');
-  if (segments.length <= 1) return undefined;
-  segments.pop();
-  return segments
-    .map(s => s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))
-    .join(' > ');
+function makeBreadcrumb(chain: BreadcrumbSegment[], self: BreadcrumbSegment): BreadcrumbSegment[] {
+  return [...chain, self];
+}
+
+function resolveFolderBreadcrumbLabel(dirFullPath: string, folderName: string): string {
+  const readmePath = path.join(dirFullPath, 'README.md');
+  const indexPath = path.join(dirFullPath, 'index.md');
+  const targetPath = fs.existsSync(readmePath) ? readmePath : fs.existsSync(indexPath) ? indexPath : null;
+
+  if (!targetPath) return formatTitle(folderName);
+
+  try {
+    const content = fs.readFileSync(targetPath, 'utf8');
+    const meta = parseFrontmatter<Frontmatter>(content);
+    return meta.breadcrumbTitle || formatTitle(folderName);
+  } catch {
+    return formatTitle(folderName);
+  }
 }
 
 const VALID_MARKDOWN_EXTENSIONS = ['.md', '.mdx'];
 
 function isMarkdownFile(name: string): boolean {
-  return VALID_MARKDOWN_EXTENSIONS.some(ext => name.endsWith(ext));
+  return VALID_MARKDOWN_EXTENSIONS.some((ext) => name.endsWith(ext));
+}
+
+function globToRegExp(pattern: string): RegExp {
+  const placeholder = '\u0000';
+  const escaped = pattern
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*/g, placeholder)
+    .replace(/\*/g, '[^/]*')
+    .split(placeholder)
+    .join('.*');
+  return new RegExp(`^${escaped}$`);
+}
+
+function isExcluded(relPath: string, patterns: string[]): boolean {
+  if (!patterns || patterns.length === 0) return false;
+  const normalized = relPath.split(path.sep).join('/');
+  return patterns.some((pattern) => globToRegExp(pattern).test(normalized));
 }
 
 function computeRoutePrefix(outputDir: string, sourceDir: string): string {
@@ -156,11 +196,23 @@ function computeRoutePrefix(outputDir: string, sourceDir: string): string {
   return rel.split(path.sep).join('/');
 }
 
+function prefixBreadcrumb(
+  breadcrumb: BreadcrumbSegment[] | undefined,
+  prefix: string,
+): BreadcrumbSegment[] | undefined {
+  if (!breadcrumb) return breadcrumb;
+  return breadcrumb.map((segment) => ({
+    ...segment,
+    route: segment.route && segment.route !== '#' ? `${prefix}/${segment.route}` : segment.route,
+  }));
+}
+
 function applyRoutePrefix(items: NavigationItem[], prefix: string): NavigationItem[] {
-  return items.map(item => {
+  return items.map((item) => {
     if (item.route && item.route !== '#') {
       item.route = `${prefix}/${item.route}`;
     }
+    item.breadcrumb = prefixBreadcrumb(item.breadcrumb, prefix);
     if (item.children) {
       item.children = applyRoutePrefix(item.children, prefix);
     }
@@ -168,27 +220,48 @@ function applyRoutePrefix(items: NavigationItem[], prefix: string): NavigationIt
   });
 }
 
-function walkDocs(dir: string, relative = '', searchIndex: SearchEntry[] = []): NavigationItem[] {
+function walkDocs(
+  dir: string,
+  relative = '',
+  searchIndex: SearchEntry[] = [],
+  exclude: string[] = [],
+  chain: BreadcrumbSegment[] = [],
+): NavigationItem[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
 
   const items = entries
-    .filter(entry => !entry.name.startsWith('.') && entry.name !== 'manifest.json')
-    .map(entry => {
+    .filter((entry) => !entry.name.startsWith('.') && entry.name !== 'manifest.json')
+    .filter((entry) => !isExcluded(path.join(relative, entry.name), exclude))
+    .map((entry) => {
       const fullPath = path.join(dir, entry.name);
       const relPath = path.join(relative, entry.name);
 
       if (entry.isDirectory()) {
-        const children = walkDocs(fullPath, relPath, searchIndex);
+        const folderLabel = resolveFolderBreadcrumbLabel(fullPath, entry.name);
+        const folderRoute = relPath.replace(/\\/g, '/');
+        const children = walkDocs(fullPath, relPath, searchIndex, exclude, [
+          ...chain,
+          { label: folderLabel, route: folderRoute },
+        ]);
         if (children.length === 0) return null;
 
         const folderItem: NavigationItem = {
           label: formatTitle(entry.name),
-          route: relPath.replace(/\\/g, '/'),
+          route: folderRoute,
           isParent: true,
         };
+        folderItem.breadcrumb = makeBreadcrumb(chain, {
+          label: folderItem.breadcrumbTitle || folderItem.label,
+          route: folderItem.route ?? '',
+        });
 
-        const indexMd = children.find(c => c.route === relPath.replace(/\\/g, '/') + '/README'
-          || c.route === relPath.replace(/\\/g, '/') + '/index');
+        const normalizedRelPath = relPath.replace(/\\/g, '/');
+        const readmeMd = children.find((c) => c.route === `${normalizedRelPath}/README`);
+        const indexOnlyMd = children.find((c) => c.route === `${normalizedRelPath}/index`);
+        if (readmeMd && indexOnlyMd) {
+          console.warn(`Warning: both README and index found in ${normalizedRelPath} — README takes precedence`);
+        }
+        const indexMd = readmeMd || indexOnlyMd;
         if (indexMd) {
           folderItem.order = (indexMd as NavigationItem & { order?: number }).order;
           folderItem.icon = (indexMd as NavigationItem & { icon?: string | null }).icon ?? null;
@@ -211,7 +284,6 @@ function walkDocs(dir: string, relative = '', searchIndex: SearchEntry[] = []): 
         const body = getBody(content);
         const headings = extractHeadings(body);
         const excerpt = makeExcerpt(body);
-        const breadcrumb = makeBreadcrumb(cleanPath);
 
         const item: NavigationItem = {
           label: meta.label || formatTitle(entry.name),
@@ -240,7 +312,12 @@ function walkDocs(dir: string, relative = '', searchIndex: SearchEntry[] = []): 
           item.route = '#';
         }
 
-        if (item.route !== '#' && item.route !== '' && item.route !== null) {
+        item.breadcrumb = makeBreadcrumb(chain, {
+          label: item.breadcrumbTitle || item.label,
+          route: item.route ?? '',
+        });
+
+        if (item.route !== '#' && item.route !== '') {
           searchIndex.push({
             label: item.label,
             description: item.description,
@@ -248,7 +325,7 @@ function walkDocs(dir: string, relative = '', searchIndex: SearchEntry[] = []): 
             tags: item.tags,
             headings: headings.length > 0 ? headings : undefined,
             excerpt: excerpt || undefined,
-            breadcrumb: breadcrumb || undefined,
+            breadcrumb: item.breadcrumb,
           });
         }
 
@@ -262,27 +339,50 @@ function walkDocs(dir: string, relative = '', searchIndex: SearchEntry[] = []): 
   return sortItems(items);
 }
 
+function resolveDocsPath(projectPath: string, docsSubfolder: string): string {
+  const docsPath = path.join(projectPath, docsSubfolder);
+  return fs.existsSync(docsPath) && fs.statSync(docsPath).isDirectory() ? docsPath : projectPath;
+}
+
 function generateDocsManifests(
   docsRoot: string,
   optionsOrWalker?:
     | {
         docsSubfolder?: string;
         recursive?: boolean;
-        walkerFn?: (projectPath: string, relative: string, searchIndex: SearchEntry[]) => NavigationItem[];
+        exclude?: string[];
+        projects?: Record<string, ProjectConfig>;
+        dryRun?: boolean;
+        walkerFn?: (
+          projectPath: string,
+          relative: string,
+          searchIndex: SearchEntry[],
+          exclude?: string[],
+        ) => NavigationItem[];
       }
     | ((projectPath: string, relative: string, searchIndex: SearchEntry[]) => NavigationItem[]),
 ): ProcessingResult[] {
-  const options = typeof optionsOrWalker === 'function' ? { walkerFn: optionsOrWalker } : (optionsOrWalker || {});
-  const { docsSubfolder = 'docs', recursive = false, walkerFn } = options;
-  const discovered = discoverProjects(docsRoot, { docsSubfolder, recursive });
+  const options = typeof optionsOrWalker === 'function' ? { walkerFn: optionsOrWalker } : optionsOrWalker || {};
+  const { docsSubfolder = 'docs', recursive = false, exclude = [], projects = {}, dryRun = false, walkerFn } = options;
+  const discovered = discoverProjects(docsRoot, { docsSubfolder, recursive, exclude });
   const results: ProcessingResult[] = [];
 
-  discovered.forEach(project => {
+  discovered.forEach((project) => {
     const searchIndex: SearchEntry[] = [];
     const walker = walkerFn || walkDocs;
 
+    const override = projects[project.name];
+    const docsPath = override?.docsSubfolder
+      ? resolveDocsPath(project.projectPath, override.docsSubfolder)
+      : project.docsPath;
+    const writeDir = override?.outputDir
+      ? path.isAbsolute(override.outputDir)
+        ? override.outputDir
+        : path.join(project.projectPath, override.outputDir)
+      : project.projectPath;
+
     try {
-      const manifest = walker(project.docsPath, '', searchIndex);
+      const manifest = walker(docsPath, '', searchIndex, exclude);
       if (!manifest || !Array.isArray(manifest)) {
         results.push({
           name: project.name,
@@ -292,30 +392,37 @@ function generateDocsManifests(
         return;
       }
 
-      const prefix = computeRoutePrefix(project.projectPath, project.docsPath);
+      const prefix = computeRoutePrefix(writeDir, docsPath);
       if (prefix) {
         applyRoutePrefix(manifest, prefix);
         for (let i = 0; i < searchIndex.length; i++) {
           const entry = searchIndex[i];
-          if (entry.route) searchIndex[i] = { ...entry, route: `${prefix}/${entry.route}` };
+          if (entry.route) {
+            searchIndex[i] = {
+              ...entry,
+              route: `${prefix}/${entry.route}`,
+              breadcrumb: prefixBreadcrumb(entry.breadcrumb, prefix),
+            };
+          }
         }
       }
 
       const cleaned = manifest.map(cleanItem);
 
-      fs.writeFileSync(
-        path.join(project.projectPath, 'manifest.json'),
-        JSON.stringify(cleaned, null, 2),
-        'utf8',
-      );
+      const manifestPath = path.join(writeDir, 'manifest.json');
+      const searchIndexPath = path.join(writeDir, 'search-index.json');
 
-      fs.writeFileSync(
-        path.join(project.projectPath, 'search-index.json'),
-        JSON.stringify(searchIndex, null, 2),
-        'utf8',
-      );
+      if (!dryRun) {
+        fs.mkdirSync(writeDir, { recursive: true });
+        fs.writeFileSync(manifestPath, JSON.stringify(cleaned, null, 2), 'utf8');
+        fs.writeFileSync(searchIndexPath, JSON.stringify(searchIndex, null, 2), 'utf8');
+        console.log(`Generated manifest and search index for: ${project.name}`);
+      } else {
+        console.log(
+          `[dry-run] Would write: ${manifestPath} (${cleaned.length} items), ${searchIndexPath} (${searchIndex.length} entries)`,
+        );
+      }
 
-      console.log(`Generated manifest and search index for: ${ project.name }`);
       results.push({ name: project.name, processed: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -326,9 +433,9 @@ function generateDocsManifests(
   return results;
 }
 
-function generateManifest(projectPath: string): ManifestResult {
+function generateManifest(projectPath: string, exclude: string[] = []): ManifestResult {
   const searchIndex: SearchEntry[] = [];
-  const manifest = walkDocs(projectPath, '', searchIndex);
+  const manifest = walkDocs(projectPath, '', searchIndex, exclude);
 
   return {
     manifest,
@@ -337,7 +444,7 @@ function generateManifest(projectPath: string): ManifestResult {
 }
 
 function discoverProjects(rootDir: string, options: DiscoveryOptions = {}): DiscoveredProject[] {
-  const { docsSubfolder = 'docs', recursive = false } = options;
+  const { docsSubfolder = 'docs', recursive = false, exclude = [] } = options;
   const discovered: DiscoveredProject[] = [];
   const maxDepth = recursive ? Infinity : 1;
 
@@ -347,14 +454,13 @@ function discoverProjects(rootDir: string, options: DiscoveryOptions = {}): Disc
       if (fs.existsSync(docsPath) && fs.statSync(docsPath).isDirectory()) {
         return true;
       }
-      return fs.readdirSync(dir, { withFileTypes: true })
-        .some(file => file.isFile() && isMarkdownFile(file.name));
+      return fs.readdirSync(dir, { withFileTypes: true }).some((file) => file.isFile() && isMarkdownFile(file.name));
     } catch {
       return false;
     }
   }
 
-  function scan(dir: string, depth: number) {
+  function scan(dir: string, depth: number, relative = '') {
     if (depth > maxDepth) return;
 
     try {
@@ -363,27 +469,28 @@ function discoverProjects(rootDir: string, options: DiscoveryOptions = {}): Disc
       for (const entry of entries) {
         if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
 
+        const relPath = path.join(relative, entry.name);
+        if (isExcluded(relPath, exclude)) continue;
+
         const projectPath = path.join(dir, entry.name);
 
         if (isProjectRoot(projectPath)) {
+          const actualDocsPath = resolveDocsPath(projectPath, docsSubfolder);
           const docsPath = path.join(projectPath, docsSubfolder);
-          const actualDocsPath = fs.existsSync(docsPath) && fs.statSync(docsPath).isDirectory()
-            ? docsPath
-            : projectPath;
 
           discovered.push({
             name: entry.name,
             projectPath,
             docsPath: actualDocsPath,
-            type: depth > 1 ? 'recursive' : (actualDocsPath === docsPath ? 'subfolder' : 'direct'),
+            type: depth > 1 ? 'recursive' : actualDocsPath === docsPath ? 'subfolder' : 'direct',
           });
         } else if (recursive) {
-          scan(projectPath, depth + 1);
+          scan(projectPath, depth + 1, relPath);
         }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.warn(`Warning: Could not scan directory ${ dir }: ${ message }`);
+      console.warn(`Warning: Could not scan directory ${dir}: ${message}`);
     }
   }
 
@@ -391,10 +498,7 @@ function discoverProjects(rootDir: string, options: DiscoveryOptions = {}): Disc
   return discovered;
 }
 
-function generateManifestsWithDiscovery(
-  rootDir: string,
-  options: ManifestGenerationOptions = {},
-): ProcessingResult[] {
+function generateManifestsWithDiscovery(rootDir: string, options: ManifestGenerationOptions = {}): ProcessingResult[] {
   const {
     project = null,
     route = null,
@@ -402,14 +506,17 @@ function generateManifestsWithDiscovery(
     docsSubfolder = 'docs',
     autoDetect = true,
     recursive = false,
+    exclude = [],
+    projects = {},
+    dryRun = false,
   } = options;
 
   if (route) {
     if (!fs.existsSync(route)) {
-      throw new Error(`Route not found: ${ route }`);
+      throw new Error(`Route not found: ${route}`);
     }
 
-    const result = generateManifest(route);
+    const result = generateManifest(route, exclude);
     const outputPath = outputDir || route;
 
     const prefix = outputDir ? computeRoutePrefix(outputDir, route) : '';
@@ -417,27 +524,31 @@ function generateManifestsWithDiscovery(
       applyRoutePrefix(result.manifest, prefix);
       for (let i = 0; i < result.searchIndex.length; i++) {
         const entry = result.searchIndex[i];
-        if (entry.route) result.searchIndex[i] = { ...entry, route: `${prefix}/${entry.route}` };
+        if (entry.route) {
+          result.searchIndex[i] = {
+            ...entry,
+            route: `${prefix}/${entry.route}`,
+            breadcrumb: prefixBreadcrumb(entry.breadcrumb, prefix),
+          };
+        }
       }
     }
 
-    fs.mkdirSync(outputPath, { recursive: true });
-
     const cleaned = result.manifest.map(cleanItem);
+    const manifestPath = path.join(outputPath, 'manifest.json');
+    const searchIndexPath = path.join(outputPath, 'search-index.json');
 
-    fs.writeFileSync(
-      path.join(outputPath, 'manifest.json'),
-      JSON.stringify(cleaned, null, 2),
-      'utf8',
-    );
+    if (!dryRun) {
+      fs.mkdirSync(outputPath, { recursive: true });
+      fs.writeFileSync(manifestPath, JSON.stringify(cleaned, null, 2), 'utf8');
+      fs.writeFileSync(searchIndexPath, JSON.stringify(result.searchIndex, null, 2), 'utf8');
+      console.log(`Generated manifest for route: ${route}`);
+    } else {
+      console.log(
+        `[dry-run] Would write: ${manifestPath} (${cleaned.length} items), ${searchIndexPath} (${result.searchIndex.length} entries)`,
+      );
+    }
 
-    fs.writeFileSync(
-      path.join(outputPath, 'search-index.json'),
-      JSON.stringify(result.searchIndex, null, 2),
-      'utf8',
-    );
-
-    console.log(`Generated manifest for route: ${ route }`);
     return [{ name: path.basename(route), processed: true }];
   }
 
@@ -446,11 +557,11 @@ function generateManifestsWithDiscovery(
     const docsPath = path.join(projectPath, docsSubfolder);
 
     if (!fs.existsSync(projectPath)) {
-      throw new Error(`Project not found: ${ project }`);
+      throw new Error(`Project not found: ${project}`);
     }
 
     const targetPath = fs.existsSync(docsPath) ? docsPath : projectPath;
-    const result = generateManifest(targetPath);
+    const result = generateManifest(targetPath, exclude);
     const outputPath2 = outputDir || projectPath;
 
     const prefix = outputDir ? computeRoutePrefix(outputPath2, targetPath) : '';
@@ -458,42 +569,63 @@ function generateManifestsWithDiscovery(
       applyRoutePrefix(result.manifest, prefix);
       for (let i = 0; i < result.searchIndex.length; i++) {
         const entry = result.searchIndex[i];
-        if (entry.route) result.searchIndex[i] = { ...entry, route: `${prefix}/${entry.route}` };
+        if (entry.route) {
+          result.searchIndex[i] = {
+            ...entry,
+            route: `${prefix}/${entry.route}`,
+            breadcrumb: prefixBreadcrumb(entry.breadcrumb, prefix),
+          };
+        }
       }
     }
 
-    fs.mkdirSync(outputPath2, { recursive: true });
-
     const cleaned = result.manifest.map(cleanItem);
+    const manifestPath2 = path.join(outputPath2, 'manifest.json');
+    const searchIndexPath2 = path.join(outputPath2, 'search-index.json');
 
-    fs.writeFileSync(
-      path.join(outputPath2, 'manifest.json'),
-      JSON.stringify(cleaned, null, 2),
-      'utf8',
-    );
+    if (!dryRun) {
+      fs.mkdirSync(outputPath2, { recursive: true });
+      fs.writeFileSync(manifestPath2, JSON.stringify(cleaned, null, 2), 'utf8');
+      fs.writeFileSync(searchIndexPath2, JSON.stringify(result.searchIndex, null, 2), 'utf8');
+      console.log(`Generated manifest for project: ${project}`);
+    } else {
+      console.log(
+        `[dry-run] Would write: ${manifestPath2} (${cleaned.length} items), ${searchIndexPath2} (${result.searchIndex.length} entries)`,
+      );
+    }
 
-    fs.writeFileSync(
-      path.join(outputPath2, 'search-index.json'),
-      JSON.stringify(result.searchIndex, null, 2),
-      'utf8',
-    );
-
-    console.log(`Generated manifest for project: ${ project }`);
     return [{ name: project, processed: true }];
   }
 
   if (autoDetect) {
-    return generateDocsManifests(rootDir, { docsSubfolder, recursive });
+    return generateDocsManifests(rootDir, { docsSubfolder, recursive, exclude, projects, dryRun });
   }
 
   return [];
 }
 
 export const ALLOWED_FRONTMATTER_KEYS: ReadonlySet<string> = new Set([
-  'label', 'description', 'tags', 'keywords', 'order', 'isTitle', 'isParent',
-  'icon', 'iconType', 'badge', 'badgeColor', 'breadcrumbTitle', 'layout',
-  'redirect', 'externalUrl', 'deprecated', 'deprecatedAlternative',
-  'publishedAt', 'updatedAt', 'draft', 'hidden',
+  'label',
+  'description',
+  'tags',
+  'keywords',
+  'order',
+  'isTitle',
+  'isParent',
+  'icon',
+  'iconType',
+  'badge',
+  'badgeColor',
+  'breadcrumbTitle',
+  'layout',
+  'redirect',
+  'externalUrl',
+  'deprecated',
+  'deprecatedAlternative',
+  'publishedAt',
+  'updatedAt',
+  'draft',
+  'hidden',
 ]);
 
 function validateDocs(rootDir: string): ValidateResult[] {
@@ -552,13 +684,13 @@ function validateDocs(rootDir: string): ValidateResult[] {
             result.warnings.push('deprecated set without deprecatedAlternative — consider suggesting a migration path');
           }
 
-          if (frontmatter.publishedAt && isNaN(Date.parse(frontmatter.publishedAt))) {
-            result.errors.push(`publishedAt "${ frontmatter.publishedAt }" is not a valid date`);
+          if (frontmatter.publishedAt && Number.isNaN(Date.parse(frontmatter.publishedAt))) {
+            result.errors.push(`publishedAt "${frontmatter.publishedAt}" is not a valid date`);
             result.valid = false;
           }
 
-          if (frontmatter.updatedAt && isNaN(Date.parse(frontmatter.updatedAt))) {
-            result.errors.push(`updatedAt "${ frontmatter.updatedAt }" is not a valid date`);
+          if (frontmatter.updatedAt && Number.isNaN(Date.parse(frontmatter.updatedAt))) {
+            result.errors.push(`updatedAt "${frontmatter.updatedAt}" is not a valid date`);
             result.valid = false;
           }
 
@@ -569,31 +701,35 @@ function validateDocs(rootDir: string): ValidateResult[] {
           if (frontmatter.publishedAt && frontmatter.updatedAt) {
             const published = Date.parse(frontmatter.publishedAt);
             const updated = Date.parse(frontmatter.updatedAt);
-            if (!isNaN(published) && !isNaN(updated) && published > updated) {
-              result.warnings.push(`publishedAt (${ frontmatter.publishedAt }) is after updatedAt (${ frontmatter.updatedAt }) — dates may be reversed`);
+            if (!Number.isNaN(published) && !Number.isNaN(updated) && published > updated) {
+              result.warnings.push(
+                `publishedAt (${frontmatter.publishedAt}) is after updatedAt (${frontmatter.updatedAt}) — dates may be reversed`,
+              );
             }
           }
 
           if (frontmatter.publishedAt) {
             const published = Date.parse(frontmatter.publishedAt);
-            if (!isNaN(published) && published > Date.now()) {
-              result.warnings.push(`publishedAt (${ frontmatter.publishedAt }) is in the future — document will not appear as published`);
+            if (!Number.isNaN(published) && published > Date.now()) {
+              result.warnings.push(
+                `publishedAt (${frontmatter.publishedAt}) is in the future — document will not appear as published`,
+              );
             }
           }
 
           if (frontmatter.order !== undefined && !Number.isInteger(frontmatter.order)) {
-            result.warnings.push(`order "${ frontmatter.order }" is not an integer — sort order may be unexpected`);
+            result.warnings.push(`order "${frontmatter.order}" is not an integer — sort order may be unexpected`);
           }
 
           if (frontmatter.order !== undefined && frontmatter.order < 0) {
-            result.errors.push(`order "${ frontmatter.order }" is negative — must be >= 0`);
+            result.errors.push(`order "${frontmatter.order}" is negative — must be >= 0`);
             result.valid = false;
           }
 
           if (frontmatter.tags && frontmatter.keywords) {
-            const overlap = frontmatter.tags.filter(t => frontmatter.keywords?.includes(t));
+            const overlap = frontmatter.tags.filter((t) => frontmatter.keywords?.includes(t));
             if (overlap.length > 0) {
-              result.warnings.push(`tags and keywords overlap: [${ overlap.join(', ') }] — redundant data`);
+              result.warnings.push(`tags and keywords overlap: [${overlap.join(', ')}] — redundant data`);
             }
           }
 
@@ -606,22 +742,29 @@ function validateDocs(rootDir: string): ValidateResult[] {
           }
 
           if (frontmatter.externalUrl && !frontmatter.externalUrl.includes('://')) {
-            result.warnings.push(`externalUrl "${ frontmatter.externalUrl }" may be invalid — expected a URL with scheme`);
+            result.warnings.push(
+              `externalUrl "${frontmatter.externalUrl}" may be invalid — expected a URL with scheme`,
+            );
           }
 
-          if (frontmatter.redirect && !frontmatter.redirect.startsWith('/') && !frontmatter.redirect.startsWith('http')) {
-            result.warnings.push(`redirect "${ frontmatter.redirect }" does not start with "/" — may resolve to unexpected path`);
+          if (
+            frontmatter.redirect &&
+            !frontmatter.redirect.startsWith('/') &&
+            !frontmatter.redirect.startsWith('http')
+          ) {
+            result.warnings.push(
+              `redirect "${frontmatter.redirect}" does not start with "/" — may resolve to unexpected path`,
+            );
           }
 
           for (const key of Object.keys(frontmatter)) {
             if (!ALLOWED_FRONTMATTER_KEYS.has(key)) {
-              result.warnings.push(`Unknown frontmatter key "${ key }" — possible typo`);
+              result.warnings.push(`Unknown frontmatter key "${key}" — possible typo`);
             }
           }
-
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          result.errors.push(`Parse error: ${ message }`);
+          result.errors.push(`Parse error: ${message}`);
           result.valid = false;
         }
 
@@ -631,21 +774,37 @@ function validateDocs(rootDir: string): ValidateResult[] {
   }
 
   validateDirectory(rootDir);
+
+  const redirectTargets = new Map<string, string[]>();
+  for (const result of results) {
+    const target = result.frontmatter?.redirect;
+    if (!target) continue;
+    const files = redirectTargets.get(target) ?? [];
+    files.push(result.file);
+    redirectTargets.set(target, files);
+  }
+
+  for (const result of results) {
+    const target = result.frontmatter?.redirect;
+    if (!target) continue;
+    const collidingFiles = (redirectTargets.get(target) ?? []).filter((file) => file !== result.file);
+    if (collidingFiles.length > 0) {
+      result.warnings.push(`Redirect target "${target}" is also used by ${collidingFiles.join(', ')}`);
+    }
+  }
+
   return results;
 }
 
-function watchDocs(
-  rootDir: string,
-  onChange: (changedFile: string) => void,
-  interval = 1000,
-): { close: () => void } {
+function watchDocs(rootDir: string, onChange: (changedFile: string) => void, interval = 1000): { close: () => void } {
   const watched = new Set<string>();
 
   function collectFiles(dir: string) {
     try {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       for (const entry of entries) {
-        if (entry.name.startsWith('.') || entry.name === 'manifest.json' || entry.name === 'search-index.json') continue;
+        if (entry.name.startsWith('.') || entry.name === 'manifest.json' || entry.name === 'search-index.json')
+          continue;
         const fullPath = path.join(dir, entry.name);
         watched.add(fullPath);
         if (entry.isDirectory()) {
@@ -691,35 +850,35 @@ function watchDocs(
   };
 }
 
-export {
-  formatTitle,
-  parseFrontmatter,
-  walkDocs,
-  cleanItem,
-  sortItems,
-  generateDocsManifests,
-  generateManifest,
-  discoverProjects,
-  generateManifestsWithDiscovery,
-  validateDocs,
-  watchDocs,
-  diceSimilarity,
-  dedupeHeadings,
-  extractHeadings,
-  makeExcerpt,
-  makeBreadcrumb,
-};
-
 export type {
+  BreadcrumbSegment,
   ConfigFile,
-  NavigationItem,
-  SearchEntry,
-  ManifestResult,
   DiscoveredProject,
-  ProcessingResult,
   DiscoveryOptions,
-  ManifestGenerationOptions,
-  ProjectConfig,
   Frontmatter,
+  ManifestGenerationOptions,
+  ManifestResult,
+  NavigationItem,
+  ProcessingResult,
+  ProjectConfig,
+  SearchEntry,
   ValidateResult,
 } from './types.js';
+export {
+  cleanItem,
+  dedupeHeadings,
+  diceSimilarity,
+  discoverProjects,
+  extractHeadings,
+  formatTitle,
+  generateDocsManifests,
+  generateManifest,
+  generateManifestsWithDiscovery,
+  makeBreadcrumb,
+  makeExcerpt,
+  parseFrontmatter,
+  sortItems,
+  validateDocs,
+  walkDocs,
+  watchDocs,
+};

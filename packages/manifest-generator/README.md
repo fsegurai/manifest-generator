@@ -22,12 +22,10 @@
   <img alt="Forks" src="https://img.shields.io/github/forks/fsegurai/manifest-generator?style=square&labelColor=343b41"/>
 </p>
 
-# @fsegurai/manifest-generator
+**A library and CLI for generating navigation manifests and search indexes from Markdown/MDX documentation.**
 
-**A library and CLI tool for generating documentation manifests and search indexes from Markdown files.**
-
-A powerful and flexible documentation manifest generator that automatically creates
-navigation structures and search indexes for your Markdown documentation.
+`@fsegurai/manifest-generator` is a CLI and library that scans Markdown/MDX documentation and generates hierarchical navigation manifests and search
+indexes. Built with TypeScript, powered by Bun.
 
 ### 📋 Table of Contents
 
@@ -57,8 +55,9 @@ navigation structures and search indexes for your Markdown documentation.
 - **Automatic Discovery**: Intelligently finds documentation projects in various folder structures
 - **Flexible Input**: Supports both direct markdown files and docs subfolders
 - **CLI & API**: Use via command line or programmatically in your code
-- **Frontmatter Parsing**: Extracts metadata from YAML frontmatter
-- **Search Index Generation**: Creates searchable indexes for your documentation
+- **Frontmatter Parsing**: Extracts metadata from YAML frontmatter (21 recognized keys)
+- **Search Index Generation**: Creates searchable indexes with excerpts, headings, and breadcrumbs
+- **Config File Support**: `manifest-generator.config.{json,js,ts}` with CLI-flag override priority
 - **TypeScript Support**: Full TypeScript definitions included
 - **Cross-Platform**: Works on Windows, macOS, and Linux
 - **Multiple Output Formats**: Generates both navigation manifests and search indexes
@@ -139,7 +138,33 @@ npx @fsegurai/manifest-generator --all --docs-subfolder documentation
 
 # Process positional path argument
 npx @fsegurai/manifest-generator ./path/to/documentation
+
+# Recursively discover nested projects
+npx @fsegurai/manifest-generator --discover --recursive
+
+# Watch for file changes and regenerate
+npx @fsegurai/manifest-generator --watch --route ./docs --output ./public
+
+# Validate frontmatter without writing files
+npx @fsegurai/manifest-generator --validate --docs-root ./docs
+
+# Scaffold a new documentation structure + config file
+npx @fsegurai/manifest-generator --init
+
+# Load an exact config file instead of auto-detecting one
+npx @fsegurai/manifest-generator --config ./config/manifest-generator.config.json
+
+# Preview what would be written, without touching disk
+npx @fsegurai/manifest-generator --all --dry-run
+
+# Machine-readable JSON output (works with --discover / --validate)
+npx @fsegurai/manifest-generator --discover --json
+
+# Suppress banner/progress output (errors still print)
+npx @fsegurai/manifest-generator --all --quiet
 ```
+
+> `--validate`, `--discover`, `--watch`, and `--init` are mutually exclusive — pass at most one per invocation.
 
 #### Help and Information
 
@@ -234,29 +259,31 @@ generateManifestsWithDiscovery('./projects', {
 
 ### API Reference
 
+Every function/type below is re-exported from `src/index.ts`'s final `export { ... }` / `export type { ... }` blocks.
+
 #### Core Functions
 
-##### `generateManifest(projectPath: string): ManifestResult`
+##### `generateManifest(projectPath: string, exclude?: string[]): ManifestResult`
 
-Generates a manifest for a single documentation project.
+Generates a manifest for a single documentation project. `exclude` accepts the same glob patterns used elsewhere.
 
 ```javascript
 const result = generateManifest('./my-docs');
 // Returns: { manifest: NavigationItem[], searchIndex: SearchEntry[] }
 ```
 
-##### `generateDocsManifests(docsRoot: string): void`
+##### `generateDocsManifests(docsRoot: string, optionsOrWalker?): ProcessingResult[]`
 
-Processes all subdirectories as separate projects.
+Discovers projects under a root and writes `manifest.json` + `search-index.json` for each one. Accepts either a
+`walkerFn` directly, or an options object (`docsSubfolder`, `recursive`, `exclude`, `projects`, `dryRun`, `walkerFn`).
 
 ```javascript
-generateDocsManifests('./projects');
-// Generates manifest.json and search-index.json in each subdirectory
+generateDocsManifests('./projects', { recursive: true });
 ```
 
-##### `generateManifestsWithDiscovery(rootDir: string, options?: GenerationOptions): ProcessingResult[]`
+##### `generateManifestsWithDiscovery(rootDir: string, options?: ManifestGenerationOptions): ProcessingResult[]`
 
-Advanced function with flexible options and auto-discovery.
+Advanced function with flexible options and auto-discovery. Checked in this order: `route` → `project` → `autoDetect`.
 
 ```javascript
 const results = generateManifestsWithDiscovery('./projects', {
@@ -264,7 +291,11 @@ const results = generateManifestsWithDiscovery('./projects', {
     route: './custom/path',          // Process specific path
     outputDir: './output',           // Custom output directory
     docsSubfolder: 'documentation',  // Custom docs folder name
-    autoDetect: true                 // Auto-discover projects
+    autoDetect: true,                // Auto-discover projects
+    recursive: false,                // Recurse into nested project dirs
+    exclude: ['drafts/**'],          // Glob patterns to skip
+    projects: {},                    // Per-project docsSubfolder/outputDir overrides
+    dryRun: false                    // Log instead of writing files
 });
 ```
 
@@ -274,24 +305,49 @@ Discovers documentation projects without processing them.
 
 ```javascript
 const projects = discoverProjects('./projects', {
-    docsSubfolder: 'docs',  // Folder name to look for
-    pattern: null           // Future: regex pattern support
+    docsSubfolder: 'docs',   // Folder name to look for
+    recursive: false,        // Discover nested project dirs
+    exclude: []              // Glob patterns to skip
 });
 ```
+
+##### `validateDocs(rootDir: string): ValidateResult[]`
+
+Validates frontmatter across all `.md`/`.mdx` files under a directory (recursively), without writing output. Checks
+date validity, conflicting flags, missing alternatives, unknown keys, and duplicate `redirect` targets.
+
+```javascript
+const results = validateDocs('./docs');
+const invalid = results.filter((r) => !r.valid);
+```
+
+##### `watchDocs(rootDir: string, onChange: (changedFile: string) => void, interval?: number): { close: () => void }`
+
+Polls a directory (default 1000ms) and invokes `onChange` with the changed file's path. Returns `{ close() }` to stop.
+
+```javascript
+const watcher = watchDocs('./docs', (changedFile) => console.log('Changed:', changedFile));
+watcher.close();
+```
+
+##### `defineConfig(config: ConfigFile): ConfigFile`
+
+Type-safe identity helper for `manifest-generator.config.ts` files.
 
 #### Utility Functions
 
 ##### `formatTitle(name: string): string`
 
-Converts filenames to readable titles.
+Converts filenames/folder names to readable titles (strips `.md`/`.mdx`, replaces `-` with spaces, title-cases).
 
 ```javascript
 formatTitle('getting-started-guide.md'); // "Getting Started Guide"
 ```
 
-##### `parseFrontmatter(content: string): Record<string, any>`
+##### `parseFrontmatter<T>(content: string): T`
 
-Extracts YAML frontmatter from Markdown content.
+Extracts and parses YAML frontmatter from Markdown/MDX content via `js-yaml` (`JSON_SCHEMA`). Returns `{}` if there's
+no frontmatter block or it fails to parse.
 
 ```javascript
 const frontmatter = parseFrontmatter(`---
@@ -302,20 +358,91 @@ tags: ["guide", "tutorial"]
 // Returns: { label: "My Document", tags: ["guide", "tutorial"] }
 ```
 
-#### TypeScript Interfaces
+##### `sortItems(items: NavigationItem[]): NavigationItem[]`
 
-```typescript
+Sorts items by `order` (ascending, default `999`) then alphabetically by `label`; recurses into `children`.
+
+##### `cleanItem(item: NavigationItem): NavigationItem`
+
+Strips `null`/`false`/`''`/`undefined` fields (recursing into `children`) before an item is written to
+`manifest.json`. Not applied to `search-index.json` entries.
+
+##### `extractHeadings(body: string): string[]`
+
+Extracts `##`/`###` headings from a document body and deduplicates them via `dedupeHeadings()`.
+
+##### `dedupeHeadings(headings: string[], threshold?: number): string[]`
+
+Collapses near-identical headings using `diceSimilarity()` (default threshold `0.7`).
+
+##### `diceSimilarity(a: string, b: string): number`
+
+Sørensen–Dice coefficient (bigram-based similarity, 0–1) between two strings.
+
+##### `makeExcerpt(body: string, maxLength?: number): string`
+
+Strips Markdown syntax and truncates to roughly `maxLength` characters (default `150`), preferring a sentence or word
+boundary.
+
+##### `makeBreadcrumb(chain: BreadcrumbSegment[], self: BreadcrumbSegment): BreadcrumbSegment[]`
+
+Appends `self` — the item's own `{ label, route }` segment — to `chain` (the already-resolved ancestor segments),
+returning `[...chain, self]`. Every item (folder or leaf) ends up with a non-empty breadcrumb array whose last
+segment is itself; a root-level page with no ancestors gets a single-segment array containing just itself.
+`walkDocs()` builds and passes the ancestor chain internally — see
+[migration notes](#-since-beta-breadcrumb-migration-notes) if you call this directly.
+
+##### `walkDocs(dir: string, relative?: string, searchIndex?: SearchEntry[], exclude?: string[], chain?: BreadcrumbSegment[]): NavigationItem[]`
+
+The recursive directory walker that builds the navigation tree and populates `searchIndex` as a side effect. Exposed
+for advanced/custom pipelines.
+
+##### `ALLOWED_FRONTMATTER_KEYS: ReadonlySet<string>`
+
+A readonly `Set` of all 21 recognized frontmatter key names — see [Frontmatter Support](#-frontmatter-support). Useful
+for external validation tooling.
+
+#### TypeScript Types
+
+```ts
+interface BreadcrumbSegment {
+    label: string;
+    route: string;
+}
+
 interface NavigationItem {
     label: string;
-    path?: string;
+    route?: string;
     tags?: string[];
+    isTitle?: boolean;
+    isParent?: boolean;
+    description?: string;
+    icon?: string | null;
+    iconType?: string | null;
+    badge?: string | null;
+    badgeColor?: string | null;
+    order?: number;
+    redirect?: string;
+    externalUrl?: string;
+    breadcrumbTitle?: string;
+    breadcrumb?: BreadcrumbSegment[];
+    layout?: string;
+    deprecated?: boolean;
+    deprecatedAlternative?: string;
+    publishedAt?: string;
+    updatedAt?: string;
+    keywords?: string[];
     children?: NavigationItem[];
 }
 
 interface SearchEntry {
     label: string;
-    path: string;
+    description?: string;
+    route: string;
     tags?: string[];
+    headings?: string[];
+    excerpt?: string;
+    breadcrumb?: BreadcrumbSegment[];
 }
 
 interface ManifestResult {
@@ -327,17 +454,79 @@ interface DiscoveredProject {
     name: string;
     projectPath: string;
     docsPath: string;
-    type: 'subfolder' | 'direct';
+    type: 'subfolder' | 'direct' | 'recursive';
 }
 
-interface GenerationOptions {
+interface ProcessingResult {
+    name: string;
+    processed: boolean;
+    error?: string;
+}
+
+interface DiscoveryOptions {
+    docsSubfolder?: string;
+    recursive?: boolean;
+    exclude?: string[];
+}
+
+interface ManifestGenerationOptions {
     project?: string | null;
     route?: string | null;
     outputDir?: string | null;
     docsSubfolder?: string;
     autoDetect?: boolean;
+    recursive?: boolean;
+    exclude?: string[];
+    projects?: Record<string, ProjectConfig>;
+    dryRun?: boolean;
+}
+
+interface ProjectConfig {
+    docsSubfolder?: string;
+    outputDir?: string;
+}
+
+interface ConfigFile {
+    docsRoot?: string;
+    docsSubfolder?: string;
+    outputDir?: string;
+    recursive?: boolean;
+    exclude?: string[];
+    projects?: Record<string, ProjectConfig>;
+}
+
+interface ValidateResult {
+    file: string;
+    valid: boolean;
+    warnings: string[];
+    errors: string[];
+    frontmatter?: Frontmatter;
 }
 ```
+
+> `loadConfig`, `loadConfigFromFile`, `mergeConfig`, and `parseConfigFile` live in `src/config.ts` but are **not**
+> re-exported from the package root — only `defineConfig` is public.
+
+#### 🔄 Since Beta: Breadcrumb Migration Notes
+
+`breadcrumb` data has changed shape twice in this pre-1.0 window; this note describes only the **current** (final)
+shape rather than walking through both intermediate states.
+
+- `breadcrumb` is now a **structured array of segments** (`BreadcrumbSegment[]`, `{ label, route }`), not a
+  `" > "`-joined string.
+- Every item — folder or leaf — **always** has a non-empty `breadcrumb` array, and that array now includes the item
+  **itself** as its final segment, not just its ancestors. A root-level page with no ancestors gets a single-segment
+  array containing just itself; there is no more `undefined`/omitted case.
+- `NavigationItem` (in `manifest.json`) now also carries `breadcrumb`, alongside `SearchEntry` (in
+  `search-index.json`), which had it already.
+- A leaf file's own `breadcrumbTitle` frontmatter now overrides that file's own final breadcrumb segment's label — it
+  is no longer inert for its own entry. A folder's `breadcrumbTitle` (via that folder's `README.md`/`index.md`) still
+  only affects how that folder's segment appears in **descendants'** breadcrumbs.
+- `makeBreadcrumb()`'s signature is now `makeBreadcrumb(chain: BreadcrumbSegment[], self: BreadcrumbSegment):
+  BreadcrumbSegment[]`, returning `[...chain, self]`. If you call it directly instead of relying on `walkDocs()`,
+  build the ancestor `chain` yourself and pass your own resolved `self` segment.
+- Route-prefix rewriting (`outputDir` different from the source dir) now also rewrites every breadcrumb segment's
+  `route`, so breadcrumb links stay correct in prefixed/multi-project output.
 
 ## 📁 Project Structure Detection
 
@@ -387,24 +576,28 @@ projects/
 
 ### manifest.json
 
-Contains the hierarchical navigation structure:
+Contains the hierarchical navigation structure (`label`/`route`, matching `NavigationItem`). Fields that are
+`null`/`false`/`''`/`undefined` are stripped by `cleanItem()` — they are simply absent, never written as literal
+`null`/`false`/`''`:
 
 ```json
 [
     {
-        "title": "Getting Started",
-        "path": "getting-started",
+        "label": "Getting Started",
+        "route": "getting-started",
         "tags": [
             "tutorial",
             "beginner"
         ]
     },
     {
-        "title": "API Reference",
+        "label": "API Reference",
+        "route": "api",
+        "isParent": true,
         "children": [
             {
-                "title": "Authentication",
-                "path": "api/auth",
+                "label": "Authentication",
+                "route": "api/auth",
                 "tags": [
                     "api",
                     "security"
@@ -417,24 +610,50 @@ Contains the hierarchical navigation structure:
 
 ### search-index.json
 
-Contains flattened search data:
+Contains flattened search data (`SearchEntry[]`), including derived `headings`, `excerpt`, and `breadcrumb`:
 
 ```json
 [
     {
-        "title": "Getting Started",
-        "path": "getting-started",
+        "label": "Getting Started",
+        "route": "getting-started",
         "tags": [
             "tutorial",
             "beginner"
+        ],
+        "headings": [
+            "Installation",
+            "Next steps"
+        ],
+        "excerpt": "This guide walks through installing and configuring the CLI for your project.",
+        "breadcrumb": [
+            {
+                "label": "Guides",
+                "route": "guides"
+            },
+            {
+                "label": "Getting Started",
+                "route": "guides/getting-started"
+            }
         ]
     },
     {
-        "title": "Authentication",
-        "path": "api/auth",
+        "label": "Authentication",
+        "route": "api/auth",
         "tags": [
             "api",
             "security"
+        ],
+        "excerpt": "Authenticate requests using an API key or bearer token.",
+        "breadcrumb": [
+            {
+                "label": "Api",
+                "route": "api"
+            },
+            {
+                "label": "Authentication",
+                "route": "api/auth"
+            }
         ]
     }
 ]
@@ -444,7 +663,7 @@ Contains flattened search data:
 
 ### Frontmatter Options
 
-Control document processing with frontmatter:
+Control document processing with frontmatter — see [Frontmatter Support](#-frontmatter-support) for the full list:
 
 ```markdown
 ---
@@ -457,19 +676,64 @@ hidden: true                   # Hide from navigation
 # Your content here
 ```
 
+### Config File
+
+Create `manifest-generator.config.json`, `manifest-generator.config.js`, or `manifest-generator.config.ts` in your
+project root, and it's auto-detected (in that lookup order); or point at an exact file with `--config <path>`.
+
+```ts
+// manifest-generator.config.ts
+import { defineConfig } from '@fsegurai/manifest-generator';
+
+export default defineConfig({
+    docsRoot: './projects',        // Root directory to scan (overridable by --docs-root)
+    docsSubfolder: 'docs',         // Subfolder name inside each project
+    outputDir: './dist',           // Output directory for generated files
+    recursive: true,               // Discover projects in nested directories
+    exclude: ['**/drafts/**'],     // Glob patterns to skip (supports `*` and `**`)
+    projects: {
+        'my-package': {
+            docsSubfolder: 'documentation', // Override per project
+            outputDir: './dist/my-package',
+        },
+    },
+});
+```
+
+| Key             | Type                             | Description                                       |
+|-----------------|-----------------------------------|----------------------------------------------------|
+| `docsRoot`      | `string`                          | Root directory to scan for projects                |
+| `docsSubfolder` | `string`                          | Subfolder name inside each project (default `docs`) |
+| `outputDir`     | `string`                          | Directory to write `manifest.json`/`search-index.json` |
+| `recursive`     | `boolean`                         | Discover projects nested beyond one level           |
+| `exclude`       | `string[]`                        | Glob patterns (`*`, `**`) excluded from discovery/walking |
+| `projects`      | `Record<string, ProjectConfig>`   | Per-project `docsSubfolder`/`outputDir` overrides   |
+
+CLI flags always win over the config file, which wins over hardcoded defaults.
+
 ### CLI Options Reference
 
-| Option                    | Short | Description                      | Default           |
-|---------------------------|-------|----------------------------------|-------------------|
-| `--all`                   | `-a`  | Process all projects             | `false`           |
-| `--project <name>`        | `-p`  | Process specific project         | `null`            |
-| `--route <path>`          | `-r`  | Process specific path            | `null`            |
-| `--docs-root <path>`      | `-d`  | Root directory for docs          | Current directory |
-| `--output <path>`         | `-o`  | Output directory                 | Project directory |
-| `--docs-subfolder <name>` | `-s`  | Docs folder name                 | `'docs'`          |
-| `--discover`              |       | List projects without processing | `false`           |
-| `--help`                  | `-h`  | Show help                        |                   |
-| `--version`               | `-v`  | Show version                     |                   |
+| Option                    | Short | Description                                       | Default            |
+|---------------------------|-------|----------------------------------------------------|---------------------|
+| `--all`                   | `-a`  | Process all projects                                | `false`             |
+| `--project <name>`        | `-p`  | Process specific project                             | `null`              |
+| `--route <path>`          | `-r`  | Process specific path                                | `null`              |
+| `--docs-root <path>`      | `-d`  | Root directory for docs                              | Current directory   |
+| `--output <path>`         | `-o`  | Output directory                                     | Project directory   |
+| `--docs-subfolder <name>` | `-s`  | Docs folder name                                     | `'docs'`            |
+| `--discover`              |       | List projects without processing                     | `false`             |
+| `--recursive`             |       | Discover projects in nested directories               | `false`             |
+| `--watch`                 |       | Watch for file changes and regenerate                 | `false`             |
+| `--validate`               |       | Validate frontmatter without writing files            | `false`             |
+| `--init`                   |       | Interactively (TTY) or scaffold a docs structure       | `false`             |
+| `--config <path>`          |       | Load an exact config file (skips auto-detection)      | auto-detect         |
+| `--json`                   |       | Machine-readable JSON output (`--discover`/`--validate`) | `false`           |
+| `--dry-run`                 |       | Run generation without writing files to disk           | `false`             |
+| `--quiet` / `-q`             |       | Suppress banner and progress output (errors still show) | `false`           |
+| `--help`                   | `-h`  | Show help                                            |                     |
+| `--version`                 | `-v`  | Show version                                          |                     |
+
+`--validate`, `--discover`, `--watch`, and `--init` are mutually exclusive.
 
 ## 🔧 Integration Examples
 
@@ -531,18 +795,48 @@ buildDocs();
 
 ## 📝 Frontmatter Support
 
-Supported frontmatter fields:
+The package reads YAML frontmatter from `.md` and `.mdx` files. All 21 keys recognized by `ALLOWED_FRONTMATTER_KEYS`:
+
+| Key                     | Purpose                                                              |
+|-------------------------|-----------------------------------------------------------------------|
+| `label`                 | Display name in navigation (falls back to a title-cased filename)    |
+| `description`           | Short description, used in the search index                          |
+| `tags`                  | Searchable content tags                                              |
+| `keywords`              | Additional search keywords                                            |
+| `order`                 | Sort position in navigation (ascending, default `999`)               |
+| `isTitle`               | Marks the item as a section title node (route becomes `#`)           |
+| `isParent`              | Marks the item as a parent/heading node                              |
+| `icon`                  | Icon reference for navigation UI                                     |
+| `iconType`              | Icon variant/type (has no effect without `icon`)                     |
+| `badge`                 | Badge text shown next to the item                                     |
+| `badgeColor`            | Badge color (has no effect without `badge`)                          |
+| `breadcrumbTitle`       | On a folder's README/index: overrides that folder's label in descendants' breadcrumbs. On a leaf file: overrides that file's own final breadcrumb segment label |
+| `layout`                | Layout template identifier for the rendering app                     |
+| `redirect`              | Redirect target path/URL (takes precedence over `externalUrl`)       |
+| `externalUrl`           | External URL for this item                                            |
+| `deprecated`            | Marks the page as deprecated                                          |
+| `deprecatedAlternative` | Suggested replacement page/path when `deprecated` is set              |
+| `publishedAt`           | Publication date (validated for format and chronology)                |
+| `updatedAt`             | Last-updated date (validated for format and chronology)                |
+| `draft`                 | Excludes the page from the manifest entirely                          |
+| `hidden`                | Hides the page from navigation                                        |
 
 ```yaml
 ---
-label: "Document Title"        # Custom title (overrides filename)
-tags: [ "api", "guide" ]        # Searchable tags
-draft: true                   # Exclude from processing
-hidden: true                  # Hide from navigation
-weight: 10                    # Future: custom ordering
-description: "Brief summary"   # Future: meta description
+label: "Custom Title"
+tags: [ "api", "guide" ]
+keywords: [ "reference", "endpoints" ]
+order: 1
+draft: false
+hidden: false
+description: "Brief summary"
+breadcrumbTitle: "API"
 ---
 ```
+
+Run `--validate` (or call `validateDocs()`) to catch common mistakes: unknown keys, conflicting flags
+(`draft`+`hidden`, `isTitle`+`isParent`, `externalUrl`+`redirect`), invalid/reversed dates, non-integer or negative
+`order`, `badge` without `badgeColor`, and duplicate `redirect` targets across files.
 
 ## 🤝 Contributing
 

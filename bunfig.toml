@@ -11,7 +11,7 @@ coverageIgnoreSourcemaps = true
 
 # Enable coverage by default
 coverage = true
-coverageThreshold = { lines = 0.3, functions = 0.7, statements = 0.9 }
+coverageThreshold = { lines = 0.8, functions = 0.8, statements = 0.8 }
 
 # Coverage reporters - text for console, lcov for CI/CD
 coverageReporter = ["text", "lcov"]
@@ -24,12 +24,11 @@ coverageSkipTestFiles = true
 
 # Exclude paths from coverage
 coveragePathIgnorePatterns = [
-    "docs/**",
-    "demo/**",
+    "node_modules/**",
     "vendor/**",
     "generated/**",
-    "node_modules/**",
     "**/dist/**",
+    "demo/**",
     "**/*.config.js",
     "**/*.config.ts",
     "**/spec/**",

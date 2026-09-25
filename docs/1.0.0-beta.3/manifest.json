@@ -7,23 +7,13 @@
       {
         "label": "API Examples",
         "route": "content/api/examples",
-        "tags": [
-          "api",
-          "examples",
-          "advanced",
-          "usage",
-          "batch"
-        ]
+        "tags": ["api", "examples", "advanced", "usage", "batch"]
       },
       {
         "label": "API Reference",
         "description": "Programmatic use of the current Manifest Generator release.",
         "route": "content/api/README",
-        "tags": [
-          "api",
-          "reference",
-          "typescript"
-        ]
+        "tags": ["api", "reference", "typescript"]
       },
       {
         "label": "Reference",
@@ -41,11 +31,7 @@
     "label": "Documentation Home",
     "description": "External-user documentation for @fsegurai/manifest-generator 1.0.0-beta.3.",
     "route": "content/README",
-    "tags": [
-      "documentation",
-      "overview",
-      "manifest-generator"
-    ]
+    "tags": ["documentation", "overview", "manifest-generator"]
   },
   {
     "label": "Examples",
@@ -83,11 +69,7 @@
         "label": "Features Overview",
         "description": "Current capabilities of the Manifest Generator release.",
         "route": "content/features/README",
-        "tags": [
-          "features",
-          "capabilities",
-          "overview"
-        ]
+        "tags": ["features", "capabilities", "overview"]
       },
       {
         "label": "Search Index",
@@ -110,22 +92,13 @@
         "label": "Getting Started Overview",
         "description": "Install and use @fsegurai/manifest-generator as an external package.",
         "route": "content/getting-started/README",
-        "tags": [
-          "getting-started",
-          "overview",
-          "manifest-generator"
-        ]
+        "tags": ["getting-started", "overview", "manifest-generator"]
       },
       {
         "label": "Getting Started with Manifest Generator",
         "description": "Complete guide to getting started with the Manifest Generator library",
         "route": "content/getting-started/getting-started",
-        "tags": [
-          "getting-started",
-          "installation",
-          "tutorial",
-          "quickstart"
-        ]
+        "tags": ["getting-started", "installation", "tutorial", "quickstart"]
       },
       {
         "label": "Installation",
@@ -175,11 +148,7 @@
         "label": "FAQ",
         "description": "Frequently asked questions for external users of @fsegurai/manifest-generator.",
         "route": "content/help/faq",
-        "tags": [
-          "faq",
-          "help",
-          "support"
-        ]
+        "tags": ["faq", "help", "support"]
       },
       {
         "label": "README",
@@ -190,11 +159,7 @@
         "label": "Troubleshooting",
         "description": "Diagnose and fix common CLI and generation issues.",
         "route": "content/help/troubleshooting",
-        "tags": [
-          "troubleshooting",
-          "help",
-          "cli"
-        ]
+        "tags": ["troubleshooting", "help", "cli"]
       }
     ]
   },

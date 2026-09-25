@@ -58,12 +58,7 @@
     "label": "Getting Started with Manifest Generator",
     "description": "Complete guide to getting started with the Manifest Generator library",
     "route": "content/getting-started/getting-started",
-    "tags": [
-      "getting-started",
-      "installation",
-      "tutorial",
-      "quickstart"
-    ],
+    "tags": ["getting-started", "installation", "tutorial", "quickstart"],
     "headings": [
       "1) Prepare a docs folder",
       "2) Run the generator",
@@ -81,11 +76,7 @@
     "label": "Getting Started Overview",
     "description": "Install and use @fsegurai/manifest-generator as an external package.",
     "route": "content/getting-started/README",
-    "tags": [
-      "getting-started",
-      "overview",
-      "manifest-generator"
-    ],
+    "tags": ["getting-started", "overview", "manifest-generator"],
     "headings": [
       "Success checklist",
       "Fastest path",
@@ -100,11 +91,7 @@
     "label": "Troubleshooting",
     "description": "Diagnose and fix common CLI and generation issues.",
     "route": "content/help/troubleshooting",
-    "tags": [
-      "troubleshooting",
-      "help",
-      "cli"
-    ],
+    "tags": ["troubleshooting", "help", "cli"],
     "headings": [
       "Quick diagnostics",
       "Problem: docs root not found",
@@ -127,11 +114,7 @@
     "label": "FAQ",
     "description": "Frequently asked questions for external users of @fsegurai/manifest-generator.",
     "route": "content/help/faq",
-    "tags": [
-      "faq",
-      "help",
-      "support"
-    ],
+    "tags": ["faq", "help", "support"],
     "headings": [
       "What does this package generate?",
       "Do I need to install it globally?",
@@ -201,17 +184,8 @@
     "label": "Features Overview",
     "description": "Current capabilities of the Manifest Generator release.",
     "route": "content/features/README",
-    "tags": [
-      "features",
-      "capabilities",
-      "overview"
-    ],
-    "headings": [
-      "Core capabilities",
-      "Current behaviour highlights",
-      "What changed from 1.0.0-beta.2",
-      "Next step"
-    ],
+    "tags": ["features", "capabilities", "overview"],
+    "headings": ["Core capabilities", "Current behaviour highlights", "What changed from 1.0.0-beta.2", "Next step"],
     "excerpt": "Features Overview\n\nThe current release turns Markdown and MDX documentation into a manifest and a search index, with a growing set of\nnavigation and...",
     "breadcrumb": "Features"
   },
@@ -528,11 +502,7 @@
     "description": "",
     "route": "content/guides/README",
     "tags": [],
-    "headings": [
-      "Available guides",
-      "Recommended reading order",
-      "Related sections"
-    ],
+    "headings": ["Available guides", "Recommended reading order", "Related sections"],
     "excerpt": "Detailed usage guides for external users of .",
     "breadcrumb": "Guides"
   },
@@ -540,13 +510,7 @@
     "label": "API Examples",
     "description": "",
     "route": "content/api/examples",
-    "tags": [
-      "api",
-      "examples",
-      "advanced",
-      "usage",
-      "batch"
-    ],
+    "tags": ["api", "examples", "advanced", "usage", "batch"],
     "headings": [
       "Basic Usage Examples",
       "Generate Single Project Manifest",
@@ -625,17 +589,8 @@
     "label": "API Reference",
     "description": "Programmatic use of the current Manifest Generator release.",
     "route": "content/api/README",
-    "tags": [
-      "api",
-      "reference",
-      "typescript"
-    ],
-    "headings": [
-      "Quick start",
-      "What you can do",
-      "Current notes",
-      "Next step"
-    ],
+    "tags": ["api", "reference", "typescript"],
+    "headings": ["Quick start", "What you can do", "Current notes", "Next step"],
     "excerpt": "Use the package root exports to generate manifests, discover projects, and inspect the current TypeScript types.",
     "breadcrumb": "Api"
   },
@@ -643,17 +598,8 @@
     "label": "Documentation Home",
     "description": "External-user documentation for @fsegurai/manifest-generator 1.0.0-beta.3.",
     "route": "content/README",
-    "tags": [
-      "documentation",
-      "overview",
-      "manifest-generator"
-    ],
-    "headings": [
-      "Quick start",
-      "Who this is for",
-      "Documentation map",
-      "Current release notes"
-    ],
+    "tags": ["documentation", "overview", "manifest-generator"],
+    "headings": ["Quick start", "Who this is for", "Documentation map", "Current release notes"],
     "excerpt": "@fsegurai/manifest-generator Docs\n\n generates two JSON files from Markdown and MDX documentation:\n\nfor hierarchical navigation\nfor search data\n\nThis..."
   }
 ]

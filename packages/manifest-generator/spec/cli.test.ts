@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { maybeRunCli, runCli } from '../src/cli.js';
 
 let tempDir = '';
@@ -250,7 +250,7 @@ describe('runCli', () => {
     expect(logs.join('\n')).toContain('@fsegurai/manifest-generator v');
   });
 
-  test('--version shows unknown when package.json is missing', () => {
+  test('--version shows correct version regardless of current working directory', () => {
     const logs: string[] = [];
     const originalLog = console.log;
     console.log = (...args: unknown[]) => logs.push(args.join(' '));
@@ -271,7 +271,31 @@ describe('runCli', () => {
     }
 
     expect(exitCode).toBe(0);
-    expect(logs.join('\n')).toContain('version unknown');
+    expect(logs.join('\n')).toContain('@fsegurai/manifest-generator v');
+    expect(logs.join('\n')).not.toContain('version unknown');
+  });
+
+  test('--version falls back to "(version unknown)" when its own package.json cannot be found', () => {
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    const existsSyncSpy = spyOn(fs, 'existsSync').mockReturnValue(false);
+    try {
+      runCli(['--version'], exitFn);
+    } finally {
+      existsSyncSpy.mockRestore();
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(logs.join('\n')).toContain('@fsegurai/manifest-generator (version unknown)');
   });
 
   test('--discover shows no projects in empty directory', () => {
@@ -518,6 +542,85 @@ describe('runCli', () => {
     }
   });
 
+  test('--watch logs a generation error but keeps the watcher alive', () => {
+    const root = path.join(tempDir, 'watch-error');
+    fs.mkdirSync(root, { recursive: true });
+
+    const logs: string[] = [];
+    const errors: string[] = [];
+    const originalLog = console.log;
+    const originalError = console.error;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+    console.error = (...args: unknown[]) => errors.push(args.join(' '));
+
+    const exitFn = ((_code?: number): never => undefined as never) as (code?: number) => never;
+
+    try {
+      runCli(['--watch', '--docs-root', root, '--project', 'nonexistent'], exitFn);
+      expect(errors.join('\n')).toContain('Error during generation:');
+      expect(errors.join('\n')).toContain('Project not found');
+    } finally {
+      process.emit('SIGINT');
+      console.log = originalLog;
+      console.error = originalError;
+      process.removeAllListeners('SIGINT');
+      process.removeAllListeners('SIGTERM');
+    }
+  });
+
+  test('--watch regenerates when a file changes', async () => {
+    const root = path.join(tempDir, 'watch-change');
+    writeFile(path.join(root, 'proj', 'docs', 'README.md'), '# Project');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    const exitFn = ((_code?: number): never => undefined as never) as (code?: number) => never;
+
+    try {
+      runCli(['--watch', '--docs-root', root], exitFn);
+      // watchDocs polls every 1000ms by default in the CLI; wait past one poll cycle.
+      writeFile(path.join(root, 'proj', 'docs', 'README.md'), '# Project Updated');
+      await Bun.sleep(1200);
+      expect(logs.join('\n')).toContain('Change detected:');
+    } finally {
+      process.emit('SIGINT');
+      console.log = originalLog;
+      process.removeAllListeners('SIGINT');
+      process.removeAllListeners('SIGTERM');
+    }
+  }, 3000);
+
+  test('--watch with --dry-run warns and falls back to a single dry-run pass', () => {
+    const root = path.join(tempDir, 'watch-dry-run');
+    writeFile(path.join(root, 'proj', 'docs', 'README.md'), '# Project');
+
+    const logs: string[] = [];
+    const errors: string[] = [];
+    const originalLog = console.log;
+    const originalError = console.error;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+    console.error = (...args: unknown[]) => errors.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--watch', '--dry-run', '--docs-root', root], exitFn);
+    } finally {
+      console.log = originalLog;
+      console.error = originalError;
+    }
+
+    expect(errors.join('\n')).toContain('--dry-run only applies to a single generation pass');
+    expect(logs.join('\n')).toContain('Dry run: enabled');
+    expect(exitCode).toBe(0);
+  });
+
   test('--watch stops on SIGTERM', () => {
     const root = path.join(tempDir, 'watch-sigterm');
     writeFile(path.join(root, 'proj', 'docs', 'README.md'), '# Project');
@@ -611,9 +714,13 @@ describe('runCli', () => {
     }) as (code?: number) => never;
 
     const configPath = path.join(tempDir, 'manifest-generator.config.json');
-    fs.writeFileSync(configPath, JSON.stringify({
-      docsSubfolder: 'documents',
-    }), 'utf8');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        docsSubfolder: 'documents',
+      }),
+      'utf8',
+    );
 
     try {
       runCli(['--all', '--docs-root', root, '--config', configPath], exitFn);
@@ -641,9 +748,13 @@ describe('runCli', () => {
     }) as (code?: number) => never;
 
     const configPath = path.join(tempDir, 'manifest-generator.config.json');
-    fs.writeFileSync(configPath, JSON.stringify({
-      docsSubfolder: 'wrong-folder',
-    }), 'utf8');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        docsSubfolder: 'wrong-folder',
+      }),
+      'utf8',
+    );
 
     try {
       runCli(['--all', '--docs-root', root, '--config', configPath, '--docs-subfolder', 'custom-docs'], exitFn);
@@ -652,6 +763,336 @@ describe('runCli', () => {
     } finally {
       console.log = originalLog;
     }
+  });
+
+  test('--docs-root from config file is used when CLI flag is absent', () => {
+    const root = path.join(tempDir, 'docsroot-config');
+    const projectA = path.join(root, 'project-a');
+    writeFile(path.join(projectA, 'docs', 'README.md'), '# A');
+
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    const configPath = path.join(tempDir, 'manifest-generator.config.json');
+    fs.writeFileSync(configPath, JSON.stringify({ docsRoot: root }), 'utf8');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--all'], exitFn);
+    } finally {
+      console.log = originalLog;
+      process.chdir(originalCwd);
+    }
+
+    expect(exitCode).toBe(0);
+    expect(fs.existsSync(path.join(projectA, 'manifest.json'))).toBe(true);
+  });
+
+  test('--docs-root CLI flag wins over config file docsRoot', () => {
+    const root = path.join(tempDir, 'docsroot-cli-wins');
+    const configuredRoot = path.join(tempDir, 'docsroot-config-value');
+    const projectA = path.join(root, 'project-a');
+    writeFile(path.join(projectA, 'docs', 'README.md'), '# A');
+    fs.mkdirSync(configuredRoot, { recursive: true });
+
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    const configPath = path.join(tempDir, 'manifest-generator.config.json');
+    fs.writeFileSync(configPath, JSON.stringify({ docsRoot: configuredRoot }), 'utf8');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--all', '--docs-root', root], exitFn);
+    } finally {
+      console.log = originalLog;
+      process.chdir(originalCwd);
+    }
+
+    expect(exitCode).toBe(0);
+    expect(fs.existsSync(path.join(projectA, 'manifest.json'))).toBe(true);
+  });
+
+  test('--discover --json prints parseable JSON with no extra lines', () => {
+    const projectsRoot = path.join(tempDir, 'discover-json');
+    const projectA = path.join(projectsRoot, 'project-a');
+    writeFile(path.join(projectA, 'docs', 'README.md'), '# A');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--discover', '--json', '--docs-root', projectsRoot], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(logs.length).toBe(1);
+    const parsed = JSON.parse(logs[0]);
+    expect(Array.isArray(parsed)).toBe(true);
+    expect(parsed[0].name).toBe('project-a');
+  });
+
+  test('--validate --json prints parseable JSON with no extra lines', () => {
+    const docsRoot = path.join(tempDir, 'validate-json');
+    writeFile(path.join(docsRoot, 'bad.md'), '---\npublishedAt: not-a-date\n---\nContent');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--validate', '--json', '--docs-root', docsRoot], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(1);
+    expect(logs.length).toBe(1);
+    const parsed = JSON.parse(logs[0]);
+    expect(Array.isArray(parsed)).toBe(true);
+    expect(parsed[0].valid).toBe(false);
+  });
+
+  test('--dry-run does not write manifest files but reports success', () => {
+    const root = path.join(tempDir, 'dry-run');
+    const projectA = path.join(root, 'project-a');
+    writeFile(path.join(projectA, 'docs', 'README.md'), '# A');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--all', '--dry-run', '--docs-root', root], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    expect(fs.existsSync(path.join(projectA, 'manifest.json'))).toBe(false);
+    expect(fs.existsSync(path.join(projectA, 'search-index.json'))).toBe(false);
+    expect(logs.join('\n')).toContain('Successful: 1');
+  });
+
+  test('--quiet suppresses banner/separator but still shows final summary', () => {
+    const root = path.join(tempDir, 'quiet-mode');
+    const projectA = path.join(root, 'project-a');
+    writeFile(path.join(projectA, 'docs', 'README.md'), '# A');
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--all', '--quiet', '--docs-root', root], exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(exitCode).toBe(0);
+    const output = logs.join('\n');
+    expect(output).not.toContain('@fsegurai/manifest-generator');
+    expect(output).not.toContain('='.repeat(50));
+    expect(output).toContain('Summary: 1 successful, 0 failed');
+  });
+
+  test('two conflicting mode flags exit 1 with a clear error', () => {
+    const errors: string[] = [];
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => errors.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--validate', '--discover', '--docs-root', tempDir], exitFn);
+    } finally {
+      console.error = originalError;
+    }
+
+    expect(exitCode).toBe(1);
+    expect(errors.join('\n')).toContain('mutually exclusive');
+    expect(errors.join('\n')).toContain('--validate');
+    expect(errors.join('\n')).toContain('--discover');
+  });
+
+  test('--init in non-TTY test context behaves exactly as before', () => {
+    const originalIsTTY = process.stdin.isTTY;
+    (process.stdin as unknown as { isTTY: boolean }).isTTY = false;
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--init', tempDir], exitFn);
+      expect(exitCode).toBe(0);
+      expect(fs.existsSync(path.join(tempDir, 'manifest-generator.config.ts'))).toBe(true);
+      expect(fs.existsSync(path.join(tempDir, 'docs', 'README.md'))).toBe(true);
+      expect(logs.join('\n')).toContain('Initialized documentation structure');
+    } finally {
+      console.log = originalLog;
+      (process.stdin as unknown as { isTTY: boolean | undefined }).isTTY = originalIsTTY;
+    }
+  });
+
+  test('--validate --json never emits ANSI color codes', () => {
+    const docsRoot = path.join(tempDir, 'validate-json-color');
+    writeFile(path.join(docsRoot, 'bad.md'), '---\npublishedAt: not-a-date\n---\nContent');
+
+    const originalIsTTY = process.stdout.isTTY;
+    (process.stdout as unknown as { isTTY: boolean }).isTTY = true;
+    const originalNoColor = process.env.NO_COLOR;
+    delete process.env.NO_COLOR;
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    const exitFn = ((_code?: number): never => undefined as never) as (code?: number) => never;
+
+    try {
+      runCli(['--validate', '--json', '--docs-root', docsRoot], exitFn);
+    } finally {
+      console.log = originalLog;
+      (process.stdout as unknown as { isTTY: boolean | undefined }).isTTY = originalIsTTY;
+      if (originalNoColor !== undefined) process.env.NO_COLOR = originalNoColor;
+    }
+
+    expect(logs.join('\n')).not.toContain('\x1b[');
+  });
+
+  test('--validate shows ANSI color codes when stdout is a TTY and NO_COLOR is unset', () => {
+    const docsRoot = path.join(tempDir, 'validate-color-tty');
+    writeFile(path.join(docsRoot, 'bad.md'), '---\npublishedAt: not-a-date\n---\nContent');
+
+    const originalIsTTY = process.stdout.isTTY;
+    (process.stdout as unknown as { isTTY: boolean }).isTTY = true;
+    const originalNoColor = process.env.NO_COLOR;
+    delete process.env.NO_COLOR;
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    const exitFn = ((_code?: number): never => undefined as never) as (code?: number) => never;
+
+    try {
+      runCli(['--validate', '--docs-root', docsRoot], exitFn);
+    } finally {
+      console.log = originalLog;
+      (process.stdout as unknown as { isTTY: boolean | undefined }).isTTY = originalIsTTY;
+      if (originalNoColor !== undefined) process.env.NO_COLOR = originalNoColor;
+    }
+
+    expect(logs.join('\n')).toContain('\x1b[');
+  });
+
+  test('--validate has no ANSI color codes when NO_COLOR is set', () => {
+    const docsRoot = path.join(tempDir, 'validate-no-color-env');
+    writeFile(path.join(docsRoot, 'bad.md'), '---\npublishedAt: not-a-date\n---\nContent');
+
+    const originalIsTTY = process.stdout.isTTY;
+    (process.stdout as unknown as { isTTY: boolean }).isTTY = true;
+    const originalNoColor = process.env.NO_COLOR;
+    process.env.NO_COLOR = '1';
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    const exitFn = ((_code?: number): never => undefined as never) as (code?: number) => never;
+
+    try {
+      runCli(['--validate', '--docs-root', docsRoot], exitFn);
+    } finally {
+      console.log = originalLog;
+      (process.stdout as unknown as { isTTY: boolean | undefined }).isTTY = originalIsTTY;
+      if (originalNoColor === undefined) delete process.env.NO_COLOR;
+      else process.env.NO_COLOR = originalNoColor;
+    }
+
+    expect(logs.join('\n')).not.toContain('\x1b[');
+  });
+
+  test('--validate has no ANSI color codes when stdout is not a TTY', () => {
+    const docsRoot = path.join(tempDir, 'validate-no-tty');
+    writeFile(path.join(docsRoot, 'bad.md'), '---\npublishedAt: not-a-date\n---\nContent');
+
+    const originalIsTTY = process.stdout.isTTY;
+    (process.stdout as unknown as { isTTY: boolean }).isTTY = false;
+    const originalNoColor = process.env.NO_COLOR;
+    delete process.env.NO_COLOR;
+
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+
+    const exitFn = ((_code?: number): never => undefined as never) as (code?: number) => never;
+
+    try {
+      runCli(['--validate', '--docs-root', docsRoot], exitFn);
+    } finally {
+      console.log = originalLog;
+      (process.stdout as unknown as { isTTY: boolean | undefined }).isTTY = originalIsTTY;
+      if (originalNoColor !== undefined) process.env.NO_COLOR = originalNoColor;
+    }
+
+    expect(logs.join('\n')).not.toContain('\x1b[');
   });
 
   test('--all --recursive logs recursive discovery', () => {

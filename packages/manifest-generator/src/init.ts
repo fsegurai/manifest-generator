@@ -1,20 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const CONFIG_TS = `import { defineConfig } from '@fsegurai/manifest-generator';
-
-export default defineConfig({
-  // Subfolder name inside each project that contains documentation files
-  // docsSubfolder: 'docs',
-
-  // Recursively discover projects in nested directories
-  // recursive: false,
-
-  // Custom output directory for generated files
-  // outputDir: '.',
-});
-`;
-
 const DOCS_README = `---
 label: Home
 description: Main documentation entry point
@@ -104,14 +90,41 @@ function write(path: string, content: string): void {
   fs.writeFileSync(path, content, 'utf8');
 }
 
-export function scaffoldInit(rootDir: string): void {
-  const docsDir = path.join(rootDir, 'docs');
+export interface ScaffoldInitOptions {
+  docsSubfolder?: string;
+  outputDir?: string;
+  recursive?: boolean;
+}
+
+function buildConfigTs(options: ScaffoldInitOptions): string {
+  const docsSubfolder = options.docsSubfolder || 'docs';
+  const recursive = options.recursive ?? false;
+  const outputDir = options.outputDir || null;
+
+  return `import { defineConfig } from '@fsegurai/manifest-generator';
+
+export default defineConfig({
+  // Subfolder name inside each project that contains documentation files
+  docsSubfolder: '${docsSubfolder}',
+
+  // Recursively discover projects in nested directories
+  recursive: ${recursive},
+
+  // Custom output directory for generated files
+  outputDir: ${outputDir ? `'${outputDir}'` : 'null'},
+});
+`;
+}
+
+export function scaffoldInit(rootDir: string, options: ScaffoldInitOptions = {}): void {
+  const docsSubfolder = options.docsSubfolder || 'docs';
+  const docsDir = path.join(rootDir, docsSubfolder);
 
   ensureDir(docsDir);
   ensureDir(path.join(docsDir, 'api'));
   ensureDir(path.join(docsDir, 'guides'));
 
-  write(path.join(rootDir, 'manifest-generator.config.ts'), CONFIG_TS);
+  write(path.join(rootDir, 'manifest-generator.config.ts'), buildConfigTs(options));
   write(path.join(docsDir, 'README.md'), DOCS_README);
   write(path.join(docsDir, 'getting-started.md'), DOCS_GETTING_STARTED);
   write(path.join(docsDir, 'api', 'reference.md'), DOCS_API_REFERENCE);
@@ -119,16 +132,40 @@ export function scaffoldInit(rootDir: string): void {
   write(path.join(docsDir, 'guides', 'setup.md'), DOCS_GUIDES_SETUP);
   write(path.join(docsDir, 'guides', 'advanced.md'), DOCS_ADVANCED);
 
-  console.log(`✅ Initialized documentation structure in ${ rootDir }`);
+  console.log(`✅ Initialized documentation structure in ${rootDir}`);
   console.log('');
   console.log('Created:');
   console.log('  manifest-generator.config.ts');
-  console.log('  docs/README.md');
-  console.log('  docs/getting-started.md');
-  console.log('  docs/api/reference.md');
-  console.log('  docs/guides/README.md');
-  console.log('  docs/guides/setup.md');
-  console.log('  docs/guides/advanced.md');
+  console.log(`  ${docsSubfolder}/README.md`);
+  console.log(`  ${docsSubfolder}/getting-started.md`);
+  console.log(`  ${docsSubfolder}/api/reference.md`);
+  console.log(`  ${docsSubfolder}/guides/README.md`);
+  console.log(`  ${docsSubfolder}/guides/setup.md`);
+  console.log(`  ${docsSubfolder}/guides/advanced.md`);
   console.log('');
   console.log('Run `npx @fsegurai/manifest-generator --discover` to see discovered projects.');
+}
+
+/**
+ * Prompts the user interactively (via node:readline/promises) for scaffold options.
+ * Callers are responsible for only invoking this when stdin is a TTY and we are
+ * not running under a test environment — this function does not guard that itself.
+ */
+export async function promptInitOptions(): Promise<ScaffoldInitOptions> {
+  const { createInterface } = await import('node:readline/promises');
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+
+  try {
+    const docsSubfolderAnswer = (await rl.question('Docs subfolder name (default: docs): ')).trim();
+    const outputDirAnswer = (await rl.question('Output directory (leave blank for source root): ')).trim();
+    const recursiveAnswer = (await rl.question('Enable recursive project discovery? (y/N): ')).trim();
+
+    return {
+      docsSubfolder: docsSubfolderAnswer || undefined,
+      outputDir: outputDirAnswer || undefined,
+      recursive: /^y(es)?$/i.test(recursiveAnswer),
+    };
+  } finally {
+    rl.close();
+  }
 }
