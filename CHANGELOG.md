@@ -7,6 +7,12 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+No changes have been made yet.
+
+---
+
+## [1.1.0] - 2026-10-01
+
 ### 🚀 Added
 
 - **Folder labels from README** — a folder now takes its label from its `README.md`/`README.mdx`/`index.md`/`index.mdx`
@@ -20,6 +26,11 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - **Symlink/`npx` entry detection** — the CLI no longer silently does nothing when launched through the
   `node_modules/.bin` symlink or `npx`.
 - **`types` export condition order** — `types` now comes first in `exports["."]` so TypeScript resolves it.
+
+- **Update dependencies** — address potential vulnerabilities and/or improvements in development dependencies.
+	- Dev Dependencies
+        - `@biomejs/biome` from `2.5.14` to `2.5.15`
+		- `@types/node` from `26.6.2` to `26.6.3`
 
 ---
 
