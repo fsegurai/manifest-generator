@@ -33,5 +33,7 @@ Branch: `fix/folder-labels-cli-build` (from `development`)
 - T2: RED = `bun test spec/cli.test.ts` failed: "Export named 'isMainModule' not found" (0 pass, 1 fail, 1 error). GREEN = `bun test` 184 pass / 0 fail. Build emits dist/cli.js with a single shebang (no banner needed); `node dist/cli.js --help/--version` OK; `npm pack` + install in temp project + `npx manifest-generator --help` and `--version` OK; fixture api/README.md `label: API` -> folder label and breadcrumbs "API" in generated manifest/search-index. Commit: `fix: ship CLI in dist and make entry detection symlink-safe` (see git log)
 - T3: no RED applicable (config/docs only; scripts verified by running). `bun run test-types:packages` exit 0; pkg:test 184 pass; `bun run lint` clean; pkg:build OK, dist/cli.js starts with shebang. Commit: `chore: add test-types script and document folder labels and CLI build` (see git log)
 
+- Review (T1–T3 range `development..145a013`): assessed high (process_boundary in package.json); consent granted; native 4-lens review approved and acknowledged. Non-blocking follow-ups: R3 `isMainModule(undefined)` test hits the default param instead of the `!invokedPath` guard; no test for README/index precedence when several coexist; no automated post-build check for `dist/cli.js`; readability suggestions on `vite.cli.config.ts`.
+
 ## Next step
-- Review; push/PR are the user's decision.
+- Optional follow-ups above; push/PR are the user's decision.
