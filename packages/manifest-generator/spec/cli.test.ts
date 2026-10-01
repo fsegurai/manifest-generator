@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { maybeRunCli, runCli } from '../src/cli.js';
+import { pathToFileURL } from 'node:url';
+import { isMainModule, maybeRunCli, runCli } from '../src/cli.js';
 
 let tempDir = '';
 
@@ -1116,5 +1117,43 @@ describe('runCli', () => {
     } finally {
       console.log = originalLog;
     }
+  });
+});
+
+describe('isMainModule', () => {
+  test('returns true when argv[1] is the module file itself', () => {
+    const file = path.join(tempDir, 'cli.js');
+    writeFile(file, '// cli');
+    expect(isMainModule(file, pathToFileURL(file).href)).toBe(true);
+  });
+
+  test('returns true when argv[1] is a symlink to the module file (node_modules/.bin case)', () => {
+    const file = path.join(tempDir, 'real', 'cli.js');
+    writeFile(file, '// cli');
+    const link = path.join(tempDir, 'bin', 'manifest-generator');
+    fs.mkdirSync(path.dirname(link), { recursive: true });
+    fs.symlinkSync(file, link);
+
+    expect(isMainModule(link, pathToFileURL(file).href)).toBe(true);
+  });
+
+  test('returns true when the module URL itself is reached through a symlinked directory', () => {
+    const realDir = path.join(tempDir, 'real');
+    writeFile(path.join(realDir, 'cli.js'), '// cli');
+    const linkDir = path.join(tempDir, 'linked');
+    fs.symlinkSync(realDir, linkDir);
+
+    expect(isMainModule(path.join(realDir, 'cli.js'), pathToFileURL(path.join(linkDir, 'cli.js')).href)).toBe(true);
+  });
+
+  test('returns false for a different file, a missing argv[1], or a nonexistent path', () => {
+    const file = path.join(tempDir, 'cli.js');
+    const other = path.join(tempDir, 'other.js');
+    writeFile(file, '// cli');
+    writeFile(other, '// other');
+
+    expect(isMainModule(other, pathToFileURL(file).href)).toBe(false);
+    expect(isMainModule(undefined, pathToFileURL(file).href)).toBe(false);
+    expect(isMainModule(path.join(tempDir, 'missing.js'), pathToFileURL(file).href)).toBe(false);
   });
 });

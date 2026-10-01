@@ -151,17 +151,19 @@ function makeBreadcrumb(chain: BreadcrumbSegment[], self: BreadcrumbSegment): Br
   return [...chain, self];
 }
 
-function resolveFolderBreadcrumbLabel(dirFullPath: string, folderName: string): string {
-  const readmePath = path.join(dirFullPath, 'README.md');
-  const indexPath = path.join(dirFullPath, 'index.md');
-  const targetPath = fs.existsSync(readmePath) ? readmePath : fs.existsSync(indexPath) ? indexPath : null;
+const FOLDER_LABEL_SOURCES = ['README.md', 'README.mdx', 'index.md', 'index.mdx'];
+
+function resolveFolderLabel(dirFullPath: string, folderName: string): string {
+  const targetPath = FOLDER_LABEL_SOURCES.map((name) => path.join(dirFullPath, name)).find((candidate) =>
+    fs.existsSync(candidate),
+  );
 
   if (!targetPath) return formatTitle(folderName);
 
   try {
     const content = fs.readFileSync(targetPath, 'utf8');
     const meta = parseFrontmatter<Frontmatter>(content);
-    return meta.breadcrumbTitle || formatTitle(folderName);
+    return meta.breadcrumbTitle || meta.label || formatTitle(folderName);
   } catch {
     return formatTitle(folderName);
   }
@@ -237,7 +239,7 @@ function walkDocs(
       const relPath = path.join(relative, entry.name);
 
       if (entry.isDirectory()) {
-        const folderLabel = resolveFolderBreadcrumbLabel(fullPath, entry.name);
+        const folderLabel = resolveFolderLabel(fullPath, entry.name);
         const folderRoute = relPath.replace(/\\/g, '/');
         const children = walkDocs(fullPath, relPath, searchIndex, exclude, [
           ...chain,
@@ -246,12 +248,12 @@ function walkDocs(
         if (children.length === 0) return null;
 
         const folderItem: NavigationItem = {
-          label: formatTitle(entry.name),
+          label: folderLabel,
           route: folderRoute,
           isParent: true,
         };
         folderItem.breadcrumb = makeBreadcrumb(chain, {
-          label: folderItem.breadcrumbTitle || folderItem.label,
+          label: folderLabel,
           route: folderItem.route ?? '',
         });
 
