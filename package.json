@@ -1,6 +1,6 @@
 {
   "name": "@fsegurai/manifest-generator-monorepo",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A simple manifest and search-index generator based on project documentation.",
   "type": "module",
   "license": "MIT",
@@ -51,6 +51,7 @@
     "test:coverage": "bun test --coverage",
     "test:snapshots": "bun test --update-snapshots",
     "test:summary": "bun run packages/.helper/utils/scripts/test-packages-summary.ts --summary",
+    "test-types:packages": "bun run --filter '*' pkg:test-types",
     "test:packages": "bun run --filter '*' pkg:test:coverage",
     "test:packages:snapshots": "bun run --filter '*' pkg:test -- --update-snapshots",
     "lint": "bun run lint:packages && bun run lint:demo",
@@ -72,8 +73,8 @@
     "prismjs": "^1.30.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.14",
-    "@types/node": "^26.6.2",
+    "@biomejs/biome": "^2.5.15",
+    "@types/node": "^26.6.3",
     "@types/prismjs": "^1.26.6",
     "@typescript/typescript6": "^6.0.2",
     "bun-types": "^1.4.2",

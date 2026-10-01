@@ -2,7 +2,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { loadConfig, loadConfigFromFile, mergeConfig } from './config.js';
 import * as indexModule from './index.js';
@@ -451,11 +451,14 @@ export function maybeRunCli(
   return false;
 }
 
-function isMainModule(): boolean {
+export function isMainModule(
+  invokedPath: string | undefined = process.argv[1],
+  metaUrl: string = import.meta.url,
+): boolean {
   try {
-    const invokedPath = process.argv[1];
     if (!invokedPath) return false;
-    return import.meta.url === pathToFileURL(invokedPath).href;
+    // Resolve symlinks on both sides so `node_modules/.bin` links and `npx` launches match.
+    return fs.realpathSync(invokedPath) === fs.realpathSync(fileURLToPath(metaUrl));
   } catch {
     return false;
   }

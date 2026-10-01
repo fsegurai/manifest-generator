@@ -157,7 +157,7 @@ The package reads YAML frontmatter from `.md` and `.mdx` files. Supported keys:
 
 For full documentation — including config file schema, output JSON shapes, and a complete API reference — start with:
 
-- [`docs/1.0.0/content/README.md`](./docs/1.0.0/content/README.md) — the versioned docs site source
+- [`docs/1.1.0/content/README.md`](./docs/1.1.0/content/README.md) — the versioned docs site source
 - [`packages/manifest-generator/README.md`](./packages/manifest-generator/README.md) — the package's own README (published to npm)
 
 ## Demo

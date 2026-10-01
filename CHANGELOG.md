@@ -7,7 +7,34 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
-No changes yet.
+No changes have been made yet.
+
+---
+
+## [1.1.0] - 2026-09-30
+
+### 🚀 Added
+
+- **Folder labels from README** — a folder now takes its label from its `README.md`/`README.mdx`/`index.md`/`index.mdx`
+  frontmatter (`breadcrumbTitle`, then `label`, then the formatted folder name). The same label is used for the
+  folder's navigation entry, its own breadcrumb segment, and its descendants' breadcrumbs.
+
+### 🐛 Fixed
+
+- **CLI missing from the published package** — the build now emits `dist/cli.js`, the target of `bin` and
+  `exports["./cli"]`.
+- **Symlink/`npx` entry detection** — the CLI no longer silently does nothing when launched through the
+  `node_modules/.bin` symlink or `npx`.
+- **`types` export condition order** — `types` now comes first in `exports["."]` so TypeScript resolves it.
+
+### 🔐 Security
+
+- **Update dependencies** — address potential vulnerabilities and/or improvements in development dependencies.
+	- Dev Dependencies
+		- `@biomejs/biome` from `2.5.14` to `2.5.15`
+		- `@types/node` from `26.6.2` to `26.6.3`
+
+**Full Changelog**: https://github.com/fsegurai/manifest-generator/commits/v1.1.0
 
 ---
 
@@ -351,7 +378,9 @@ No changes yet.
 
 ---
 
-[unreleased]: https://github.com/fsegurai/manifest-generator/compare/v1.0.0...HEAD
+[unreleased]: https://github.com/fsegurai/manifest-generator/compare/v1.1.0...HEAD
+
+[1.1.0]: https://github.com/fsegurai/manifest-generator/compare/v1.0.0...v1.1.0
 
 [1.0.0]: https://github.com/fsegurai/manifest-generator/compare/v1.0.0-beta.3...v1.0.0
 
