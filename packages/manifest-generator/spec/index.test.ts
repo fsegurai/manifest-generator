@@ -333,6 +333,59 @@ Final section with a list:
     ]);
   });
 
+  test('folder label comes from README label and is used in its own and descendants breadcrumbs', () => {
+    const docsRoot = path.join(tempDir, 'docs-folder-label');
+    writeFile(path.join(docsRoot, 'api', 'README.md'), '---\nlabel: API\n---\nApi home');
+    writeFile(path.join(docsRoot, 'api', 'page.md'), '# Page');
+
+    const searchIndex: SearchEntry[] = [];
+    const items = walkDocs(docsRoot, '', searchIndex);
+
+    const folder = items.find((i) => i.route === 'api');
+    expect(folder?.label).toBe('API');
+    expect(folder?.breadcrumb).toEqual([{ label: 'API', route: 'api' }]);
+    expect(searchIndex.find((e) => e.route === 'api/page')?.breadcrumb?.[0]).toEqual({ label: 'API', route: 'api' });
+  });
+
+  test('README breadcrumbTitle wins over label for the folder while the README child keeps its own label', () => {
+    const docsRoot = path.join(tempDir, 'docs-folder-label-both');
+    writeFile(path.join(docsRoot, 'api', 'README.md'), '---\nlabel: API Overview\nbreadcrumbTitle: API\n---\nHome');
+    writeFile(path.join(docsRoot, 'api', 'page.md'), '# Page');
+
+    const items = walkDocs(docsRoot, '', []);
+    const folder = items.find((i) => i.route === 'api');
+    expect(folder?.label).toBe('API');
+    expect(folder?.breadcrumb).toEqual([{ label: 'API', route: 'api' }]);
+    expect(folder?.children?.find((c) => c.route === 'api/README')?.label).toBe('API Overview');
+  });
+
+  test('folder label is read from index.mdx when it is the only index file', () => {
+    const docsRoot = path.join(tempDir, 'docs-folder-label-mdx');
+    writeFile(path.join(docsRoot, 'api', 'index.mdx'), '---\nlabel: API MDX\n---\nHome');
+    writeFile(path.join(docsRoot, 'api', 'page.md'), '# Page');
+
+    const folder = walkDocs(docsRoot, '', []).find((i) => i.route === 'api');
+    expect(folder?.label).toBe('API MDX');
+  });
+
+  test('folder label is read from README.mdx', () => {
+    const docsRoot = path.join(tempDir, 'docs-folder-label-readme-mdx');
+    writeFile(path.join(docsRoot, 'api', 'README.mdx'), '---\nlabel: API RM\n---\nHome');
+    writeFile(path.join(docsRoot, 'api', 'page.md'), '# Page');
+
+    const folder = walkDocs(docsRoot, '', []).find((i) => i.route === 'api');
+    expect(folder?.label).toBe('API RM');
+  });
+
+  test('folder label falls back to the formatted folder name without a README label', () => {
+    const docsRoot = path.join(tempDir, 'docs-folder-label-fallback');
+    writeFile(path.join(docsRoot, 'api-docs', 'README.md'), '---\norder: 1\n---\nHome');
+    writeFile(path.join(docsRoot, 'api-docs', 'page.md'), '# Page');
+
+    const folder = walkDocs(docsRoot, '', []).find((i) => i.route === 'api-docs');
+    expect(folder?.label).toBe('Api Docs');
+  });
+
   test('root-level file breadcrumb is a single segment containing only itself', () => {
     const docsRoot = path.join(tempDir, 'docs-breadcrumb-root');
 
@@ -473,7 +526,7 @@ keywords: ["key1", "key2"]
   test('falls back to formatTitle when a folder README.md cannot be read (e.g. is a directory)', () => {
     const docsRoot = path.join(tempDir, 'docs-broken-readme');
     // Make "README.md" itself a directory so existsSync() is true but readFileSync() throws EISDIR,
-    // exercising resolveFolderBreadcrumbLabel's catch branch indirectly via walkDocs.
+    // exercising resolveFolderLabel's catch branch indirectly via walkDocs.
     fs.mkdirSync(path.join(docsRoot, 'getting-started', 'README.md'), { recursive: true });
     writeFile(path.join(docsRoot, 'getting-started', 'page.md'), '# Page');
 
