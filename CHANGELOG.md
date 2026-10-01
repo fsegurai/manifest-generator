@@ -11,7 +11,7 @@ No changes have been made yet.
 
 ---
 
-## [1.1.0] - 2026-10-01
+## [1.1.0] - 2026-09-30
 
 ### 🚀 Added
 
@@ -27,10 +27,14 @@ No changes have been made yet.
   `node_modules/.bin` symlink or `npx`.
 - **`types` export condition order** — `types` now comes first in `exports["."]` so TypeScript resolves it.
 
+### 🔐 Security
+
 - **Update dependencies** — address potential vulnerabilities and/or improvements in development dependencies.
 	- Dev Dependencies
-        - `@biomejs/biome` from `2.5.14` to `2.5.15`
+		- `@biomejs/biome` from `2.5.14` to `2.5.15`
 		- `@types/node` from `26.6.2` to `26.6.3`
+
+**Full Changelog**: https://github.com/fsegurai/manifest-generator/commits/v1.1.0
 
 ---
 
@@ -374,7 +378,9 @@ No changes have been made yet.
 
 ---
 
-[unreleased]: https://github.com/fsegurai/manifest-generator/compare/v1.0.0...HEAD
+[unreleased]: https://github.com/fsegurai/manifest-generator/compare/v1.1.0...HEAD
+
+[1.1.0]: https://github.com/fsegurai/manifest-generator/compare/v1.0.0...v1.1.0
 
 [1.0.0]: https://github.com/fsegurai/manifest-generator/compare/v1.0.0-beta.3...v1.0.0
 
