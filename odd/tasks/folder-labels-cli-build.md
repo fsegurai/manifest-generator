@@ -19,7 +19,7 @@ Branch: `fix/folder-labels-cli-build` (from `development`)
 ## Tasks
 - [x] T1 — Folder label from README (`src/index.ts`, `spec/index.test.ts`). Route: delegated (writer trigger: 2+ non-trivial files across T1/T2).
 - [x] T2 — Build `dist/cli.js` + symlink-safe `isMainModule` + `types` export order (`vite.cli.config.ts`, `package.json`, `src/cli.ts`, `spec/cli.test.ts`). Route: delegated.
-- [ ] T3 — `test-types:packages` script, AGENTS.md + CHANGELOG `[Unreleased]`. Route: delegated.
+- [x] T3 — `test-types:packages` script, AGENTS.md + CHANGELOG `[Unreleased]`. Route: delegated.
 
 ## Acceptance criteria
 - README `label: API` in `api/` → folder label and all breadcrumb segments "API"; `breadcrumbTitle` wins over `label`; `.mdx` README/index honored; README child keeps its own label.
@@ -31,7 +31,7 @@ Branch: `fix/folder-labels-cli-build` (from `development`)
 ## Progress / evidence
 - T1: RED = 4 new tests failed (folder label from README label, breadcrumbTitle over label, index.mdx, README.mdx; the fallback test passed as expected). GREEN = `bun test` 180 pass / 0 fail. No pre-existing test needed changing (only a helper-name comment). Commit: `feat: derive folder label from README or index frontmatter` (see git log)
 - T2: RED = `bun test spec/cli.test.ts` failed: "Export named 'isMainModule' not found" (0 pass, 1 fail, 1 error). GREEN = `bun test` 184 pass / 0 fail. Build emits dist/cli.js with a single shebang (no banner needed); `node dist/cli.js --help/--version` OK; `npm pack` + install in temp project + `npx manifest-generator --help` and `--version` OK; fixture api/README.md `label: API` -> folder label and breadcrumbs "API" in generated manifest/search-index. Commit: `fix: ship CLI in dist and make entry detection symlink-safe` (see git log)
-- (pending T3)
+- T3: no RED applicable (config/docs only; scripts verified by running). `bun run test-types:packages` exit 0; pkg:test 184 pass; `bun run lint` clean; pkg:build OK, dist/cli.js starts with shebang. Commit: `chore: add test-types script and document folder labels and CLI build` (see git log)
 
 ## Next step
-- T3.
+- Review; push/PR are the user's decision.

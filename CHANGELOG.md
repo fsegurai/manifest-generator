@@ -7,7 +7,19 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
-No changes yet.
+### 🚀 Added
+
+- **Folder labels from README** — a folder now takes its label from its `README.md`/`README.mdx`/`index.md`/`index.mdx`
+  frontmatter (`breadcrumbTitle`, then `label`, then the formatted folder name). The same label is used for the
+  folder's navigation entry, its own breadcrumb segment, and its descendants' breadcrumbs.
+
+### 🐛 Fixed
+
+- **CLI missing from the published package** — the build now emits `dist/cli.js`, the target of `bin` and
+  `exports["./cli"]`.
+- **Symlink/`npx` entry detection** — the CLI no longer silently does nothing when launched through the
+  `node_modules/.bin` symlink or `npx`.
+- **`types` export condition order** — `types` now comes first in `exports["."]` so TypeScript resolves it.
 
 ---
 

@@ -51,6 +51,7 @@
     "test:coverage": "bun test --coverage",
     "test:snapshots": "bun test --update-snapshots",
     "test:summary": "bun run packages/.helper/utils/scripts/test-packages-summary.ts --summary",
+    "test-types:packages": "bun run --filter '*' pkg:test-types",
     "test:packages": "bun run --filter '*' pkg:test:coverage",
     "test:packages:snapshots": "bun run --filter '*' pkg:test -- --update-snapshots",
     "lint": "bun run lint:packages && bun run lint:demo",

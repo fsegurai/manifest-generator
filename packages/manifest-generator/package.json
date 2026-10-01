@@ -59,6 +59,7 @@
   "scripts": {
     "pkg:build": "vite build && vite build -c vite.cli.config.ts",
     "pkg:test": "bun test",
+    "pkg:test-types": "tsc --noEmit",
     "pkg:test:coverage": "bun test --coverage"
   },
   "peerDependencies": {},
