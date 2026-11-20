@@ -7,7 +7,77 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
-No changes have been made yet.
+---
+
+## [1.2.0] - 2026-11-19
+
+### ✨ Features
+
+- **Browser-safe core entry** — `@fsegurai/manifest-generator/core` has no `node:*` imports and exposes the pure
+  helpers plus `generateManifestFromFiles([{ path, content }], options)`, which returns the same manifest and search
+  index as `generateManifest(dir)` for the same tree. The Node walker (`walkDocs`) and the in-memory one share a single
+  implementation (`walkTree` over a `DocsReader`).
+- **Types and JSON Schema entry** — `@fsegurai/manifest-generator/schema` (types only: `NavigationItem`, `SearchEntry`,
+  `BreadcrumbSegment`, `PageLink`, `Frontmatter`, …) and the shipped JSON Schemas
+  `schema/manifest.schema.json` / `schema/search-index.schema.json`.
+- **Previous / next links** — opt-in `prevNext` option (`--prev-next`, config `prevNext`) writes `prev` / `next`
+  (`{ label, route }`) on page items in manifest reading order. Default output is unchanged.
+- **Frontmatter aliases and ignored keys** — config `frontmatterAliases` (e.g. `{ title: 'label' }`, no defaults)
+  maps foreign keys for generation and validation when the target key is not set; `ignoreKeys` / `--ignore-keys a,b`
+  stops `--validate` from reporting those keys as unknown. `validateDocs` takes an optional options argument.
+  A wrong-typed `prevNext` / `frontmatterAliases` / `ignoreKeys`, or an alias to an unknown frontmatter key, stops the
+  CLI with `Error: Invalid config: …` (exit 1) instead of being ignored.
+- **Heading anchors** — opt-in `headingAnchors` option (`--heading-anchors`, config `headingAnchors`) writes `sections`
+  (`{ text, id, level }` for each `##` / `###` heading) on search entries, so search results can deep-link to
+  `route#id`. Ids are GitHub-style slugs, unique in the page and counting headings of every level, matching
+  `github-slugger`, `marked-gfm-heading-id` and ngx-markdown's `headingIds` (checked against 1555 headings of the
+  libraries' docs). New helpers `extractSections(body)` and `slugifyHeading(text)` (root and `/core`) and type
+  `PageSection`.
+- **Extra frontmatter** — opt-in `extraFrontmatter` option (`--extra-frontmatter`, config `extraFrontmatter`) copies
+  frontmatter keys the generator does not know into `meta` on page items, leaving out known keys and alias sources.
+- **Reading time** — opt-in `readingTime` option (`--reading-time`, config `readingTime`) writes `wordCount` (code
+  blocks excluded) and `readingTime` (minutes at 200 words per minute, rounded up) on page items.
+  The three new config keys are type-checked like `prevNext` (`Error: Invalid config: "readingTime" must be a boolean`).
+  The JSON Schemas describe every new field.
+
+### 🐛 Bug Fixes
+
+- **`hidden` pages stay searchable** — `hidden: true` now does what the docs always said: it leaves the page out of
+  the navigation (`manifest.json`, and so `prev` / `next`) only. The page's search entry stays in `search-index.json`,
+  flagged `"hidden": true`. Previously `hidden` dropped the page from both files, exactly like `draft`. `draft: true`
+  is unchanged and wins when both are set. **Behavior change:** a consumer that relied on hidden pages being absent
+  from the search index should use `draft: true` or filter on `hidden`.
+- **Headings inside code blocks** — `extractHeadings()` (the `headings` of search entries) skips lines inside fenced
+  code blocks, so a `## comment` in a code sample is no longer listed as a heading.
+
+### 🔧 Infrastructure
+
+- **Biome 2.6** — `biome.json` migrated (`biome migrate`); `*.md`, `*.yml` and `*.yaml` are excluded in
+  `files.includes` to keep the previous lint scope, since Biome 2.6 checks them by default.
+- **Subpath build** — `pkg:build` runs a second Vite pass (`vite build --mode entries`) that emits
+  `dist/core.{esm.js,cjs}` and `dist/schema.{esm.js,cjs}`.
+- **Docs for 1.2.0** — new versioned docs set under `docs/1.2.0/` with a "What's New in 1.2.0" page, new
+  "Browser-safe Core" (`/core`, `generateManifestFromFiles`) and "Types and JSON Schema" (`/schema`) API pages, and
+  `prevNext` / `--prev-next`, `headingAnchors` / `--heading-anchors`, `extraFrontmatter` / `--extra-frontmatter`,
+  `readingTime` / `--reading-time`, `frontmatterAliases`, `ignoreKeys` / `--ignore-keys`, and the new `hidden`
+  behavior covered in the CLI, configuration, frontmatter, API, features and FAQ pages. The playground ships in
+  `docs/1.2.0/playground/`, importing the browser-safe `/core` build, with a new "1.2.0 features" sample.
+
+### 🔐 Security
+
+- **Update dependencies** — address potential vulnerabilities and/or improvements in development dependencies.
+	- Dependencies
+		- `marked` from `18.0.14` to `18.2.1`
+	- Dev Dependencies
+		- `@biomejs/biome` from `2.5.15` to `2.6.8`
+		- `@types/node` from `26.6.3` to `26.6.6`
+		- `bun-types` from `1.4.2` to `1.4.5`
+		- `portless` from `0.15.6` to `0.18.1`
+		- `rimraf` from `6.1.3` to `6.1.4`
+		- `vite` from `8.3.1` to `8.3.8`
+		- `vite-plugin-dts` from `5.1.1` to `5.1.2`
+
+**Full Changelog**: https://github.com/fsegurai/manifest-generator/compare/v1.1.0...v1.2.0
 
 ---
 
@@ -378,7 +448,9 @@ No changes have been made yet.
 
 ---
 
-[unreleased]: https://github.com/fsegurai/manifest-generator/compare/v1.1.0...HEAD
+[unreleased]: https://github.com/fsegurai/manifest-generator/compare/v1.2.0...HEAD
+
+[1.2.0]: https://github.com/fsegurai/manifest-generator/compare/v1.1.0...v1.2.0
 
 [1.1.0]: https://github.com/fsegurai/manifest-generator/compare/v1.0.0...v1.1.0
 

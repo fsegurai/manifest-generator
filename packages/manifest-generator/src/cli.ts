@@ -45,6 +45,11 @@ Options:
   --config <path>              Path to config file (default: auto-detect)
   --json                       Output machine-readable JSON (--discover / --validate)
   --dry-run                    Run generation without writing files to disk
+  --prev-next                  Write prev/next links on each page item of the manifest
+  --heading-anchors            Write h2/h3 sections (text, GitHub-style id, level) on search entries
+  --extra-frontmatter          Copy unknown frontmatter keys into "meta" on page items
+  --reading-time               Write wordCount and readingTime (minutes) on page items
+  --ignore-keys <keys>         Comma-separated frontmatter keys --validate must not report as unknown
   -q, --quiet                  Suppress banner and progress output (errors still show)
   -h, --help                   Show this help message
   -v, --version                Show version number
@@ -87,6 +92,15 @@ Examples:
   # JSON output
   npx @fsegurai/manifest-generator --discover --json
 
+  # Previous/next page links in the manifest
+  npx @fsegurai/manifest-generator --route ./docs --prev-next
+
+  # Section anchors, custom frontmatter and reading time
+  npx @fsegurai/manifest-generator --route ./docs --heading-anchors --extra-frontmatter --reading-time
+
+  # Validate notes that use foreign frontmatter keys
+  npx @fsegurai/manifest-generator --validate --docs-root ./notes --ignore-keys title,created,updated
+
 Exit codes:
   0 = success
   1 = failure
@@ -116,6 +130,33 @@ function showVersion(): void {
   }
 }
 
+/** Splits a comma-separated CLI list (`a, b`) into trimmed, non-empty values. */
+function parseKeyList(value: string | undefined): string[] | undefined {
+  if (value === undefined) return undefined;
+  return value
+    .split(',')
+    .map((key) => key.trim())
+    .filter(Boolean);
+}
+
+interface OutputOptions {
+  prevNext: boolean;
+  headingAnchors: boolean;
+  extraFrontmatter: boolean;
+  readingTime: boolean;
+}
+
+/** Generation options added only when set, so default runs pass the same options as before. */
+function generationExtras(output: OutputOptions, frontmatterAliases: Record<string, string> | undefined) {
+  return {
+    ...(output.prevNext ? { prevNext: true } : {}),
+    ...(output.headingAnchors ? { headingAnchors: true } : {}),
+    ...(output.extraFrontmatter ? { extraFrontmatter: true } : {}),
+    ...(output.readingTime ? { readingTime: true } : {}),
+    ...(frontmatterAliases ? { frontmatterAliases } : {}),
+  };
+}
+
 export function runCli(argv: string[] = process.argv.slice(2), exitFn: (code?: number) => never = process.exit) {
   const { values: flags, positionals } = parseArgs({
     args: argv,
@@ -137,6 +178,11 @@ export function runCli(argv: string[] = process.argv.slice(2), exitFn: (code?: n
       json: { type: 'boolean' },
       'dry-run': { type: 'boolean' },
       quiet: { type: 'boolean', short: 'q' },
+      'prev-next': { type: 'boolean' },
+      'heading-anchors': { type: 'boolean' },
+      'extra-frontmatter': { type: 'boolean' },
+      'reading-time': { type: 'boolean' },
+      'ignore-keys': { type: 'string' },
     },
     allowPositionals: true,
   });
@@ -198,7 +244,13 @@ export function runCli(argv: string[] = process.argv.slice(2), exitFn: (code?: n
     console.log('@fsegurai/manifest-generator\n');
   }
 
-  const configFile = flags.config ? loadConfigFromFile(flags.config) : loadConfig(process.cwd());
+  let configFile: ReturnType<typeof loadConfig>;
+  try {
+    configFile = flags.config ? loadConfigFromFile(flags.config) : loadConfig(process.cwd());
+  } catch (error) {
+    console.error('Error:', error instanceof Error ? error.message : String(error));
+    return exitFn(1);
+  }
 
   const rootDir = flags['docs-root'] || configFile.docsRoot || positionals[0] || process.cwd();
   const resolvedRoot = path.resolve(rootDir);
@@ -208,18 +260,34 @@ export function runCli(argv: string[] = process.argv.slice(2), exitFn: (code?: n
       docsSubfolder: flags['docs-subfolder'],
       recursive: flags.recursive,
       output: flags.output,
+      prevNext: flags['prev-next'],
+      headingAnchors: flags['heading-anchors'],
+      extraFrontmatter: flags['extra-frontmatter'],
+      readingTime: flags['reading-time'],
+      ignoreKeys: parseKeyList(flags['ignore-keys']),
     },
     {
       docsSubfolder: configFile.docsSubfolder,
       recursive: configFile.recursive,
       output: configFile.outputDir,
+      prevNext: configFile.prevNext,
+      headingAnchors: configFile.headingAnchors,
+      extraFrontmatter: configFile.extraFrontmatter,
+      readingTime: configFile.readingTime,
+      ignoreKeys: configFile.ignoreKeys,
     },
     {
       docsSubfolder: 'docs',
       recursive: false,
       output: null as string | null,
+      prevNext: false,
+      headingAnchors: false,
+      extraFrontmatter: false,
+      readingTime: false,
+      ignoreKeys: [] as string[],
     },
   );
+  const frontmatterAliases = configFile.frontmatterAliases;
 
   if (!fs.existsSync(resolvedRoot)) {
     console.error(`Error: Documentation directory not found: ${resolvedRoot}`);
@@ -233,7 +301,10 @@ export function runCli(argv: string[] = process.argv.slice(2), exitFn: (code?: n
 
   // Validate mode
   if (flags.validate) {
-    const results = indexModule.validateDocs(resolvedRoot);
+    const results =
+      frontmatterAliases || cfg.ignoreKeys.length > 0
+        ? indexModule.validateDocs(resolvedRoot, { frontmatterAliases, ignoreKeys: cfg.ignoreKeys })
+        : indexModule.validateDocs(resolvedRoot);
 
     if (flags.json) {
       console.log(JSON.stringify(results, null, 2));
@@ -329,6 +400,7 @@ export function runCli(argv: string[] = process.argv.slice(2), exitFn: (code?: n
       autoDetect: flags.all || (!flags.project && !flags.route),
       exclude: configFile.exclude || [],
       projects: configFile.projects || {},
+      ...generationExtras(cfg, frontmatterAliases),
     };
 
     const runOnce = () => {
@@ -382,6 +454,7 @@ export function runCli(argv: string[] = process.argv.slice(2), exitFn: (code?: n
       exclude: configFile.exclude || [],
       projects: configFile.projects || {},
       dryRun,
+      ...generationExtras(cfg, frontmatterAliases),
     };
 
     if (!quiet) {

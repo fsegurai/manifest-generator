@@ -1,0 +1,39 @@
+{
+  "imports": {
+    "@fsegurai/manifest-generator/core": "https://cdn.jsdelivr.net/npm/@fsegurai/manifest-generator@{version}/dist/core.esm.js"
+  },
+  "samples": [
+    {
+      "id": "features",
+      "label": "1.2.0 features",
+      "description": "Runs generateManifestFromFiles in the browser with prevNext, headingAnchors, extraFrontmatter and readingTime, and a hidden page that stays searchable.",
+      "files": ["README.md", "quick-start.md", "changelog.md", "next-steps.md", "main.js", "styles.css", "index.html"]
+    },
+    {
+      "id": "page-to-nav-item",
+      "label": "Page to navigation item",
+      "description": "Turns one Markdown page into its manifest item and search entry with parseFrontmatter, extractHeadings and makeExcerpt.",
+      "files": ["page.md", "main.js", "styles.css", "index.html"]
+    },
+    {
+      "id": "frontmatter-keys",
+      "label": "Check frontmatter keys",
+      "description": "Flags unknown frontmatter keys against ALLOWED_FRONTMATTER_KEYS and suggests the closest key with diceSimilarity.",
+      "files": ["page.md", "main.js", "styles.css", "index.html"]
+    },
+    {
+      "id": "nav-tree",
+      "label": "Navigation tree from pages",
+      "description": "Builds a sorted section with breadcrumbs from a few in-memory pages, skipping drafts, with sortItems, makeBreadcrumb and cleanItem.",
+      "files": [
+        "installation.md",
+        "configuration.md",
+        "faq.md",
+        "draft-notes.md",
+        "main.js",
+        "styles.css",
+        "index.html"
+      ]
+    }
+  ]
+}

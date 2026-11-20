@@ -1157,3 +1157,131 @@ describe('isMainModule', () => {
     expect(isMainModule(path.join(tempDir, 'missing.js'), pathToFileURL(file).href)).toBe(false);
   });
 });
+
+describe('consumer options (S2/S3)', () => {
+  function run(argv: string[]) {
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => logs.push(args.join(' '));
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      return undefined as never;
+    }) as (code?: number) => never;
+    try {
+      runCli(argv, exitFn);
+    } finally {
+      console.log = originalLog;
+    }
+    return { logs: logs.join('\n'), exitCode };
+  }
+
+  const NOTE = '---\ntitle: Note\ncreated: "2024-01-01"\nmood: calm\n---\nBody';
+
+  test('--prev-next writes prev/next links', () => {
+    const docsPath = path.join(tempDir, 'pn');
+    writeFile(path.join(docsPath, 'a.md'), '---\nlabel: A\norder: 1\n---\nx');
+    writeFile(path.join(docsPath, 'b.md'), '---\nlabel: B\norder: 2\n---\nx');
+
+    expect(run(['--route', docsPath, '--prev-next', '-q']).exitCode).toBe(0);
+    const manifest = JSON.parse(fs.readFileSync(path.join(docsPath, 'manifest.json'), 'utf8'));
+    expect(manifest[0].next).toEqual({ label: 'B', route: 'b' });
+    expect(manifest[1].prev).toEqual({ label: 'A', route: 'a' });
+  });
+
+  test('without --prev-next the manifest has no prev/next', () => {
+    const docsPath = path.join(tempDir, 'pn');
+    writeFile(path.join(docsPath, 'a.md'), '---\nlabel: A\n---\nx');
+    writeFile(path.join(docsPath, 'b.md'), '---\nlabel: B\n---\nx');
+
+    run(['--route', docsPath, '-q']);
+    const raw = fs.readFileSync(path.join(docsPath, 'manifest.json'), 'utf8');
+    expect(raw).not.toContain('"prev"');
+    expect(raw).not.toContain('"next"');
+  });
+
+  test('config prevNext and frontmatterAliases apply to generation', () => {
+    const docsPath = path.join(tempDir, 'cfg-docs');
+    writeFile(path.join(docsPath, 'note.md'), NOTE);
+    writeFile(path.join(docsPath, 'other.md'), '---\nlabel: Other\n---\nx');
+    const configPath = path.join(tempDir, 'mg.config.json');
+    writeFile(
+      configPath,
+      JSON.stringify({ prevNext: true, frontmatterAliases: { title: 'label', created: 'publishedAt' } }),
+    );
+
+    expect(run(['--route', docsPath, '--config', configPath, '-q']).exitCode).toBe(0);
+    const manifest = JSON.parse(fs.readFileSync(path.join(docsPath, 'manifest.json'), 'utf8'));
+    const note = manifest.find((i: { route: string }) => i.route === 'note');
+    expect(note.label).toBe('Note');
+    expect(note.publishedAt).toBe('2024-01-01');
+    expect(note.next ?? note.prev).toBeDefined();
+  });
+
+  test('--ignore-keys suppresses unknown key warnings for the listed keys', () => {
+    const docsPath = path.join(tempDir, 'v');
+    writeFile(path.join(docsPath, 'note.md'), NOTE);
+
+    const { logs, exitCode } = run(['--validate', '--docs-root', docsPath, '--ignore-keys', 'title, created']);
+    expect(exitCode).toBe(0);
+    expect(logs).not.toContain('Unknown frontmatter key "title"');
+    expect(logs).not.toContain('Unknown frontmatter key "created"');
+    expect(logs).toContain('Unknown frontmatter key "mood"');
+  });
+
+  test('--validate without --ignore-keys still warns about every unknown key', () => {
+    const docsPath = path.join(tempDir, 'v');
+    writeFile(path.join(docsPath, 'note.md'), NOTE);
+
+    const { logs } = run(['--validate', '--docs-root', docsPath]);
+    expect(logs).toContain('Unknown frontmatter key "title"');
+    expect(logs).toContain('Unknown frontmatter key "mood"');
+  });
+
+  test('config ignoreKeys and frontmatterAliases apply to --validate', () => {
+    const docsPath = path.join(tempDir, 'v');
+    writeFile(path.join(docsPath, 'note.md'), NOTE);
+    const configPath = path.join(tempDir, 'mg.config.json');
+    writeFile(
+      configPath,
+      JSON.stringify({ frontmatterAliases: { title: 'label', created: 'publishedAt' }, ignoreKeys: ['mood'] }),
+    );
+
+    const { logs } = run(['--validate', '--docs-root', docsPath, '--config', configPath, '--json']);
+    const results = JSON.parse(logs);
+    expect(results[0].warnings).toEqual([]);
+  });
+
+  test('--help documents --prev-next and --ignore-keys', () => {
+    const { logs } = run(['--help']);
+    expect(logs).toContain('--prev-next');
+    expect(logs).toContain('--ignore-keys <keys>');
+  });
+
+  test('reports an invalid config value as an error and exits 1', () => {
+    const configPath = path.join(tempDir, 'bad.config.json');
+    fs.writeFileSync(configPath, JSON.stringify({ prevNext: 'no' }), 'utf8');
+    const errors: string[] = [];
+    const originalLog = console.log;
+    const originalError = console.error;
+    console.log = () => undefined;
+    console.error = (...args: unknown[]) => errors.push(args.join(' '));
+    let exitCode: number | undefined;
+    const exitFn = ((code?: number): never => {
+      exitCode = code;
+      throw new Error('exit');
+    }) as (code?: number) => never;
+
+    try {
+      runCli(['--config', configPath, '--docs-root', tempDir], exitFn);
+    } catch (error) {
+      if ((error as Error).message !== 'exit') throw error;
+    } finally {
+      console.log = originalLog;
+      console.error = originalError;
+    }
+
+    expect(exitCode).toBe(1);
+    expect(errors).toEqual(['Error: Invalid config: "prevNext" must be a boolean']);
+  });
+});

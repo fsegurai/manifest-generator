@@ -1,0 +1,118 @@
+body {
+  font-family: var(--pg-font);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 560px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Page chrome uses the --pg-* variables of the preview, so it reads well in light and dark. */
+.sidebar {
+  padding: 8px 12px;
+  border: 1px solid var(--pg-border);
+  border-radius: var(--pg-radius);
+  background: var(--pg-surface);
+}
+
+.sidebar ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.sidebar ul ul {
+  margin-top: 4px;
+  padding-left: 12px;
+  border-left: 2px solid var(--pg-border);
+}
+
+.sidebar li {
+  margin: 4px 0;
+}
+
+.section {
+  font-weight: 700;
+}
+
+.page {
+  color: var(--pg-primary);
+}
+
+.sidebar small {
+  display: block;
+  color: var(--pg-text-muted);
+  font-size: 0.75em;
+}
+
+.badge {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--pg-primary);
+  color: var(--pg-on-primary);
+  font-size: 0.7em;
+}
+
+.output {
+  min-width: 0;
+}
+
+.note {
+  margin-top: 0;
+  color: var(--pg-text-muted);
+}
+
+details {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--pg-border);
+  border-radius: var(--pg-radius);
+  background: var(--pg-surface);
+}
+
+summary {
+  cursor: pointer;
+  font-family: var(--pg-mono);
+  font-weight: 600;
+}
+
+summary:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+
+pre {
+  max-height: 360px;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border-radius: var(--pg-radius);
+  background: var(--pg-code-bg);
+  font-family: var(--pg-mono);
+  font-size: 0.8em;
+}
+
+.meta {
+  display: block;
+  color: var(--pg-text-muted);
+  font-size: 0.75em;
+}
+
+.sections {
+  margin: 4px 0 0;
+  padding-left: 12px;
+  font-size: 0.8em;
+  list-style: "# ";
+}
+
+.sections a {
+  color: var(--pg-accent);
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/fsegurai/manifest-generator/schema/search-index.schema.json",
+  "title": "search-index.json",
+  "description": "Search entries written by @fsegurai/manifest-generator (array of SearchEntry), one per routable page (hidden pages included, drafts excluded).",
+  "type": "array",
+  "items": { "$ref": "#/definitions/searchEntry" },
+  "definitions": {
+    "breadcrumbSegment": {
+      "type": "object",
+      "description": "One step of the path to an entry.",
+      "required": ["label", "route"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": "string" },
+        "route": { "type": "string" }
+      }
+    },
+    "pageSection": {
+      "type": "object",
+      "description": "One h2/h3 heading of a page with its GitHub-style id (written only with the headingAnchors option).",
+      "required": ["text", "id", "level"],
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "description": "Plain text of the heading." },
+        "id": { "type": "string", "description": "GitHub-style slug, unique in the page (intro, intro-1, ...)." },
+        "level": { "enum": [2, 3] }
+      }
+    },
+    "searchEntry": {
+      "type": "object",
+      "required": ["label", "route"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": "string" },
+        "description": { "type": "string" },
+        "route": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "headings": { "type": "array", "items": { "type": "string" } },
+        "excerpt": { "type": "string" },
+        "breadcrumb": { "type": "array", "items": { "$ref": "#/definitions/breadcrumbSegment" } },
+        "sections": { "type": "array", "items": { "$ref": "#/definitions/pageSection" } },
+        "hidden": {
+          "type": "boolean",
+          "description": "true for a page with hidden: true (searchable and routable, but not in the navigation)."
+        }
+      }
+    }
+  }
+}

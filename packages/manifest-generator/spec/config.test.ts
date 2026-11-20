@@ -175,3 +175,62 @@ describe('mergeConfig', () => {
     expect(result.recursive).toBe(true);
   });
 });
+
+describe('consumer config keys (S2/S3)', () => {
+  test('loads prevNext, frontmatterAliases and ignoreKeys from a JSON config', () => {
+    fs.writeFileSync(
+      path.join(tempDir, 'manifest-generator.config.json'),
+      JSON.stringify({ prevNext: true, frontmatterAliases: { title: 'label' }, ignoreKeys: ['mood'] }),
+      'utf8',
+    );
+    const config = loadConfig(tempDir);
+    expect(config.prevNext).toBe(true);
+    expect(config.frontmatterAliases).toEqual({ title: 'label' });
+    expect(config.ignoreKeys).toEqual(['mood']);
+  });
+
+  test('defineConfig accepts the new keys', () => {
+    const config = defineConfig({ prevNext: true, frontmatterAliases: { created: 'publishedAt' }, ignoreKeys: ['x'] });
+    expect(config).toEqual({ prevNext: true, frontmatterAliases: { created: 'publishedAt' }, ignoreKeys: ['x'] });
+  });
+});
+
+describe('consumer config keys validation', () => {
+  const write = (config: unknown) => {
+    const file = path.join(tempDir, 'manifest-generator.config.json');
+    fs.writeFileSync(file, JSON.stringify(config), 'utf8');
+    return file;
+  };
+
+  test.each([
+    [{ ignoreKeys: 'foo' }, '"ignoreKeys" must be an array of strings'],
+    [{ ignoreKeys: ['ok', 1] }, '"ignoreKeys" must be an array of strings'],
+    [{ frontmatterAliases: ['title'] }, '"frontmatterAliases" must be an object mapping frontmatter keys to keys'],
+    [{ frontmatterAliases: { title: 3 } }, '"frontmatterAliases" must be an object mapping frontmatter keys to keys'],
+    [{ prevNext: 'no' }, '"prevNext" must be a boolean'],
+  ])('rejects %j', (config, message) => {
+    expect(() => loadConfigFromFile(write(config))).toThrow(message);
+  });
+
+  test('rejects an alias target that is not a known frontmatter key', () => {
+    expect(() => loadConfigFromFile(write({ frontmatterAliases: { title: 'labell' } }))).toThrow(
+      'frontmatterAliases: "title" maps to unknown frontmatter key "labell"',
+    );
+  });
+
+  test('accepts valid values', () => {
+    const file = write({ prevNext: false, frontmatterAliases: { title: 'label' }, ignoreKeys: ['mood'] });
+    expect(loadConfigFromFile(file)).toEqual({
+      prevNext: false,
+      frontmatterAliases: { title: 'label' },
+      ignoreKeys: ['mood'],
+    });
+  });
+
+  test('configs without the new keys load as before', () => {
+    expect(loadConfigFromFile(write({ recursive: true, exclude: ['x/**'] }))).toEqual({
+      recursive: true,
+      exclude: ['x/**'],
+    });
+  });
+});

@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/fsegurai/manifest-generator/schema/manifest.schema.json",
+  "title": "manifest.json",
+  "description": "Navigation tree written by @fsegurai/manifest-generator (array of NavigationItem). Null, false and empty-string fields are omitted.",
+  "type": "array",
+  "items": { "$ref": "#/definitions/navigationItem" },
+  "definitions": {
+    "breadcrumbSegment": {
+      "type": "object",
+      "description": "One step of the path to an item.",
+      "required": ["label", "route"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": "string" },
+        "route": { "type": "string" }
+      }
+    },
+    "pageLink": {
+      "type": "object",
+      "description": "Adjacent page in reading order (written only with the prevNext option).",
+      "required": ["label", "route"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": "string" },
+        "route": { "type": "string" }
+      }
+    },
+    "navigationItem": {
+      "type": "object",
+      "required": ["label"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": "string" },
+        "route": { "type": "string", "description": "Page route without extension; \"#\" for title nodes." },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "isTitle": { "type": "boolean" },
+        "isParent": { "type": "boolean" },
+        "description": { "type": "string" },
+        "icon": { "type": "string" },
+        "iconType": { "type": "string" },
+        "badge": { "type": "string" },
+        "badgeColor": { "type": "string" },
+        "order": { "type": "number" },
+        "redirect": { "type": "string" },
+        "externalUrl": { "type": "string" },
+        "breadcrumbTitle": { "type": "string" },
+        "breadcrumb": { "type": "array", "items": { "$ref": "#/definitions/breadcrumbSegment" } },
+        "layout": { "type": "string" },
+        "deprecated": { "type": "boolean" },
+        "deprecatedAlternative": { "type": "string" },
+        "publishedAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "keywords": { "type": "array", "items": { "type": "string" } },
+        "prev": { "$ref": "#/definitions/pageLink" },
+        "next": { "$ref": "#/definitions/pageLink" },
+        "meta": {
+          "type": "object",
+          "description": "Frontmatter keys the generator does not know, as written (written only with the extraFrontmatter option)."
+        },
+        "wordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Words of the page body, code blocks excluded (written only with the readingTime option)."
+        },
+        "readingTime": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Reading time in minutes at 200 words per minute, rounded up (written only with the readingTime option)."
+        },
+        "children": { "type": "array", "items": { "$ref": "#/definitions/navigationItem" } }
+      }
+    }
+  }
+}

@@ -56,7 +56,9 @@ indexes. Built with TypeScript, powered by Bun.
 - **Flexible Input**: Supports both direct markdown files and docs subfolders
 - **CLI & API**: Use via command line or programmatically in your code
 - **Frontmatter Parsing**: Extracts metadata from YAML frontmatter (21 recognized keys)
-- **Search Index Generation**: Creates searchable indexes with excerpts, headings, and breadcrumbs
+- **Search Index Generation**: Creates searchable indexes with excerpts, headings, and breadcrumbs, plus opt-in
+  heading anchors (`sections`) for deep links
+- **Opt-in page data**: `prev`/`next` links, unknown frontmatter in `meta`, and `wordCount`/`readingTime`
 - **Config File Support**: `manifest-generator.config.{json,js,ts}` with CLI-flag override priority
 - **TypeScript Support**: Full TypeScript definitions included
 - **Cross-Platform**: Works on Windows, macOS, and Linux
@@ -162,6 +164,15 @@ npx @fsegurai/manifest-generator --discover --json
 
 # Suppress banner/progress output (errors still print)
 npx @fsegurai/manifest-generator --all --quiet
+
+# Write prev/next page links on each page item (opt-in)
+npx @fsegurai/manifest-generator --route ./docs --prev-next
+
+# Heading anchors in the search index, custom frontmatter in `meta`, and reading time (all opt-in)
+npx @fsegurai/manifest-generator --route ./docs --heading-anchors --extra-frontmatter --reading-time
+
+# Do not report these frontmatter keys as unknown during --validate
+npx @fsegurai/manifest-generator --validate --docs-root ./notes --ignore-keys title,created,updated
 ```
 
 > `--validate`, `--discover`, `--watch`, and `--init` are mutually exclusive — pass at most one per invocation.
@@ -263,9 +274,13 @@ Every function/type below is re-exported from `src/index.ts`'s final `export { .
 
 #### Core Functions
 
-##### `generateManifest(projectPath: string, exclude?: string[]): ManifestResult`
+##### `generateManifest(projectPath: string, exclude?: string[], options?: ManifestOptions): ManifestResult`
 
 Generates a manifest for a single documentation project. `exclude` accepts the same glob patterns used elsewhere.
+`options.prevNext` adds `prev`/`next` links (see [Previous / next links](#previous--next-links)) and
+`options.frontmatterAliases` maps foreign frontmatter keys (see [Frontmatter aliases](#frontmatter-aliases)).
+`options.headingAnchors`, `options.extraFrontmatter` and `options.readingTime` add the opt-in fields described in
+[Heading anchors](#heading-anchors), [Extra frontmatter](#extra-frontmatter) and [Reading time](#reading-time).
 
 ```javascript
 const result = generateManifest('./my-docs');
@@ -275,7 +290,8 @@ const result = generateManifest('./my-docs');
 ##### `generateDocsManifests(docsRoot: string, optionsOrWalker?): ProcessingResult[]`
 
 Discovers projects under a root and writes `manifest.json` + `search-index.json` for each one. Accepts either a
-`walkerFn` directly, or an options object (`docsSubfolder`, `recursive`, `exclude`, `projects`, `dryRun`, `walkerFn`).
+`walkerFn` directly, or an options object (`docsSubfolder`, `recursive`, `exclude`, `projects`, `dryRun`, `prevNext`,
+`frontmatterAliases`, `headingAnchors`, `extraFrontmatter`, `readingTime`, `walkerFn`).
 
 ```javascript
 generateDocsManifests('./projects', { recursive: true });
@@ -295,7 +311,12 @@ const results = generateManifestsWithDiscovery('./projects', {
     recursive: false,                // Recurse into nested project dirs
     exclude: ['drafts/**'],          // Glob patterns to skip
     projects: {},                    // Per-project docsSubfolder/outputDir overrides
-    dryRun: false                    // Log instead of writing files
+    dryRun: false,                   // Log instead of writing files
+    prevNext: false,                 // Write prev/next page links (opt-in)
+    headingAnchors: false,           // Write h2/h3 sections with ids on search entries (opt-in)
+    extraFrontmatter: false,         // Copy unknown frontmatter keys into `meta` (opt-in)
+    readingTime: false,              // Write wordCount/readingTime on page items (opt-in)
+    frontmatterAliases: {}           // e.g. { title: 'label' } — no default aliases
 });
 ```
 
@@ -311,14 +332,19 @@ const projects = discoverProjects('./projects', {
 });
 ```
 
-##### `validateDocs(rootDir: string): ValidateResult[]`
+##### `validateDocs(rootDir: string, options?: ValidateOptions): ValidateResult[]`
 
 Validates frontmatter across all `.md`/`.mdx` files under a directory (recursively), without writing output. Checks
 date validity, conflicting flags, missing alternatives, unknown keys, and duplicate `redirect` targets.
+`options.frontmatterAliases` validates aliased keys as their targets (and stops reporting the alias keys as unknown);
+`options.ignoreKeys` lists keys never reported as unknown.
 
 ```javascript
 const results = validateDocs('./docs');
 const invalid = results.filter((r) => !r.valid);
+
+// Notes written for another tool
+validateDocs('./notes', { frontmatterAliases: { title: 'label' }, ignoreKeys: ['mood'] });
 ```
 
 ##### `watchDocs(rootDir: string, onChange: (changedFile: string) => void, interval?: number): { close: () => void }`
@@ -369,7 +395,17 @@ Strips `null`/`false`/`''`/`undefined` fields (recursing into `children`) before
 
 ##### `extractHeadings(body: string): string[]`
 
-Extracts `##`/`###` headings from a document body and deduplicates them via `dedupeHeadings()`.
+Extracts `##`/`###` headings from a document body (lines inside fenced code blocks are skipped) and deduplicates them
+via `dedupeHeadings()`.
+
+##### `extractSections(body: string): PageSection[]`
+
+Returns the `##`/`###` ATX headings of a body (outside fenced code) as `{ text, id, level }`, with the GitHub-style id
+a slugger gives each one. Used by the `headingAnchors` option; see [Heading anchors](#heading-anchors).
+
+##### `slugifyHeading(text: string): string`
+
+The GitHub-style slug of a heading text (as `github-slugger`), without the uniqueness suffix.
 
 ##### `dedupeHeadings(headings: string[], threshold?: number): string[]`
 
@@ -392,15 +428,53 @@ segment is itself; a root-level page with no ancestors gets a single-segment arr
 `walkDocs()` builds and passes the ancestor chain internally — see
 [migration notes](#-since-beta-breadcrumb-migration-notes) if you call this directly.
 
-##### `walkDocs(dir: string, relative?: string, searchIndex?: SearchEntry[], exclude?: string[], chain?: BreadcrumbSegment[]): NavigationItem[]`
+##### `walkDocs(dir: string, relative?: string, searchIndex?: SearchEntry[], exclude?: string[], chain?: BreadcrumbSegment[], options?: WalkOptions): NavigationItem[]`
 
 The recursive directory walker that builds the navigation tree and populates `searchIndex` as a side effect. Exposed
-for advanced/custom pipelines.
+for advanced/custom pipelines. It is the file-system form of the node-free `walkTree` from
+[`@fsegurai/manifest-generator/core`](#browser-safe-core-entry).
 
 ##### `ALLOWED_FRONTMATTER_KEYS: ReadonlySet<string>`
 
 A readonly `Set` of all 21 recognized frontmatter key names — see [Frontmatter Support](#-frontmatter-support). Useful
 for external validation tooling.
+
+#### Browser-safe core entry
+
+`@fsegurai/manifest-generator/core` has no `node:*` imports, so it runs in browsers, workers, and other runtimes. It
+exposes the pure helpers above plus `generateManifestFromFiles`, which builds the manifest and search index from
+in-memory files and returns the same result as `generateManifest(dir)` for the same tree on disk.
+
+```ts
+import { cleanItem, generateManifestFromFiles } from '@fsegurai/manifest-generator/core';
+
+const { manifest, searchIndex } = generateManifestFromFiles(
+  [
+    { path: 'README.md', content: '---\nlabel: Home\n---\n# Welcome' },
+    { path: 'guides/theming.md', content: '---\nlabel: Theming\n---\n## Colors' },
+  ],
+  { exclude: ['drafts/**'], prevNext: true, frontmatterAliases: { title: 'label' } },
+);
+const manifestJson = JSON.stringify(manifest.map(cleanItem), null, 2); // what manifest.json contains
+```
+
+Also exported: `walkTree(reader, ...)` (the shared walker over a `DocsReader`), `createMemoryReader(files)`,
+`applyPrevNext(items)`, and `applyFrontmatterAliases(frontmatter, aliases)`. In-memory directories are listed by name,
+which matches Node's `readdir` order, so `search-index.json` entries come out in the same order as the Node CLI.
+
+#### Types and JSON Schema entry
+
+`@fsegurai/manifest-generator/schema` is a types-only entry (`NavigationItem`, `SearchEntry`, `BreadcrumbSegment`,
+`PageLink`, `Frontmatter`, …) for consumers that only read the generated files:
+
+```ts
+import type { NavigationItem, SearchEntry } from '@fsegurai/manifest-generator/schema';
+```
+
+JSON Schemas (draft-07) for both files ship with the package:
+`@fsegurai/manifest-generator/schema/manifest.schema.json` and
+`@fsegurai/manifest-generator/schema/search-index.schema.json`. They reject unknown properties, so they also catch
+format drift.
 
 #### TypeScript Types
 
@@ -432,7 +506,17 @@ interface NavigationItem {
     publishedAt?: string;
     updatedAt?: string;
     keywords?: string[];
+    prev?: PageLink;   // only with the prevNext option
+    next?: PageLink;   // only with the prevNext option
+    meta?: Record<string, unknown>; // only with the extraFrontmatter option
+    wordCount?: number;             // only with the readingTime option
+    readingTime?: number;           // minutes; only with the readingTime option
     children?: NavigationItem[];
+}
+
+interface PageLink {
+    label: string;
+    route: string;
 }
 
 interface SearchEntry {
@@ -443,6 +527,14 @@ interface SearchEntry {
     headings?: string[];
     excerpt?: string;
     breadcrumb?: BreadcrumbSegment[];
+    sections?: PageSection[]; // only with the headingAnchors option
+    hidden?: boolean;         // true for a `hidden: true` page (searchable, not in the navigation)
+}
+
+interface PageSection {
+    text: string;   // plain heading text
+    id: string;     // GitHub-style slug, unique in the page
+    level: 2 | 3;
 }
 
 interface ManifestResult {
@@ -479,6 +571,11 @@ interface ManifestGenerationOptions {
     exclude?: string[];
     projects?: Record<string, ProjectConfig>;
     dryRun?: boolean;
+    prevNext?: boolean;
+    frontmatterAliases?: Record<string, string>;
+    headingAnchors?: boolean;
+    extraFrontmatter?: boolean;
+    readingTime?: boolean;
 }
 
 interface ProjectConfig {
@@ -493,6 +590,12 @@ interface ConfigFile {
     recursive?: boolean;
     exclude?: string[];
     projects?: Record<string, ProjectConfig>;
+    prevNext?: boolean;
+    frontmatterAliases?: Record<string, string>;
+    ignoreKeys?: string[];
+    headingAnchors?: boolean;
+    extraFrontmatter?: boolean;
+    readingTime?: boolean;
 }
 
 interface ValidateResult {
@@ -670,7 +773,7 @@ Control document processing with frontmatter — see [Frontmatter Support](#-fro
 label: "Custom Title"           # Override generated title
 tags: ["api", "reference"]     # Add searchable tags
 draft: true                    # Exclude from manifest
-hidden: true                   # Hide from navigation
+hidden: true                   # Leave out of navigation (still routable and searchable)
 ---
 
 # Your content here
@@ -691,6 +794,12 @@ export default defineConfig({
     outputDir: './dist',           // Output directory for generated files
     recursive: true,               // Discover projects in nested directories
     exclude: ['**/drafts/**'],     // Glob patterns to skip (supports `*` and `**`)
+    prevNext: true,                // Write prev/next page links (opt-in)
+    headingAnchors: true,          // h2/h3 sections with ids on search entries (opt-in)
+    extraFrontmatter: true,        // Unknown frontmatter keys in `meta` (opt-in)
+    readingTime: true,             // wordCount/readingTime on page items (opt-in)
+    frontmatterAliases: { title: 'label', created: 'publishedAt', updated: 'updatedAt' },
+    ignoreKeys: ['mood'],          // Keys --validate must not report as unknown
     projects: {
         'my-package': {
             docsSubfolder: 'documentation', // Override per project
@@ -708,8 +817,62 @@ export default defineConfig({
 | `recursive`     | `boolean`                         | Discover projects nested beyond one level           |
 | `exclude`       | `string[]`                        | Glob patterns (`*`, `**`) excluded from discovery/walking |
 | `projects`      | `Record<string, ProjectConfig>`   | Per-project `docsSubfolder`/`outputDir` overrides   |
+| `prevNext`      | `boolean`                         | Write `prev`/`next` page links (default `false`)    |
+| `headingAnchors` | `boolean`                        | Write h2/h3 `sections` on search entries (default `false`) |
+| `extraFrontmatter` | `boolean`                      | Copy unknown frontmatter keys into `meta` (default `false`) |
+| `readingTime`   | `boolean`                         | Write `wordCount`/`readingTime` on page items (default `false`) |
+| `frontmatterAliases` | `Record<string, string>`     | Foreign key → supported key, for generation and validation (no defaults) |
+| `ignoreKeys`    | `string[]`                        | Keys `--validate` does not report as unknown        |
 
-CLI flags always win over the config file, which wins over hardcoded defaults.
+CLI flags always win over the config file, which wins over hardcoded defaults (`--ignore-keys` replaces the config
+`ignoreKeys` list).
+
+### Previous / next links
+
+With `prevNext` (`--prev-next`, config `prevNext: true`, or the `prevNext` API option), every page item gets
+`prev`/`next` links (`{ label, route }`) to the adjacent pages in reading order: depth-first, in manifest order. Pages
+are items with an internal route: title nodes (`#`) and items with an `externalUrl` or an absolute URL route are
+skipped, and a folder and its `README` are the same page (linked through the folder, which comes first). The first page
+has no `prev` and the last one no `next`. Off by default; without it the output is unchanged.
+
+### Heading anchors
+
+With `headingAnchors` (`--heading-anchors`, config `headingAnchors: true`, or the API option), each search entry gets
+`sections`: its `##`/`###` headings as `{ text, id, level }`, so a search result can link to `route#id`. Ids are
+GitHub-style slugs (`Getting started` → `getting-started`), made unique in the page (`intro`, `intro-1`…) counting the
+headings of every level in document order — the ids `github-slugger`, `marked-gfm-heading-id` and ngx-markdown's
+`headingIds` give the same headings. Headings inside fenced code are skipped; setext headings (`===`/`---` underlines)
+are not read. `text` is the plain heading text (Markdown markup removed). Pages without `##`/`###` headings get no
+`sections`. The existing `headings` field is unchanged.
+
+### Extra frontmatter
+
+With `extraFrontmatter` (`--extra-frontmatter`, config `extraFrontmatter: true`, or the API option), page items get
+`meta`: every frontmatter key the generator does not know, with its value as written (strings, numbers, lists,
+objects). Known keys and alias source keys (see [Frontmatter aliases](#frontmatter-aliases)) are left out, and pages
+without such keys get no `meta`. Your app can read its own fields without a generator release. `--validate` still
+reports these keys as unknown; list them in `ignoreKeys` / `--ignore-keys` to silence that.
+
+### Reading time
+
+With `readingTime` (`--reading-time`, config `readingTime: true`, or the API option), page items get `wordCount` (words
+of the body, Markdown markup and code blocks excluded) and `readingTime` (minutes at 200 words per minute, rounded up;
+`0` for an empty page). Title nodes (`isTitle`) get neither.
+
+### Hidden pages
+
+`hidden: true` leaves a page out of the navigation (`manifest.json`, and so out of `prev`/`next` links), but the page
+stays routable and searchable: its search entry is written with `hidden: true`, so a search UI can show it or filter it.
+`draft: true` leaves the page out of both files, and wins when both are set. Before 1.2.0, `hidden` behaved like
+`draft`.
+
+### Frontmatter aliases
+
+`frontmatterAliases` maps keys written for another tool to supported keys, e.g.
+`{ title: 'label', created: 'publishedAt', updated: 'updatedAt' }`. An alias applies only when the target key is not
+set. Generation (labels, folder labels, dates) and `--validate` both use it; alias keys are not reported as unknown.
+There are no default aliases. To silence other foreign keys during validation only, use `ignoreKeys` /
+`--ignore-keys a,b`.
 
 ### CLI Options Reference
 
@@ -730,6 +893,11 @@ CLI flags always win over the config file, which wins over hardcoded defaults.
 | `--json`                   |       | Machine-readable JSON output (`--discover`/`--validate`) | `false`           |
 | `--dry-run`                 |       | Run generation without writing files to disk           | `false`             |
 | `--quiet` / `-q`             |       | Suppress banner and progress output (errors still show) | `false`           |
+| `--prev-next`                |       | Write `prev`/`next` links on page items                 | `false`           |
+| `--heading-anchors`          |       | Write h2/h3 `sections` (text, id, level) on search entries | `false`        |
+| `--extra-frontmatter`        |       | Copy unknown frontmatter keys into `meta` on page items | `false`           |
+| `--reading-time`             |       | Write `wordCount`/`readingTime` on page items           | `false`           |
+| `--ignore-keys <keys>`       |       | Comma-separated keys `--validate` does not report as unknown | none         |
 | `--help`                   | `-h`  | Show help                                            |                     |
 | `--version`                 | `-v`  | Show version                                          |                     |
 
@@ -818,8 +986,8 @@ The package reads YAML frontmatter from `.md` and `.mdx` files. All 21 keys reco
 | `deprecatedAlternative` | Suggested replacement page/path when `deprecated` is set              |
 | `publishedAt`           | Publication date (validated for format and chronology)                |
 | `updatedAt`             | Last-updated date (validated for format and chronology)                |
-| `draft`                 | Excludes the page from the manifest entirely                          |
-| `hidden`                | Hides the page from navigation                                        |
+| `draft`                 | Excludes the page from the manifest and the search index              |
+| `hidden`                | Leaves the page out of navigation; it stays in the search index (`hidden: true`) |
 
 ```yaml
 ---

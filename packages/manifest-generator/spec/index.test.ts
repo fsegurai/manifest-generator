@@ -145,7 +145,9 @@ describe('walkDocs', () => {
     const manifest = walkDocs(docsRoot, '', searchIndex);
 
     expect(manifest.length).toBe(3);
-    expect(searchIndex.length).toBe(2);
+    // intro, section/guide and the hidden page (searchable, not in the navigation); not the title node
+    expect(searchIndex.length).toBe(3);
+    expect(searchIndex.find((entry) => entry.route === 'hidden')?.hidden).toBe(true);
 
     const titleEntry = manifest.find((item) => item.label === 'Title');
     expect(titleEntry?.route).toBe('#');
