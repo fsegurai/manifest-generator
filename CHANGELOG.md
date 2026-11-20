@@ -7,6 +7,8 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+New features, bug fixes, and improvements will be documented here before the next release.
+
 ---
 
 ## [1.2.0] - 2026-11-19
@@ -62,20 +64,38 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `readingTime` / `--reading-time`, `frontmatterAliases`, `ignoreKeys` / `--ignore-keys`, and the new `hidden`
   behavior covered in the CLI, configuration, frontmatter, API, features and FAQ pages. The playground ships in
   `docs/1.2.0/playground/`, importing the browser-safe `/core` build, with a new "1.2.0 features" sample.
+- **GitHub workflows** — one layout shared with the other Bun libraries (same jobs, triggers, permissions and
+  concurrency; only the repository's own scripts differ). Every workflow states its purpose, triggers and relation to
+  Azure DevOps (the source repository that mirrors to GitHub); read-only token by default with write scopes only on
+  the job that needs them; `shell: bash` everywhere, so piped commands fail on error (pipefail); `timeout-minutes` on
+  every job; `actions/checkout@v7`, `actions/github-script@v9`, `actions/labeler@v7`, `actions/upload-artifact@v7` and
+  `github/codeql-action@v4`; Bun pinned through `vars.BUN_VERSION` (default `1.4.3`) with `bun install
+  --frozen-lockfile --ignore-scripts`; checkouts without persisted credentials. Results go to job summaries; only
+  `pr_triage.yml` comments on pull requests (labels, assignment, a welcome on `opened`, a Dependabot notice, the
+  modified packages in the description). Dependabot is monthly and grouped, ignores Bun majors (action majors are
+  still proposed), uses `ci`/`build` commit prefixes, and its pull requests are notices to apply in Azure DevOps.
+  `checks.yml` runs `lint`, `format:audit`, `test-types:packages` and `build`; `test.yml` now runs the tests
+  (`test:packages`). The Trivy filesystem scan stays in `security-scan.yml`, pinned to a verified commit of
+  `aquasecurity/trivy-action` (v0.36.0, was `@master`) and reported to code scanning, because the Azure DevOps PR
+  pipeline runs without its security stage. Fixed: the demo check looked for a missing `demo/vite.config.ts`, the link
+  check resolved links from the repository root, not their file (broken relative links still fail the Documentation
+  workflow), the size check watched `../../vite.config.ts`, the health check reported a broken build as success, and
+  the issue template `config.yml` was invalid YAML. `.github/zizmor.yml` accepts major-tag pinning for first-party
+  actions and requires a SHA otherwise.
 
 ### 🔐 Security
 
 - **Update dependencies** — address potential vulnerabilities and/or improvements in development dependencies.
-	- Dependencies
-		- `marked` from `18.0.14` to `18.2.1`
-	- Dev Dependencies
-		- `@biomejs/biome` from `2.5.15` to `2.6.8`
-		- `@types/node` from `26.6.3` to `26.6.6`
-		- `bun-types` from `1.4.2` to `1.4.5`
-		- `portless` from `0.15.6` to `0.18.1`
-		- `rimraf` from `6.1.3` to `6.1.4`
-		- `vite` from `8.3.1` to `8.3.8`
-		- `vite-plugin-dts` from `5.1.1` to `5.1.2`
+    - Dependencies
+        - `marked` from `18.0.14` to `18.2.1`
+    - Dev Dependencies
+        - `@biomejs/biome` from `2.5.15` to `2.6.8`
+        - `@types/node` from `26.6.3` to `26.6.6`
+        - `bun-types` from `1.4.2` to `1.4.5`
+        - `portless` from `0.15.6` to `0.18.1`
+        - `rimraf` from `6.1.3` to `6.1.4`
+        - `vite` from `8.3.1` to `8.3.8`
+        - `vite-plugin-dts` from `5.1.1` to `5.1.2`
 
 **Full Changelog**: https://github.com/fsegurai/manifest-generator/compare/v1.1.0...v1.2.0
 
@@ -100,9 +120,9 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### 🔐 Security
 
 - **Update dependencies** — address potential vulnerabilities and/or improvements in development dependencies.
-	- Dev Dependencies
-		- `@biomejs/biome` from `2.5.14` to `2.5.15`
-		- `@types/node` from `26.6.2` to `26.6.3`
+    - Dev Dependencies
+        - `@biomejs/biome` from `2.5.14` to `2.5.15`
+        - `@types/node` from `26.6.2` to `26.6.3`
 
 **Full Changelog**: https://github.com/fsegurai/manifest-generator/commits/v1.1.0
 
@@ -137,23 +157,23 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - Updated `trivy` to version `0.71.1` to address vulnerabilities in previous versions.
 - **Added dependencies**.
-	- Dev Dependencies
-		- `@biomejs/biome` - `2.5.14` - needed for linting and formatting - replaces ESLint toolchain.
-		- `husky` - `9.1.7` - needed for Git hooks to enforce code quality and pre-commit checks.
-		- `vite-plugin-dts` - `5.1.1` - needed for generating TypeScript declaration files for the package.
+    - Dev Dependencies
+        - `@biomejs/biome` - `2.5.14` - needed for linting and formatting - replaces ESLint toolchain.
+        - `husky` - `9.1.7` - needed for Git hooks to enforce code quality and pre-commit checks.
+        - `vite-plugin-dts` - `5.1.1` - needed for generating TypeScript declaration files for the package.
 - **Update dependencies** — address potential vulnerabilities and/or improvements in development dependencies.
-	- Dependencies
-		- `@material/web` from `2.4.1` to `2.5.0`
-		- `marked` from `18.0.5` to `18.0.14`
-	- Dev Dependencies
-		- `@types/node` from `25.9.2` to `26.6.2`
-		- `bun-types` from `1.3.14` to `1.4.2`
-		- `portless` from `0.14.0` to `0.15.6`
-		- `terser` from `5.48.0` to `5.51.2`
-		- `typescript` from `6.0.3` to `7.0.2`
-		- `vite` from `8.0.16` to `8.3.1`
-	- Removed: `@eslint/js`, `@typescript-eslint/eslint-plugin`, `@typescript-eslint/parser`, `eslint`, `globals`,
-	  `typescript-eslint`
+    - Dependencies
+        - `@material/web` from `2.4.1` to `2.5.0`
+        - `marked` from `18.0.5` to `18.0.14`
+    - Dev Dependencies
+        - `@types/node` from `25.9.2` to `26.6.2`
+        - `bun-types` from `1.3.14` to `1.4.2`
+        - `portless` from `0.14.0` to `0.15.6`
+        - `terser` from `5.48.0` to `5.51.2`
+        - `typescript` from `6.0.3` to `7.0.2`
+        - `vite` from `8.0.16` to `8.3.1`
+    - Removed: `@eslint/js`, `@typescript-eslint/eslint-plugin`, `@typescript-eslint/parser`, `eslint`, `globals`,
+      `typescript-eslint`
 
 **Full Changelog**: https://github.com/fsegurai/manifest-generator/commits/1.0.0
 
@@ -178,8 +198,8 @@ This project adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - **Heading deduplication** — `diceSimilarity()` and `dedupeHeadings()` using Dice coefficient (bigram-based,
   threshold 0.7) to collapse near-identical headings.
 - **Route prefix for separate output** — when `--output` differs from the source route, all routes in
-  `manifest.json` and `search-index.json` are automatically prefixed with the relative path from output to source
-  (e.g., `getting-started/installation` → `content/getting-started/installation`).
+  `manifest.json` and `search-index.json` are automatically prefixed with the relative path from output to source (e.g.,
+  `getting-started/installation` → `content/getting-started/installation`).
 - `ConfigFile`, `ProjectConfig` TypeScript interfaces exported from the package entrypoint.
 
 ### 🔧 Changed

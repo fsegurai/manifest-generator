@@ -1,85 +1,104 @@
-name: PR Validation
+# Checks: Biome lint and format audit and the package type check, then the full build (packages and demo).
+# Triggers: pull requests to main (except Markdown and `docs/` only changes), and on demand. Tests run in `test.yml`.
+# Azure DevOps is the source repository: its build pipeline (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes
+# main to this public GitHub mirror, so a merge on GitHub is overwritten by the next push; changes are applied in Azure
+# DevOps. The ADO PR pipeline (`pipelines/.ado/pr-pipeline.yml`) runs the same `build`, `lint` and `format:audit`
+# scripts; this workflow gives the same signal on GitHub pull requests.
+name: Checks
 
 on:
   pull_request:
-    branches: ['main']
-    paths:
-      - '**'
-      - '.github/workflows/*.yml'
-      - '!.github/**'
-      - '!*.yml'
-      - '!*.config'
-      - '!*.md'
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
-  pull-requests: write
   contents: read
 
 concurrency:
-  group: pr-validation-${{ github.event.number }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+
+# Explicit bash runs every step with `-eo pipefail`, so a failing command fails its step even when piped.
+defaults:
+  run:
+    shell: bash
 
 jobs:
   quick-checks:
-    name: Quick Validation
+    name: Quick validation
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: ${{ vars.BUN_VERSION || '1.4.3' }}
 
+      # --ignore-scripts skips the Husky `prepare` hook; no step below needs a lifecycle script.
       - name: Install dependencies
-        run: bun install
+        run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: TypeScript strict check
-        run: bun run -- tsc --noEmit
+      - name: Lint
+        run: bun run lint
 
-      - name: Lint check (fail on warnings)
-        run: bun run lint:check
+      - name: Format audit
+        run: bun run format:audit
 
-  pr_integration:
-    name: Build Integration Test
+      - name: Type check
+        run: bun run test-types:packages
+
+      - name: Hint on failure
+        if: failure()
+        run: echo "Run \`bun run lint:fix\` locally to fix lint and formatting issues." >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    name: Build integration
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: ${{ vars.BUN_VERSION || '1.4.3' }}
 
+      # --ignore-scripts skips the Husky `prepare` hook; no step below needs a lifecycle script.
       - name: Install dependencies
-        run: bun install
+        run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Build packages
-        run: |
-          echo "Building packages to validate compilation..."
-          bun run build:packages 2>&1 | tail -20
-          echo "✅ Build successful"
+      - name: Build packages and demo
+        run: bun run build
 
   validation-summary:
-    name: Validation Summary
+    name: Validation summary
     if: always()
-    needs: [quick-checks, pr_integration]
+    needs: [quick-checks, build]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Report validation status
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const quickChecks = '${{ needs.quick-checks.result }}';
-            const buildIntegration = '${{ needs.pr_integration.result }}';
-
-            let summary = '## ✅ PR Validation Summary\n\n';
-            summary += `- Quick Checks: ${quickChecks === 'success' ? '✅' : '⚠️'}\n`;
-            summary += `- Build Integration: ${buildIntegration === 'success' ? '✅' : '⚠️'}\n`;
-
-            console.log(summary);
+        env:
+          QUICK_CHECKS: ${{ needs.quick-checks.result }}
+          BUILD: ${{ needs.build.result }}
+        run: |
+          icon() { if [ "$1" = "success" ]; then echo '✅'; else echo "❌ ($1)"; fi; }
+          {
+            echo "## Checks summary"
+            echo ""
+            echo "| Check | Status |"
+            echo "|-------|--------|"
+            echo "| Quick validation (lint, format, types) | $(icon "$QUICK_CHECKS") |"
+            echo "| Build integration (packages, demo) | $(icon "$BUILD") |"
+          } >> "$GITHUB_STEP_SUMMARY"

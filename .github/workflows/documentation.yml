@@ -1,25 +1,40 @@
+# Documentation: closed fenced code blocks and relative links in every tracked Markdown file, the README sections, and
+# the demo build (`bun run build:demo`). Results go to the job summary; nothing is deployed from here.
+# Triggers: pull requests and pushes to main that change Markdown, `demo/` or `docs/`, and on demand.
+# Azure DevOps is the source repository: its build pipeline (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes
+# main to this public GitHub mirror, so a merge on GitHub is overwritten by the next push; changes are applied in Azure
+# DevOps. The demo site is built and published by the ADO release pipeline.
 name: Documentation
 
 on:
   push:
-    branches: [ 'main' ]
-    paths:
-      - 'README.md'
-      - 'AGENTS.md'
-      - 'demo/**'
-      - 'docs/**'
-  pull_request:
-    branches: [ 'main' ]
+    branches: [main]
     paths:
       - '**/*.md'
       - 'demo/**'
+      - 'docs/**'
+      - 'vite.config.ts'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/*.md'
+      - 'demo/**'
+      - 'docs/**'
+      - 'vite.config.ts'
+      - '.github/workflows/documentation.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
-  pull-requests: write
-  pages: write
-  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Explicit bash runs every step with `-eo pipefail`, so a failing command fails its step even when piped.
+defaults:
+  run:
+    shell: bash
 
 jobs:
   validate-markdown:
@@ -28,143 +43,146 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Check markdown syntax
-        run: |
-          find . -name '*.md' -type f -not -path '*/node_modules/*' -not -path '*/.*' -not -path '*/dist/*' | while read -r file; do
-            echo "Checking $file..."
-            total_backticks=$(grep -c '^```' "$file" 2>/dev/null || true)
-            if [ $((total_backticks % 2)) -ne 0 ]; then
-              echo "❌ Unclosed code block in $file"
-              exit 1
-            fi
-          done
-          echo "✅ All markdown syntax valid"
-
-      - name: Check for broken internal links in markdown
-        run: |
-          BROKEN=0
-          find . -name '*.md' -type f -not -path '*/node_modules/*' -not -path '*/.*' -not -path '*/dist/*' | while read -r file; do
-            grep -oE '\[([^\]]+)\]\(([^)]+)\)' "$file" 2>/dev/null | sed 's/.*(\([^)]*\)).*/\1/' | while read -r link; do
-              [ -z "$link" ] && continue
-              [[ $link == http* ]] && continue
-              [[ $link == \#* ]] && continue
-              if ! [ -f "$link" ] && ! [ -d "$link" ]; then
-                echo "❌ Broken link in $file: $link"
-                BROKEN=1
-              fi
-            done
-          done
-          [ $BROKEN -eq 0 ] && echo "✅ All links valid" || exit 1
-
-      - name: Comment on PR if issues found
-        if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v6
+        uses: actions/checkout@v7
         with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '⚠️ **Documentation Issues Found**\n\nPlease fix markdown syntax and broken links. Check the workflow logs for details.'
-            })
+          persist-credentials: false
 
-  validate-readme:
-    name: Validate README Structure
+      - name: Check fenced code blocks
+        run: |
+          # A fence opens with 3+ backticks or tildes (up to 3 spaces of indentation) and closes with the same character
+          # repeated at least as many times and nothing else; a backtick fence whose info string holds a backtick is
+          # inline code (CommonMark).
+          status=0
+          while IFS= read -r file; do
+            [ -f "$file" ] || continue
+            if ! where=$(awk '
+              match($0, /^ {0,3}(`{3,}|~{3,})/) {
+                fence = substr($0, RSTART, RLENGTH); sub(/^ +/, "", fence)
+                rest = substr($0, RSTART + RLENGTH)
+                if (open == "") {
+                  if (substr(fence, 1, 1) == "`" && index(rest, "`") > 0) next
+                  open = fence; start = NR; next
+                }
+                same = substr(fence, 1, 1) == substr(open, 1, 1) && length(fence) >= length(open)
+                if (same && rest ~ /^[ \t]*$/) open = ""
+              }
+              END { if (open != "") { printf "line %d", start; exit 1 } }
+            ' "$file"); then
+              echo "::error file=$file::Unclosed fenced code block (opened at $where)"
+              status=1
+            fi
+          done < <(git ls-files '*.md')
+          if [ "$status" -eq 0 ]; then echo "All fenced code blocks are closed."; fi
+          exit "$status"
+
+      - name: Check relative links
+        run: |
+          # Links resolve from each file's directory. URLs, anchors and site-root links (`/v1`, routes of the docs
+          # site) are not checked; neither are fenced code blocks and inline code.
+          status=0
+          while IFS= read -r file; do
+            [ -f "$file" ] || continue
+            dir=$(dirname "$file")
+            while IFS= read -r link; do
+              target=${link%%#*}
+              target=${target%%\?*}
+              target=${target#<}
+              target=${target%>}
+              case "$target" in ''|/*|http://*|https://*|mailto:*|tel:*|data:*) continue ;; esac
+              if [ ! -e "$dir/$target" ]; then
+                echo "::error file=$file::Broken relative link: $link"
+                status=1
+              fi
+            done < <(awk '
+              /^ {0,3}(```|~~~)/ { code = !code; next }
+              !code { line = $0; gsub(/`[^`]*`/, "", line); print line }
+            ' "$file" | grep -oE '\]\([^) ]+' | sed 's/^](//' || true)
+          done < <(git ls-files '*.md')
+          if [ "$status" -eq 0 ]; then echo "All relative links resolve."; fi
+          exit "$status"
+
+  validate-structure:
+    name: Validate README structure
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
-      - name: Validate README has required sections
+      - name: Validate main README
+        env:
+          # Repository-specific: the README headings to look for, and whether a missing one is an error or a warning.
+          REQUIRED_SECTIONS: 'What the package does|Installation|Usage|Local Development|License'
+          MISSING_LEVEL: warning
         run: |
-          echo "Validating README.md structure..."
-          REQUIRED_SECTIONS=("What the package does" "Repository structure" "Run locally" "Use as an external user")
-          MISSING=0
-          for section in "${REQUIRED_SECTIONS[@]}"; do
-            if ! grep -q "^## $section\|^### $section" README.md; then
-              echo "⚠️ Missing or incorrectly formatted section: $section"
-              MISSING=1
+          status=0
+          IFS='|' read -r -a sections <<< "$REQUIRED_SECTIONS"
+          for section in "${sections[@]}"; do
+            # The heading may start with an emoji or another prefix ("## 📦 Installation").
+            if ! grep -qE "^#{2,3} (.* )?${section}[[:space:]]*$" README.md; then
+              echo "::${MISSING_LEVEL} file=README.md::Missing section: ${section}"
+              if [ "$MISSING_LEVEL" = "error" ]; then status=1; fi
             fi
           done
-          [ $MISSING -eq 0 ] && echo "✅ README structure valid"
+          if [ "$status" -eq 0 ]; then echo "README structure checked."; fi
+          exit "$status"
 
-      - name: Validate docs structure
-        run: |
-          echo "Validating docs directory..."
-          if [ -d "docs" ]; then
-            echo "✅ docs/ directory exists"
-            echo "Version subdirectories:"
-            ls -d docs/*/ 2>/dev/null || echo "  (none)"
-          else
-            echo "⚠️ No docs/ directory found"
-          fi
 
   build-demo:
-    name: Validate Demo Build
+    name: Validate demo build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: ${{ vars.BUN_VERSION || '1.4.3' }}
 
+      # --ignore-scripts skips the Husky `prepare` hook; no step below needs a lifecycle script.
       - name: Install dependencies
-        run: bun install
+        run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Validate demo structure
+      - name: Validate demo entry files
         run: |
-          echo "Validating demo application..."
-          REQUIRED_FILES=(
-            "demo/index.html"
-            "demo/vite.config.ts"
-            "demo/scripts/index.ts"
-          )
-          for file in "${REQUIRED_FILES[@]}"; do
-            if [ -f "$file" ]; then
-              echo "✅ $file exists"
-            else
-              echo "❌ Missing critical file: $file"
-              exit 1
+          status=0
+          for file in vite.config.ts demo/index.html demo/scripts/index.ts; do
+            if [ ! -f "$file" ]; then
+              echo "::error file=$file::Missing demo entry file"
+              status=1
             fi
           done
+          exit "$status"
 
       - name: Build demo
-        run: |
-          echo "Building demo application..."
-          bun run build:demo 2>&1 | head -50
-          echo "✅ Demo built successfully"
+        run: bun run build:demo
 
-      - name: Comment on PR
-        if: github.event_name == 'pull_request' && success()
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '📚 **Documentation Check Passed**\n\n✅ All markdown validated\n✅ Links verified\n✅ Demo builds successfully'
-            })
-
-  generate-summary:
-    name: Documentation Summary
-    runs-on: ubuntu-latest
+  summary:
+    name: Documentation summary
     if: always()
-    needs: [ validate-markdown, validate-readme, build-demo ]
+    needs: [validate-markdown, validate-structure, build-demo]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Create documentation summary
+      - name: Write the summary
+        env:
+          MARKDOWN: ${{ needs.validate-markdown.result }}
+          STRUCTURE: ${{ needs.validate-structure.result }}
+          DEMO: ${{ needs.build-demo.result }}
         run: |
-          echo "## 📚 Documentation Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Markdown Syntax | ${{ needs.validate-markdown.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| README Structure | ${{ needs.validate-readme.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Demo Build | ${{ needs.build-demo.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          icon() { if [ "$1" = "success" ]; then echo '✅'; else echo "❌ ($1)"; fi; }
+          {
+            echo "## Documentation report"
+            echo ""
+            echo "| Check | Status |"
+            echo "|-------|--------|"
+            echo "| Markdown (fences, relative links) | $(icon "$MARKDOWN") |"
+            echo "| README structure | $(icon "$STRUCTURE") |"
+            echo "| Demo build (demo) | $(icon "$DEMO") |"
+          } >> "$GITHUB_STEP_SUMMARY"

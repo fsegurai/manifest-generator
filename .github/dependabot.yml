@@ -1,42 +1,50 @@
+# Dependabot on the public GitHub mirror of manifest-generator.
+#
+# The mirror is pushed from Azure DevOps (`pipelines/.ado/build-pipeline.yml`, MIRROR stage), so a Dependabot pull
+# request is a notice, not something to merge here: a merge on the mirror is overwritten by the next push. Apply the
+# update in the Azure DevOps repository instead (root `package.json` and `bun.lock`, or the action version named in the
+# pull request), then let the mirror carry it. Security updates (Dependabot alerts) follow the same path.
+#
+# Updates are grouped and monthly, so they arrive as a few pull requests at a time. Bun package majors are planned work
+# and are ignored; action majors are still proposed (as in Arkenda), since that is how a new action release shows up.
 version: 2
+
 updates:
-  # Root dependencies (includes all monorepo workspaces)
-  - package-ecosystem: "npm"
-    directory: "/"
+  # The workflows' actions (checkout, setup-bun, github-script, labeler, upload-artifact, codeql, trivy-action).
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "weekly"
-    labels:
-      - "infra"
-      - "dependencies"
-    open-pull-requests-limit: 10
-    assignees:
-      - fsegurai
-    commit-message:
-      prefix: "npm"
-      include: "scope"
-    groups:
-      dev-dependencies:
-        dependency-type: "development"
-        update-types:
-          - "minor"
-          - "patch"
-      production-dependencies:
-        dependency-type: "production"
-        update-types:
-          - "minor"
-          - "patch"
-
-
-  # GitHub Actions
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "monthly"
-    labels:
-      - "ci-cd"
-      - "infra"
+      interval: monthly
     open-pull-requests-limit: 5
-    assignees:
-      - fsegurai
+    labels: [ci-cd, infra]
+    assignees: [fsegurai]
     commit-message:
-      prefix: "ci(actions)"
+      prefix: ci
+    groups:
+      actions:
+        patterns: ['*']
+
+  # The Bun workspace: root package.json, packages/*/package.json and bun.lock.
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: monthly
+    # Matches bunfig.toml `minimumReleaseAge` (3 days), so `bun install --frozen-lockfile` accepts the update.
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 5
+    labels: [dependencies, infra]
+    assignees: [fsegurai]
+    commit-message:
+      prefix: build
+    groups:
+      tooling:
+        dependency-type: development
+        patterns: ['*']
+      runtime:
+        dependency-type: production
+        patterns: ['*']
+    ignore:
+      # Majors (TypeScript, Vite, Biome…) are planned work, never a monthly bump.
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']

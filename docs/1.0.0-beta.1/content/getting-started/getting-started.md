@@ -387,8 +387,6 @@ npx chokidar 'docs/**/*.md' -c 'manifest-generator --route ./docs'
 
 **Ready to dive deeper?** Continue with the [First Steps guide](./first-steps.md) for a hands-on tutorial, or jump to the [CLI Usage guide](../guides/cli-usage.md) to learn all available options
 
-Your content here...
-```
 
 ### Step 3: Generate Manifests
 
@@ -490,8 +488,8 @@ Use `--docs-subfolder documentation` to specify custom folder names.
 - 📖 Read the [CLI Usage Guide](../guides/cli-usage.md) for all command options
 - 🔧 Learn about [Configuration](../guides/configuration.md) options
 - 📝 Understand [Frontmatter Support](../guides/frontmatter.md)
-- 🧪 Check out [Examples](../examples/examples.md) for real-world scenarios
-- 🔗 See [Integration](../integration/integration.md) for build system setup
+- 🧪 Check out [Examples](../examples/README.md) for real-world scenarios
+- 🔗 See [Integration](../integration/build-systems.md) for build system setup
 
 ## Common Issues
 
