@@ -1,9 +1,10 @@
-# Dependency audit: `bun audit` (production dependencies) and `bun outdated`, weekly, on pull requests that change
-# the manifests or the lockfile, and on demand. Advisories are reported in the job summary and an artifact, never a
-# failure; the weekly run opens one `security` issue while advisories remain.
-# This repository is the public GitHub mirror of the Azure DevOps repository: the ADO build pipeline
-# (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes `main` here, so a merge on GitHub is overwritten by the
-# next push. Dependency updates are applied in ADO (see `.github/dependabot.yml`).
+# Dependency audit: `bun audit`, the installed root packages and `bun outdated` (all workspaces), reported in the job
+# summary and an artifact, never a failure; a scheduled run with advisories opens one `security` issue (unless one is
+# already open).
+# Triggers: weekly (Wednesday 04:00 UTC), pull requests that change a `package.json` or `bun.lock`, and on demand.
+# Azure DevOps is the source repository: its build pipeline (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes
+# main to this public GitHub mirror, so a merge on GitHub is overwritten by the next push; changes are applied in Azure
+# DevOps. Dependency updates are applied there (see `.github/dependabot.yml`).
 name: Dependency audit
 
 on:
@@ -12,95 +13,138 @@ on:
   pull_request:
     paths:
       - 'package.json'
-      - 'packages/*/package.json'
       - 'bun.lock'
+      - 'packages/*/package.json'
+      - '.github/workflows/dependency-audit.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: dependency-audit-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Explicit bash runs every step with `-eo pipefail`, so a failing command fails its step even when piped.
+defaults:
+  run:
+    shell: bash
 
 jobs:
   audit:
-    name: Audit
+    name: Dependency audit
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
       issues: write # the scheduled run opens a `security` issue when advisories are found
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout repository
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ vars.BUN_VERSION || '1.4.3' }}
-      - run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Audit and outdated report
+      # --ignore-scripts skips the Husky `prepare` hook; no step below needs a lifecycle script.
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Bun audit
         id: audit
         run: |
-          set +e
-          bun audit --production > audit-security.txt 2>&1
-          audit_status=$?
-          bun outdated > outdated-report.txt 2>&1
-          set -e
-          if [ "$audit_status" -ne 0 ]; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "found=false" >> "$GITHUB_OUTPUT"
-          fi
+          status=0
+          bun audit > audit.txt 2>&1 || status=$?
+          cat audit.txt
+          if [ "$status" -ne 0 ]; then found=true; else found=false; fi
+          echo "found=$found" >> "$GITHUB_OUTPUT"
+
+      - name: Installed and outdated packages
+        run: |
           {
-            echo "## Dependency audit"
+            echo "### Installed packages (root)"
+            echo '```'
+            bun pm ls
+            echo '```'
             echo ""
-            if [ "$audit_status" -ne 0 ]; then
-              echo "### Advisories found"
+            echo "### Outdated packages (all workspaces)"
+            echo '```'
+            # bun outdated exits non-zero when something is outdated; that is reported, not a failure.
+            bun outdated --recursive 2>&1 || true
+            echo '```'
+          } > outdated.txt
+          cat outdated.txt
+
+      - name: Write the report
+        if: ${{ !cancelled() }}
+        env:
+          FOUND: ${{ steps.audit.outputs.found }}
+        run: |
+          show() { if [ -f "$1" ]; then cat "$1"; else echo "Not run"; fi; }
+          {
+            echo "## Dependency audit report"
+            echo ""
+            echo "**Scan date:** $(date -u +'%Y-%m-%d %H:%M UTC')"
+            echo ""
+            if [ "$FOUND" = "true" ]; then
+              echo "### ⚠️ bun audit: advisories found"
             else
-              echo "### No advisories"
+              echo "### ✅ bun audit: no advisories"
             fi
             echo '```'
-            cat audit-security.txt
+            show audit.txt
             echo '```'
             echo ""
-            echo "### Outdated packages"
-            echo '```'
-            cat outdated-report.txt
-            echo '```'
+            show outdated.txt
+            echo ""
+            echo "_Dependency updates are applied in the Azure DevOps source repository (this is its mirror)._"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload audit reports
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: dependency-audit-reports
           path: |
-            audit-security.txt
-            outdated-report.txt
+            audit.txt
+            outdated.txt
+          if-no-files-found: ignore
           retention-days: 30
 
-      - name: Open an issue for advisories
+      - name: Open an issue for scheduled advisories
         if: steps.audit.outputs.found == 'true' && github.event_name == 'schedule'
         uses: actions/github-script@v9
         with:
           script: |
             const fs = require('node:fs');
-            const audit = fs.readFileSync('audit-security.txt', 'utf8');
-            const { data: issues } = await github.rest.issues.listForRepo({
+            const title = 'Dependency vulnerabilities detected';
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               labels: 'security',
               state: 'open',
+              per_page: 100,
             });
-            if (issues.some((issue) => issue.title.includes('Dependency vulnerabilities'))) {
+            if (issues.some((issue) => issue.title.includes(title))) {
+              core.info('An open dependency vulnerability issue already exists.');
               return;
             }
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: 'Dependency vulnerabilities detected',
-              body: `## Security audit\n\nThe scheduled \`bun audit --production\` reported advisories. Apply the fix in the Azure DevOps repository.\n\n\`\`\`\n${audit}\n\`\`\``,
+              title,
+              body: [
+                '## Security audit',
+                '',
+                'The scheduled `bun audit` reported advisories. Apply the fix in the Azure DevOps source repository;',
+                'the mirror push carries it to GitHub.',
+                '',
+                '```',
+                fs.readFileSync('audit.txt', 'utf8'),
+                '```',
+              ].join('\n'),
               labels: ['security', 'dependencies'],
             });

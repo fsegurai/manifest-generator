@@ -63,7 +63,8 @@ Azure DevOps is the source repository: `pipelines/.ado/pr-pipeline.yml` runs `bu
 `test:packages` and `test:coverage`; `build-pipeline.yml` builds, publishes and mirrors `main` to GitHub (a merge on
 GitHub is overwritten by the next push). GitHub workflows (`.github/workflows/`) on the mirror:
 `checks.yml` (lint, format:audit, test-types:packages, build), `test.yml` (test:packages), `documentation.yml`
-(Markdown fences/links, README sections, build:demo), `security-scan.yml` (CodeQL + `bun audit`),
+(Markdown fences/links, README sections, build:demo), `security-scan.yml` (CodeQL, `bun audit` and a Trivy
+filesystem scan, since the ADO PR pipeline runs with `security: false`),
 `dependency-audit.yml`, `health-check.yml`, `perf-monitor.yml` (bundle size) and `pr_triage.yml` (labels from
 `labeler.yml`). Check them with `actionlint` and `zizmor --offline .github/workflows` (`.github/zizmor.yml`).
 

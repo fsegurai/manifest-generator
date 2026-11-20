@@ -64,19 +64,24 @@ New features, bug fixes, and improvements will be documented here before the nex
   `readingTime` / `--reading-time`, `frontmatterAliases`, `ignoreKeys` / `--ignore-keys`, and the new `hidden`
   behavior covered in the CLI, configuration, frontmatter, API, features and FAQ pages. The playground ships in
   `docs/1.2.0/playground/`, importing the browser-safe `/core` build, with a new "1.2.0 features" sample.
-- **GitHub workflows aligned with the other libraries** — every workflow states what it does, its triggers and that
-  the repository is the Azure DevOps mirror; read-only token by default (write scopes only on the job that needs them),
-  `concurrency` on pull-request workflows, `timeout-minutes` on every job, Bun pinned through
-  `vars.BUN_VERSION || '1.4.3'` with `bun install --frozen-lockfile --ignore-scripts`, credentials not persisted after
-  checkout, and current action majors (`checkout@v7`, `github-script@v9`, `labeler@v7`, `upload-artifact@v7`,
-  `codeql-action@v4`). `checks.yml` runs `lint`, `format:audit`, `test-types:packages` and `build`; `test.yml` now
-  runs the tests (`test:packages`); the Trivy job (`trivy-action@master`) is removed from `security-scan.yml`, since
-  Trivy runs in the Azure DevOps security stage. Fixed: the demo check looked for a missing `demo/vite.config.ts`, the
-  link check resolved links from the repository root, not their file (now warning annotations), the size check watched
-  `../../vite.config.ts`, PR comments failed on Dependabot pull requests (reports now go to the job summary), and the
-  issue template `config.yml` was invalid YAML. Dependabot is monthly and grouped for `github-actions` and `bun`, as
-  notices to apply
-  in Azure DevOps; `.github/zizmor.yml` accepts major-tag pinning.
+- **GitHub workflows** — one layout shared with the other Bun libraries (same jobs, triggers, permissions and
+  concurrency; only the repository's own scripts differ). Every workflow states its purpose, triggers and relation to
+  Azure DevOps (the source repository that mirrors to GitHub); read-only token by default with write scopes only on
+  the job that needs them; `shell: bash` everywhere, so piped commands fail on error (pipefail); `timeout-minutes` on
+  every job; `actions/checkout@v7`, `actions/github-script@v9`, `actions/labeler@v7`, `actions/upload-artifact@v7` and
+  `github/codeql-action@v4`; Bun pinned through `vars.BUN_VERSION` (default `1.4.3`) with `bun install
+  --frozen-lockfile --ignore-scripts`; checkouts without persisted credentials. Results go to job summaries; only
+  `pr_triage.yml` comments on pull requests (labels, assignment, a welcome on `opened`, a Dependabot notice, the
+  modified packages in the description). Dependabot is monthly and grouped, ignores Bun majors (action majors are
+  still proposed), uses `ci`/`build` commit prefixes, and its pull requests are notices to apply in Azure DevOps.
+  `checks.yml` runs `lint`, `format:audit`, `test-types:packages` and `build`; `test.yml` now runs the tests
+  (`test:packages`). The Trivy filesystem scan stays in `security-scan.yml`, pinned to a verified commit of
+  `aquasecurity/trivy-action` (v0.36.0, was `@master`) and reported to code scanning, because the Azure DevOps PR
+  pipeline runs without its security stage. Fixed: the demo check looked for a missing `demo/vite.config.ts`, the link
+  check resolved links from the repository root, not their file (broken relative links still fail the Documentation
+  workflow), the size check watched `../../vite.config.ts`, the health check reported a broken build as success, and
+  the issue template `config.yml` was invalid YAML. `.github/zizmor.yml` accepts major-tag pinning for first-party
+  actions and requires a SHA otherwise.
 
 ### 🔐 Security
 

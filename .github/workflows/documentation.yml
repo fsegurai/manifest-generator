@@ -1,9 +1,9 @@
-# Documentation: Markdown code fences (failing), relative links and README sections (reported as warnings), and the
-# demo build (`bun run build:demo`), on pull requests and pushes to main that touch the docs or the demo, and on
-# demand. Nothing is deployed from here.
-# This repository is the public GitHub mirror of the Azure DevOps repository: the ADO build pipeline
-# (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes `main` here, so a merge on GitHub is overwritten by the
-# next push. The demo site is built and published by the ADO release pipeline (`pipelines/.ado/release-pipeline.yml`).
+# Documentation: closed fenced code blocks and relative links in every tracked Markdown file, the README sections, and
+# the demo build (`bun run build:demo`). Results go to the job summary; nothing is deployed from here.
+# Triggers: pull requests and pushes to main that change Markdown, `demo/` or `docs/`, and on demand.
+# Azure DevOps is the source repository: its build pipeline (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes
+# main to this public GitHub mirror, so a merge on GitHub is overwritten by the next push; changes are applied in Azure
+# DevOps. The demo site is built and published by the ADO release pipeline.
 name: Documentation
 
 on:
@@ -28,82 +28,161 @@ permissions:
   contents: read
 
 concurrency:
-  group: documentation-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Explicit bash runs every step with `-eo pipefail`, so a failing command fails its step even when piped.
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  markdown:
+  validate-markdown:
     name: Validate Markdown
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout repository
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - name: Check code fences
+      - name: Check fenced code blocks
         run: |
+          # A fence opens with 3+ backticks or tildes (up to 3 spaces of indentation) and closes with the same character
+          # repeated at least as many times and nothing else; a backtick fence whose info string holds a backtick is
+          # inline code (CommonMark).
           status=0
-          while IFS= read -r -d '' file; do
-            fences=$(grep -cE '^[[:space:]]*```' "$file" || true)
-            if [ $((fences % 2)) -ne 0 ]; then
-              echo "::error file=${file#./}::Unclosed code block"
+          while IFS= read -r file; do
+            [ -f "$file" ] || continue
+            if ! where=$(awk '
+              match($0, /^ {0,3}(`{3,}|~{3,})/) {
+                fence = substr($0, RSTART, RLENGTH); sub(/^ +/, "", fence)
+                rest = substr($0, RSTART + RLENGTH)
+                if (open == "") {
+                  if (substr(fence, 1, 1) == "`" && index(rest, "`") > 0) next
+                  open = fence; start = NR; next
+                }
+                same = substr(fence, 1, 1) == substr(open, 1, 1) && length(fence) >= length(open)
+                if (same && rest ~ /^[ \t]*$/) open = ""
+              }
+              END { if (open != "") { printf "line %d", start; exit 1 } }
+            ' "$file"); then
+              echo "::error file=$file::Unclosed fenced code block (opened at $where)"
               status=1
             fi
-          done < <(find . -name '*.md' -type f -not -path '*/node_modules/*' -not -path '*/.*' -not -path '*/dist/*' -print0)
+          done < <(git ls-files '*.md')
+          if [ "$status" -eq 0 ]; then echo "All fenced code blocks are closed."; fi
           exit "$status"
 
-      # Links are resolved relative to the Markdown file (or the repository root for `/…`); code blocks are skipped.
       - name: Check relative links
         run: |
-          while IFS= read -r -d '' file; do
+          # Links resolve from each file's directory. URLs, anchors and site-root links (`/v1`, routes of the docs
+          # site) are not checked; neither are fenced code blocks and inline code.
+          status=0
+          while IFS= read -r file; do
+            [ -f "$file" ] || continue
             dir=$(dirname "$file")
             while IFS= read -r link; do
-              case "$link" in
-                ''|http://*|https://*|mailto:*|\#*) continue ;;
-              esac
               target=${link%%#*}
               target=${target%%\?*}
-              target=${target%% *}
-              [ -z "$target" ] && continue
-              case "$target" in
-                /*) path=".$target" ;;
-                *) path="$dir/$target" ;;
-              esac
-              if [ ! -e "$path" ]; then
-                echo "::warning file=${file#./}::Broken link: $link"
+              target=${target#<}
+              target=${target%>}
+              case "$target" in ''|/*|http://*|https://*|mailto:*|tel:*|data:*) continue ;; esac
+              if [ ! -e "$dir/$target" ]; then
+                echo "::error file=$file::Broken relative link: $link"
+                status=1
               fi
-            done < <(awk '/^[[:space:]]*(```|~~~)/ { fence = !fence; next } !fence' "$file" | grep -oE '\]\([^)]+\)' | sed -E 's/^\]\((.*)\)$/\1/')
-          done < <(find . -name '*.md' -type f -not -path '*/node_modules/*' -not -path '*/.*' -not -path '*/dist/*' -print0)
+            done < <(awk '
+              /^ {0,3}(```|~~~)/ { code = !code; next }
+              !code { line = $0; gsub(/`[^`]*`/, "", line); print line }
+            ' "$file" | grep -oE '\]\([^) ]+' | sed 's/^](//' || true)
+          done < <(git ls-files '*.md')
+          if [ "$status" -eq 0 ]; then echo "All relative links resolve."; fi
+          exit "$status"
 
-      - name: Check README sections
-        run: |
-          for section in 'What the package does' 'Installation' 'Usage' 'Local Development' 'License'; do
-            if ! grep -qE "^##+ ${section}\$" README.md; then
-              echo "::warning file=README.md::Missing section: ${section}"
-            fi
-          done
-
-  demo:
-    name: Build demo
+  validate-structure:
+    name: Validate README structure
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout repository
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: ${{ vars.BUN_VERSION || '1.4.3' }}
-      - run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Check demo entry files
+      - name: Validate main README
+        env:
+          # Repository-specific: the README headings to look for, and whether a missing one is an error or a warning.
+          REQUIRED_SECTIONS: 'What the package does|Installation|Usage|Local Development|License'
+          MISSING_LEVEL: warning
         run: |
-          for file in vite.config.ts demo/index.html demo/scripts/index.ts; do
-            if [ ! -f "$file" ]; then
-              echo "::error file=${file}::Missing demo file"
-              exit 1
+          status=0
+          IFS='|' read -r -a sections <<< "$REQUIRED_SECTIONS"
+          for section in "${sections[@]}"; do
+            # The heading may start with an emoji or another prefix ("## 📦 Installation").
+            if ! grep -qE "^#{2,3} (.* )?${section}[[:space:]]*$" README.md; then
+              echo "::${MISSING_LEVEL} file=README.md::Missing section: ${section}"
+              if [ "$MISSING_LEVEL" = "error" ]; then status=1; fi
             fi
           done
+          if [ "$status" -eq 0 ]; then echo "README structure checked."; fi
+          exit "$status"
 
-      - run: bun run build:demo
+
+  build-demo:
+    name: Validate demo build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ vars.BUN_VERSION || '1.4.3' }}
+
+      # --ignore-scripts skips the Husky `prepare` hook; no step below needs a lifecycle script.
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate demo entry files
+        run: |
+          status=0
+          for file in vite.config.ts demo/index.html demo/scripts/index.ts; do
+            if [ ! -f "$file" ]; then
+              echo "::error file=$file::Missing demo entry file"
+              status=1
+            fi
+          done
+          exit "$status"
+
+      - name: Build demo
+        run: bun run build:demo
+
+  summary:
+    name: Documentation summary
+    if: always()
+    needs: [validate-markdown, validate-structure, build-demo]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Write the summary
+        env:
+          MARKDOWN: ${{ needs.validate-markdown.result }}
+          STRUCTURE: ${{ needs.validate-structure.result }}
+          DEMO: ${{ needs.build-demo.result }}
+        run: |
+          icon() { if [ "$1" = "success" ]; then echo '✅'; else echo "❌ ($1)"; fi; }
+          {
+            echo "## Documentation report"
+            echo ""
+            echo "| Check | Status |"
+            echo "|-------|--------|"
+            echo "| Markdown (fences, relative links) | $(icon "$MARKDOWN") |"
+            echo "| README structure | $(icon "$STRUCTURE") |"
+            echo "| Demo build (demo) | $(icon "$DEMO") |"
+          } >> "$GITHUB_STEP_SUMMARY"

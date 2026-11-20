@@ -1,8 +1,9 @@
-# Tests: the package test suite with coverage (`bun run test:packages`), on pull requests and pushes to main that
-# touch the package, the demo or the test setup, and on demand. Lint, type check and build run in `checks.yml`.
-# This repository is the public GitHub mirror of the Azure DevOps repository: the ADO build pipeline
-# (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes `main` here, so a merge on GitHub is overwritten by the
-# next push. ADO's PR pipeline (`pipelines/.ado/pr-pipeline.yml`) runs the same `test:packages` script.
+# Tests: the package test suite with coverage (`bun run test:packages`; thresholds in `bunfig.toml`).
+# Triggers: pull requests and pushes to main that change the tested code or the test setup, and on demand. Lint, type
+# checks and the build run in `checks.yml`.
+# Azure DevOps is the source repository: its build pipeline (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes
+# main to this public GitHub mirror, so a merge on GitHub is overwritten by the next push; changes are applied in Azure
+# DevOps. The ADO PR pipeline (`pipelines/.ado/pr-pipeline.yml`) runs the same test scripts.
 name: Tests
 
 on:
@@ -29,21 +30,44 @@ permissions:
   contents: read
 
 concurrency:
-  group: tests-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Explicit bash runs every step with `-eo pipefail`, so a failing command fails its step even when piped.
+defaults:
+  run:
+    shell: bash
 
 jobs:
   test:
-    name: Test packages
+    name: Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout repository
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ vars.BUN_VERSION || '1.4.3' }}
-      - run: bun install --frozen-lockfile --ignore-scripts
-      # Coverage thresholds come from bunfig.toml ([test] coverageThreshold).
-      - run: bun run test:packages
+
+      # --ignore-scripts skips the Husky `prepare` hook; no step below needs a lifecycle script.
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Test packages (with coverage)
+        run: bun run test:packages
+
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: |
+            coverage/
+            packages/*/coverage/
+          if-no-files-found: ignore
+          retention-days: 14

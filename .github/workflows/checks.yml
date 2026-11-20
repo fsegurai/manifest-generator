@@ -1,9 +1,9 @@
-# Checks: Biome (lint + format), the package type check and the full build (packages and demo), on pull requests
-# to main and on demand.
-# This repository is the public GitHub mirror of the Azure DevOps repository: the ADO build pipeline
-# (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes `main` here, so a merge on GitHub is overwritten by the
-# next push. ADO's PR pipeline (`pipelines/.ado/pr-pipeline.yml`) runs the same `build`, `lint` and `format:audit`
-# scripts plus the tests; this workflow gives the same signal on GitHub pull requests (mostly Dependabot notices).
+# Checks: Biome lint and format audit and the package type check, then the full build (packages and demo).
+# Triggers: pull requests to main (except Markdown and `docs/` only changes), and on demand. Tests run in `test.yml`.
+# Azure DevOps is the source repository: its build pipeline (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes
+# main to this public GitHub mirror, so a merge on GitHub is overwritten by the next push; changes are applied in Azure
+# DevOps. The ADO PR pipeline (`pipelines/.ado/pr-pipeline.yml`) runs the same `build`, `lint` and `format:audit`
+# scripts; this workflow gives the same signal on GitHub pull requests.
 name: Checks
 
 on:
@@ -18,50 +18,87 @@ permissions:
   contents: read
 
 concurrency:
-  group: checks-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-jobs:
-  lint:
-    name: Lint and format
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: ${{ vars.BUN_VERSION || '1.4.3' }}
-      - run: bun install --frozen-lockfile --ignore-scripts
-      - run: bun run lint
-      - run: bun run format:audit
+# Explicit bash runs every step with `-eo pipefail`, so a failing command fails its step even when piped.
+defaults:
+  run:
+    shell: bash
 
-  types:
-    name: Type check
+jobs:
+  quick-checks:
+    name: Quick validation
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout repository
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ vars.BUN_VERSION || '1.4.3' }}
-      - run: bun install --frozen-lockfile --ignore-scripts
-      - run: bun run test-types:packages
+
+      # --ignore-scripts skips the Husky `prepare` hook; no step below needs a lifecycle script.
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Format audit
+        run: bun run format:audit
+
+      - name: Type check
+        run: bun run test-types:packages
+
+      - name: Hint on failure
+        if: failure()
+        run: echo "Run \`bun run lint:fix\` locally to fix lint and formatting issues." >> "$GITHUB_STEP_SUMMARY"
 
   build:
-    name: Build
+    name: Build integration
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout repository
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ vars.BUN_VERSION || '1.4.3' }}
-      - run: bun install --frozen-lockfile --ignore-scripts
-      # Same root script as the ADO PR pipeline: packages, their README/LICENSE, the demo and its metadata.
-      - run: bun run build
+
+      # --ignore-scripts skips the Husky `prepare` hook; no step below needs a lifecycle script.
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Build packages and demo
+        run: bun run build
+
+  validation-summary:
+    name: Validation summary
+    if: always()
+    needs: [quick-checks, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Report validation status
+        env:
+          QUICK_CHECKS: ${{ needs.quick-checks.result }}
+          BUILD: ${{ needs.build.result }}
+        run: |
+          icon() { if [ "$1" = "success" ]; then echo '✅'; else echo "❌ ($1)"; fi; }
+          {
+            echo "## Checks summary"
+            echo ""
+            echo "| Check | Status |"
+            echo "|-------|--------|"
+            echo "| Quick validation (lint, format, types) | $(icon "$QUICK_CHECKS") |"
+            echo "| Build integration (packages, demo) | $(icon "$BUILD") |"
+          } >> "$GITHUB_STEP_SUMMARY"

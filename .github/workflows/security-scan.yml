@@ -1,9 +1,12 @@
-# Security scan: CodeQL (JavaScript/TypeScript) and a Bun audit, weekly, on pushes and pull requests to main, and on
-# demand. The audit is reported, not a failure. Trivy runs in the Azure DevOps template's security stage; its GitHub
-# action is left out (it was referenced by the moving `@master` branch).
-# This repository is the public GitHub mirror of the Azure DevOps repository: the ADO build pipeline
-# (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes `main` here, so a merge on GitHub is overwritten by the
-# next push. The mirror is public, so CodeQL needs no GitHub Advanced Security licence and is not gated.
+# Security scan: CodeQL (JavaScript/TypeScript, results in the Security tab), a Trivy filesystem scan and a `bun audit`
+# reported in the job summary, never a failure.
+# Triggers: pushes and pull requests to main, weekly (Monday 02:00 UTC), and on demand.
+# Azure DevOps is the source repository: its build pipeline (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes
+# main to this public GitHub mirror, so a merge on GitHub is overwritten by the next push; changes are applied in Azure
+# DevOps. The ADO PR pipeline (`pipelines/.ado/pr-pipeline.yml`) runs with `security: false`, so no Trivy scan runs
+# there: the Trivy filesystem scan (critical and high findings, reported in the Security tab and an artifact, never a
+# failure) runs here.
+# The mirror is public, so CodeQL needs no GitHub Advanced Security licence and is not gated by a variable.
 name: Security scan
 
 on:
@@ -19,8 +22,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: security-scan-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Explicit bash runs every step with `-eo pipefail`, so a failing command fails its step even when piped.
+defaults:
+  run:
+    shell: bash
 
 jobs:
   codeql:
@@ -30,19 +38,26 @@ jobs:
     permissions:
       actions: read # CodeQL reads the workflow run metadata
       contents: read
-      security-events: write # uploads the CodeQL results to code scanning
+      security-events: write # uploads the results to code scanning
     strategy:
       fail-fast: false
       matrix:
         language: [javascript-typescript]
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout repository
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: github/codeql-action/init@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
-      - uses: github/codeql-action/analyze@v4
+          # JavaScript/TypeScript is analyzed from source; no build is needed.
+          build-mode: none
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v4
         with:
           category: '/language:${{ matrix.language }}'
 
@@ -51,12 +66,75 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout repository
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ vars.BUN_VERSION || '1.4.3' }}
-      - run: bun install --frozen-lockfile --ignore-scripts
-      - run: bun audit --production
-        continue-on-error: true
+
+      # --ignore-scripts skips the Husky `prepare` hook; no step below needs a lifecycle script.
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Bun audit (reported, not failing)
+        run: |
+          status=0
+          bun audit > audit.txt 2>&1 || status=$?
+          cat audit.txt
+          {
+            echo "## Bun audit"
+            echo ""
+            if [ "$status" -eq 0 ]; then
+              echo "No advisories."
+            else
+              echo "Advisories found (exit code $status): reported, not a failure. Fixes are applied in Azure DevOps."
+            fi
+            echo ""
+            echo '```'
+            cat audit.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  trivy:
+    name: Trivy filesystem scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read # upload-sarif reads the workflow run metadata
+      contents: read
+      security-events: write # uploads the results to code scanning
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Pinned by a verified commit (hash-pin policy in .github/zizmor.yml). Exit code 0: findings are reported.
+      - name: Run Trivy (filesystem)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          format: sarif
+          output: trivy-results.sarif
+
+      - name: Upload Trivy results to code scanning
+        if: ${{ !cancelled() && hashFiles('trivy-results.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-fs
+
+      - name: Upload Trivy report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-fs-report
+          path: trivy-results.sarif
+          if-no-files-found: ignore
+          retention-days: 30

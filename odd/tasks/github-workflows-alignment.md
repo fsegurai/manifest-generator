@@ -49,7 +49,7 @@ zizmor --offline`), plus running every referenced script locally.
 | T7 | S1–S5 | ngx-sidenav | delegated (parallel unit) | done (uncommitted) | actionlint 0; zizmor 0 high (zizmor.yml added); all scripts pass; bun audit 20 pre-existing advisories |
 | T8 | S1–S5 | all | independent verifier (Risk item 5: CI) | ran: S1–S3 pass, S4/S5 fail → correction batch T9/T10 | |
 | T9 | S2, S4, S5 | Bun group (codemirror-themes, manifest-generator, marked-extensions, scrollspy) | delegated (correction, parallel) | pending | |
-| T10 | S2, S4, S5 | Angular group (ngx-codemirror, ngx-markdown, ngx-sidenav) | delegated (correction, parallel) | pending | |
+| T10 | S2, S4, S5 | Angular group (ngx-codemirror, ngx-markdown, ngx-sidenav) | delegated (correction, parallel) | done (uncommitted) | identical layout (only the comment marker differs); actionlint 0, zizmor 0 high/medium; ngx-codemirror build OK |
 
 ## Log
 
@@ -116,3 +116,5 @@ zizmor --offline`), plus running every referenced script locally.
   - Dependabot: majors ignored for `bun` only, not for `github-actions` (as Arkenda) in all 7;
   - manifest-generator docs: broken relative links fail again (HEAD behaviour); README sections stay warnings
     only if HEAD also warned.
+- L13: T10 done. Behaviour changes reported: Markdown changes no longer skip `checks.yml` (demos test/bundle README
+  and docs); ngx-markdown/ngx-sidenav `test.yml` run `lint:check` (as ADO PR) instead of lint:lib+lint:demo.

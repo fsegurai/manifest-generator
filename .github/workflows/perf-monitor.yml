@@ -1,9 +1,11 @@
-# Performance monitor: builds the package (`bun run build:packages`) on the base branch and on the pull request
-# and compares the size of `packages/manifest-generator/dist`; the job fails when it grows by more than 10%. Runs on
-# pull requests to main that touch the package or its build configuration, and on demand (against main).
-# This repository is the public GitHub mirror of the Azure DevOps repository: the ADO build pipeline
-# (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes `main` here, so a merge on GitHub is overwritten by the
-# next push. ADO has no bundle size check; this one is GitHub only.
+# Performance monitor: builds the packages of the base branch and of the pull request (`bun run build:packages`), writes
+# a per-package `packages/<name>/dist` size table to the job summary and an artifact, and fails when the total grows by
+# more than 10%.
+# Triggers: pull requests to main that change package sources or build configuration, and on demand (against the default
+# branch).
+# Azure DevOps is the source repository: its build pipeline (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes
+# main to this public GitHub mirror, so a merge on GitHub is overwritten by the next push; changes are applied in Azure
+# DevOps. The ADO pipelines do not track bundle sizes.
 name: Performance monitor
 
 on:
@@ -22,19 +24,24 @@ permissions:
   contents: read
 
 concurrency:
-  group: bundle-size-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+
+# Explicit bash runs every step with `-eo pipefail`, so a failing command fails its step even when piped.
+defaults:
+  run:
+    shell: bash
 
 jobs:
   bundle-size:
-    name: Compare bundle size
+    name: Monitor bundle sizes
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout base branch
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.base_ref || 'main' }}
+          ref: ${{ github.base_ref || github.event.repository.default_branch }}
           path: base
           persist-credentials: false
 
@@ -44,7 +51,8 @@ jobs:
           path: pr
           persist-credentials: false
 
-      - uses: oven-sh/setup-bun@v2
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ vars.BUN_VERSION || '1.4.3' }}
 
@@ -60,45 +68,49 @@ jobs:
           bun install --frozen-lockfile --ignore-scripts
           bun run build:packages
 
-      - name: Compare sizes
-        id: sizes
+      - name: Compare dist sizes
         run: |
-          dist=packages/manifest-generator/dist
-          base_size=$(du -sb "base/$dist" | awk '{print $1}')
-          pr_size=$(du -sb "pr/$dist" | awk '{print $1}')
-          diff=$((pr_size - base_size))
-          percent=$(( (diff * 100) / base_size ))
-          echo "percent=$percent" >> "$GITHUB_OUTPUT"
+          size_of() { if [ -d "$1" ]; then du -sb "$1" | cut -f1; else echo 0; fi; }
+          report="$RUNNER_TEMP/bundle-sizes.md"
+          base_total=0
+          pr_total=0
           {
-            echo "## Bundle size (${dist})"
+            echo "## Bundle size analysis"
             echo ""
-            echo "| Metric | Bytes |"
-            echo "|--------|-------|"
-            echo "| Base | ${base_size} |"
-            echo "| Pull request | ${pr_size} |"
-            echo "| Change | ${diff} (${percent}%) |"
-            echo ""
-            echo '```'
-            echo "Base:"
-            (cd "base/$dist" && du -ab . | sort -k2)
-            echo ""
-            echo "Pull request:"
-            (cd "pr/$dist" && du -ab . | sort -k2)
-            echo '```'
-          } | tee sizes.md >> "$GITHUB_STEP_SUMMARY"
+            echo "| Package | Base (bytes) | PR (bytes) | Change |"
+            echo "|---------|-------------:|-----------:|-------:|"
+            pkgs=$( (ls -d base/packages/*/ pr/packages/*/ 2>/dev/null || true) | xargs -n1 basename | sort -u)
+            for pkg in $pkgs; do
+              base=$(size_of "base/packages/$pkg/dist")
+              pr=$(size_of "pr/packages/$pkg/dist")
+              base_total=$((base_total + base))
+              pr_total=$((pr_total + pr))
+              echo "| $pkg | $base | $pr | $((pr - base)) |"
+            done
+            echo "| **Total** | **$base_total** | **$pr_total** | **$((pr_total - base_total))** |"
+          } > "$report"
+          percent=0
+          if [ "$base_total" -gt 0 ]; then
+            percent=$(( (pr_total - base_total) * 100 / base_total ))
+          fi
+          echo "" >> "$report"
+          echo "Total change: ${percent}%" >> "$report"
+          cat "$report" >> "$GITHUB_STEP_SUMMARY"
+          echo "PERCENT=$percent" >> "$GITHUB_ENV"
 
       - name: Upload bundle report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: bundle-size-report
-          path: sizes.md
+          path: ${{ runner.temp }}/bundle-sizes.md
+          if-no-files-found: ignore
           retention-days: 30
 
-      - name: Fail on a size regression above 10%
-        if: ${{ fromJSON(steps.sizes.outputs.percent) > 10 }}
-        env:
-          PERCENT: ${{ steps.sizes.outputs.percent }}
+      - name: Check for size regression
         run: |
-          echo "::error::The bundle grew by ${PERCENT}% (limit 10%)"
-          exit 1
+          if [ "${PERCENT:-0}" -gt 10 ]; then
+            echo "::error::Bundle size increased by more than 10% (${PERCENT}%)"
+            exit 1
+          fi
+          echo "Bundle size change within 10% (${PERCENT:-0}%)."
