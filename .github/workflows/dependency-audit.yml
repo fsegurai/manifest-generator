@@ -1,4 +1,10 @@
-name: Dependency Audit
+# Dependency audit: `bun audit` (production dependencies) and `bun outdated`, weekly, on pull requests that change
+# the manifests or the lockfile, and on demand. Advisories are reported in the job summary and an artifact, never a
+# failure; the weekly run opens one `security` issue while advisories remain.
+# This repository is the public GitHub mirror of the Azure DevOps repository: the ADO build pipeline
+# (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes `main` here, so a merge on GitHub is overwritten by the
+# next push. Dependency updates are applied in ADO (see `.github/dependabot.yml`).
+name: Dependency audit
 
 on:
   schedule:
@@ -6,121 +12,68 @@ on:
   pull_request:
     paths:
       - 'package.json'
-      - 'bun.lock'
       - 'packages/*/package.json'
+      - 'bun.lock'
   workflow_dispatch:
 
 permissions:
   contents: read
-  pull-requests: write
+
+concurrency:
+  group: dependency-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   audit:
-    name: Dependency Health Audit
+    name: Audit
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write # the scheduled run opens a `security` issue when advisories are found
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: ${{ vars.BUN_VERSION || '1.4.3' }}
+      - run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Install dependencies
-        run: bun install
-
-      - name: Run security audit
-        id: security
+      - name: Audit and outdated report
+        id: audit
         run: |
-          echo "Running security audit..."
-          bun audit --production > audit-security.txt 2>&1 || true
-
-          if grep -q "vulnerabilities" audit-security.txt; then
-            echo "SECURITY_ISSUES=true" >> $GITHUB_ENV
+          set +e
+          bun audit --production > audit-security.txt 2>&1
+          audit_status=$?
+          bun outdated > outdated-report.txt 2>&1
+          set -e
+          if [ "$audit_status" -ne 0 ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
           else
-            echo "SECURITY_ISSUES=false" >> $GITHUB_ENV
+            echo "found=false" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Check outdated packages
-        id: outdated
-        run: |
-          echo "Checking for outdated packages..."
-
           {
-            echo "# Dependency Report"
+            echo "## Dependency audit"
             echo ""
-            echo "## Monorepo Dependencies"
-            echo "\`\`\`"
-            bun pm ls --depth=0
-            echo "\`\`\`"
-            echo ""
-            echo "## Top-level Outdated Packages"
-            echo "\`\`\`"
-            npm outdated --all 2>&1 || echo "All dependencies up to date"
-            echo "\`\`\`"
-          } > outdated-report.txt
-
-          if grep -q "extraneous\|missing\|invalid" outdated-report.txt; then
-            echo "OUTDATED_ISSUES=true" >> $GITHUB_ENV
-          else
-            echo "OUTDATED_ISSUES=false" >> $GITHUB_ENV
-          fi
-
-      - name: Generate audit comment
-        id: comment
-        run: |
-          {
-            echo "## 📦 Dependency Audit Report"
-            echo ""
-            echo "**Scan Date:** $(date -u +'%Y-%m-%d %H:%M UTC')"
-            echo ""
-
-            if [ "${{ env.SECURITY_ISSUES }}" = "true" ]; then
-              echo "### ⚠️ Security Issues Found"
-              echo "\`\`\`"
-              cat audit-security.txt
-              echo "\`\`\`"
+            if [ "$audit_status" -ne 0 ]; then
+              echo "### Advisories found"
             else
-              echo "### ✅ No Security Vulnerabilities"
+              echo "### No advisories"
             fi
-
+            echo '```'
+            cat audit-security.txt
+            echo '```'
             echo ""
-            echo "### Monorepo Package Tree"
-            echo "\`\`\`"
-            bun pm ls --depth=0 2>/dev/null || echo "Package tree unavailable"
-            echo "\`\`\`"
-
-            echo ""
-            if [ "${{ env.OUTDATED_ISSUES }}" = "true" ]; then
-              echo "### 🔄 Outdated Packages Detected"
-              tail -20 outdated-report.txt
-            else
-              echo "### ✅ All Dependencies Current"
-            fi
-          } >> audit-comment.txt
-
-      - name: Comment on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const fs = require('fs');
-            const comment = fs.readFileSync('audit-comment.txt', 'utf8');
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            })
+            echo "### Outdated packages"
+            echo '```'
+            cat outdated-report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload audit reports
-        uses: actions/upload-artifact@v7
         if: always()
+        uses: actions/upload-artifact@v7
         with:
           name: dependency-audit-reports
           path: |
@@ -128,31 +81,26 @@ jobs:
             outdated-report.txt
           retention-days: 30
 
-      - name: Create issue if vulnerabilities found
-        if: env.SECURITY_ISSUES == 'true' && github.event_name == 'schedule'
-        uses: actions/github-script@v6
+      - name: Open an issue for advisories
+        if: steps.audit.outputs.found == 'true' && github.event_name == 'schedule'
+        uses: actions/github-script@v9
         with:
           script: |
-            const fs = require('fs');
+            const fs = require('node:fs');
             const audit = fs.readFileSync('audit-security.txt', 'utf8');
-
-            const issues = await github.rest.issues.listForRepo({
+            const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
               labels: 'security',
-              state: 'open'
+              state: 'open',
             });
-
-            const existingIssue = issues.data.find(issue =>
-              issue.title.includes('Dependency vulnerabilities')
-            );
-
-            if (!existingIssue) {
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: '🔒 Dependency vulnerabilities detected',
-                body: '## Security Audit Alert\n\nDependency vulnerabilities detected in scheduled audit.\n\n' + audit,
-                labels: ['security', 'dependencies']
-              });
+            if (issues.some((issue) => issue.title.includes('Dependency vulnerabilities'))) {
+              return;
             }
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Dependency vulnerabilities detected',
+              body: `## Security audit\n\nThe scheduled \`bun audit --production\` reported advisories. Apply the fix in the Azure DevOps repository.\n\n\`\`\`\n${audit}\n\`\`\``,
+              labels: ['security', 'dependencies'],
+            });

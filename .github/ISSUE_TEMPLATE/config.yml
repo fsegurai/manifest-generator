@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: @fsegurai/manifest-generator Issues
+  - name: "@fsegurai/manifest-generator Issues"
     url: https://github.com/fsegurai/manifest-generator/issues
     about: This is for development, support and technical issues/questions.

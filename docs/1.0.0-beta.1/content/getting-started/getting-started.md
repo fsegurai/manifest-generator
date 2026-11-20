@@ -387,8 +387,6 @@ npx chokidar 'docs/**/*.md' -c 'manifest-generator --route ./docs'
 
 **Ready to dive deeper?** Continue with the [First Steps guide](./first-steps.md) for a hands-on tutorial, or jump to the [CLI Usage guide](../guides/cli-usage.md) to learn all available options
 
-Your content here...
-```
 
 ### Step 3: Generate Manifests
 

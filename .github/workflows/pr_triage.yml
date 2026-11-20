@@ -1,145 +1,162 @@
-name: "Pull Request Triage"
+# Pull request triage: labels the pull request from `.github/labeler.yml`, assigns its author (or requests a review
+# from the maintainer for bots), welcomes first-time contributors, explains Dependabot notices and lists the affected
+# areas in the description. Runs when a pull request is opened, reopened or marked ready for review.
+# `pull_request_target` gives the token write access on pull requests from forks; it is safe here because nothing
+# from the pull request is checked out or executed: the labeler reads its configuration from the base branch through
+# the API, and the scripts only read the event payload and call the REST API.
+# This repository is the public GitHub mirror of the Azure DevOps repository: the ADO build pipeline
+# (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes `main` here, so a merge on GitHub is overwritten by the
+# next push; accepted changes are applied in ADO.
+name: Pull request triage
 
 on:
-  pull_request_target:
-    types: [ opened, ready_for_review, reopened ]
+  pull_request_target: # zizmor: ignore[dangerous-triggers] no checkout or execution of pull request code (see above)
+    types: [opened, ready_for_review, reopened]
 
 permissions:
   contents: read
-  pull-requests: write
+
+concurrency:
+  group: pr-triage-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   triage:
+    name: Triage
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write # labels and assignees go through the issues API
+      pull-requests: write # labels, review requests, comments and the description
     steps:
-      - name: Fetch sources
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          repository: fsegurai/manifest-generator
-          ref: main
-
-      - name: Update labels based on changes
-        uses: actions/labeler@v5
+      - name: Label from changed files
+        uses: actions/labeler@v7
         with:
           sync-labels: true
-          dot: true
 
-      - name: Assign PR creator and add welcome comment
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const pr = context.payload.pull_request;
-            const assignees = pr.assignees.map(assignee => assignee.login);
-            let assignee = pr.user.login;
-
-            if (!assignees.includes(assignee)) {
-              if (assignee.includes('bot')) {
-                await github.rest.pulls.requestReviewers({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: pr.number,
-                  reviewers: ['fsegurai']
-                });
-              } else {
-                await github.rest.issues.addAssignees({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: pr.number,
-                  assignees: [assignee]
-                });
-              }
-            }
-
-      - name: Add first-time contributor welcome
-        uses: actions/github-script@v6
+      - name: Assign the author
+        uses: actions/github-script@v9
         with:
           script: |
             const pr = context.payload.pull_request;
             const author = pr.user.login;
-
-            const userPRs = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              creator: author,
-              state: 'all'
-            });
-
-            if (userPRs.data.length === 1) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr.number,
-                body: '👋 **Welcome, @' + author + '!**\n\nThank you for your contribution to manifest-generator! Here\'s what to expect:\n\n- **Tests run automatically** - our CI pipeline validates linting, types, and tests\n- **Reviews** - a maintainer will review your changes\n- **Labels** - we auto-tag PRs to help organize discussions\n- **Questions?** - feel free to ask in the comments\n\n📚 **Helpful Resources:**\n- [Contributing Guide](./CONTRIBUTING.md)\n- [AGENTS Guide](./AGENTS.md) - Project architecture\n- [Development Setup](./README.md#development)\n\nWe appreciate your help! 🎉'
-              });
-            }
-
-      - name: Add Dependabot PR comment
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const pr = context.payload.pull_request;
-            const author = pr.user.login;
-
-            if (!author.includes('dependabot')) {
+            if (pr.assignees.some((assignee) => assignee.login === author)) {
               return;
             }
-
-            const comments = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr.number
-            });
-
-            const hasDepbotComment = comments.data.some(c =>
-              c.body.includes('Dependabot Update') || c.body.includes('@dependabot')
-            );
-
-            if (!hasDepbotComment) {
-              await github.rest.issues.createComment({
+            if (pr.user.type === 'Bot') {
+              await github.rest.pulls.requestReviewers({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                reviewers: ['fsegurai'],
+              });
+            } else {
+              await github.rest.issues.addAssignees({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: pr.number,
-                body: '🤖 **Dependabot Update**\n\nThis is an automated dependency update. A few things to know:\n\n- **Bun workspace**: All dependencies are managed through the root `package.json`\n- **Build checks**: The PR build validates the package compiles\n- **Security**: Our security scan pipeline reviews all updates\n- **Merge**: Maintainers will review and merge periodically\n\n💡 Tip: Use `@dependabot rebase` to update this PR if conflicts occur.'
+                assignees: [author],
               });
             }
 
-      - name: Detect affected package areas
-        uses: actions/github-script@v6
+      - name: Welcome first-time contributors
+        uses: actions/github-script@v9
         with:
           script: |
             const pr = context.payload.pull_request;
-            const files = await github.rest.pulls.listFiles({
+            if (pr.user.type === 'Bot' || context.payload.action !== 'opened') {
+              return;
+            }
+            const author = pr.user.login;
+            const { data: results } = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${context.repo.owner}/${context.repo.repo} is:pr author:${author}`,
+              per_page: 2,
+            });
+            if (results.total_count > 1) {
+              return;
+            }
+            const blob = `https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main`;
+            await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: pr.number
+              issue_number: pr.number,
+              body: [
+                `Welcome, @${author}, and thank you for contributing to manifest-generator.`,
+                '',
+                '- **Checks** run automatically: lint, format, type check, tests and build.',
+                '- **Review**: a maintainer reviews the change. This repository is a mirror of the Azure DevOps repository, so an accepted change is applied there and arrives here with the next mirror push.',
+                '- **Labels** are added from the changed files.',
+                '',
+                `Helpful resources: [Contributing guide](${blob}/CONTRIBUTING.md), [AGENTS guide](${blob}/AGENTS.md), [Local development](${blob}/README.md#local-development).`,
+              ].join('\n'),
             });
 
-            const affectedAreas = new Set();
-            files.data.forEach(f => {
-              if (f.filename.startsWith('packages/manifest-generator/src/')) {
-                affectedAreas.add('manifest-generator');
-              } else if (f.filename.startsWith('packages/.helper/')) {
-                affectedAreas.add('build-helper');
-              } else if (f.filename.startsWith('demo/')) {
-                affectedAreas.add('demo');
-              } else if (f.filename.startsWith('.github/')) {
-                affectedAreas.add('ci-cd');
-              } else if (f.filename === 'package.json' || f.filename === 'bun.lock') {
-                affectedAreas.add('dependencies');
-              }
+      - name: Explain Dependabot notices
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (pr.user.login !== 'dependabot[bot]') {
+              return;
+            }
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+            });
+            if (comments.some((comment) => comment.body?.includes('Dependabot notice'))) {
+              return;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: [
+                '**Dependabot notice**',
+                '',
+                'This repository is a mirror of the Azure DevOps repository: a merge here is overwritten by the next mirror push.',
+                'Apply the update in the Azure DevOps repository (root `package.json` and `bun.lock` for the Bun workspace) and let the mirror carry it; this pull request then closes as superseded.',
+              ].join('\n'),
             });
 
-            if (affectedAreas.size > 0) {
-              const areas = Array.from(affectedAreas).join(', ');
-              const body = `📦 **Affected areas:** ${areas}`;
-
-              if (!pr.body.includes(body)) {
-                await github.rest.pulls.update({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: pr.number,
-                  body: pr.body ? pr.body + '\n\n' + body : body
-                });
+      - name: List affected areas
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+            const areas = new Set();
+            for (const { filename } of files) {
+              if (filename.startsWith('packages/manifest-generator/')) {
+                areas.add('manifest-generator');
+              } else if (filename.startsWith('packages/.helper/')) {
+                areas.add('build-helper');
+              } else if (filename.startsWith('demo/')) {
+                areas.add('demo');
+              } else if (filename.startsWith('docs/')) {
+                areas.add('docs');
+              } else if (filename.startsWith('.github/') || filename.startsWith('pipelines/')) {
+                areas.add('ci-cd');
+              } else if (filename === 'package.json' || filename === 'bun.lock') {
+                areas.add('dependencies');
               }
             }
+            if (areas.size === 0) {
+              return;
+            }
+            const line = `**Affected areas:** ${[...areas].join(', ')}`;
+            const body = pr.body ?? '';
+            if (body.includes('**Affected areas:**')) {
+              return;
+            }
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              body: body ? `${body}\n\n${line}` : line,
+            });

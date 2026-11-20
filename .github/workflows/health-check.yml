@@ -1,171 +1,133 @@
-name: Health Check
+# Health check: build, tests with coverage, lint and `bun audit` on main, weekly, on pushes to main that touch the
+# package sources or the root manifest, and on demand. The report goes to the job summary and an artifact, and is
+# added as a comment to the open issue labelled `health-check`, if there is one.
+# This repository is the public GitHub mirror of the Azure DevOps repository: the ADO build pipeline
+# (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes `main` here, so a push to main is a mirror push and a
+# merge on GitHub is overwritten by the next one.
+name: Health check
 
 on:
   schedule:
     - cron: '0 3 * * 1'
-  workflow_dispatch:
   push:
-    branches: [ 'main' ]
+    branches: [main]
     paths:
       - 'packages/*/src/**'
       - 'package.json'
+  workflow_dispatch:
 
 permissions:
   contents: read
-  issues: write
-  discussions: write
+
+concurrency:
+  group: health-check-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   health-check:
-    name: Project Health Check
+    name: Project health
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write # comments the report on the open `health-check` issue
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: ${{ vars.BUN_VERSION || '1.4.3' }}
+      - run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Install dependencies
-        run: bun install
-
-      - name: Build package
+      - name: Build packages
         id: build
-        run: |
-          echo "## Build Results" >> $GITHUB_STEP_SUMMARY
-          bun run build:packages 2>&1 | tee build.log
-          BUILD_STATUS=${PIPESTATUS[0]}
+        run: bun run build:packages 2>&1 | tee build.log
 
-          echo "BUILD_STATUS=$BUILD_STATUS" >> $GITHUB_ENV
-          if [ $BUILD_STATUS -eq 0 ]; then
-            echo "✅ Package built successfully" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Build failed" >> $GITHUB_STEP_SUMMARY
-          fi
-          exit $BUILD_STATUS
-
-      - name: Run tests with coverage
+      - name: Test with coverage
         id: test
-        run: |
-          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
-          bun run --filter '@fsegurai/manifest-generator' pkg:test:coverage 2>&1 | tee test.log
-          TEST_STATUS=${PIPESTATUS[0]}
+        if: ${{ !cancelled() }}
+        run: bun run test:packages 2>&1 | tee test.log
 
-          echo "TEST_STATUS=$TEST_STATUS" >> $GITHUB_ENV
-          if [ $TEST_STATUS -eq 0 ]; then
-            COVERAGE=$(grep -oP 'All files[^|]*\|\s+\K[\d.]+' test.log | tail -1)
-            echo "✅ All tests passed (coverage: ${COVERAGE:-unknown}%)" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Tests failed" >> $GITHUB_STEP_SUMMARY
-          fi
-          exit $TEST_STATUS
-
-      - name: Run linting
+      - name: Lint
         id: lint
-        run: |
-          echo "## Linting Results" >> $GITHUB_STEP_SUMMARY
-          bun run lint 2>&1 | tee lint.log
-          LINT_STATUS=${PIPESTATUS[0]}
+        if: ${{ !cancelled() }}
+        run: bun run lint 2>&1 | tee lint.log
 
-          echo "LINT_STATUS=$LINT_STATUS" >> $GITHUB_ENV
-          if [ $LINT_STATUS -eq 0 ]; then
-            echo "✅ Linting passed" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ Linting issues found" >> $GITHUB_STEP_SUMMARY
-          fi
-          exit $LINT_STATUS
-
+      # Advisories are reported, not a failure.
       - name: Dependency audit
         id: audit
+        if: ${{ !cancelled() }}
         run: |
-          echo "## Dependency Audit" >> $GITHUB_STEP_SUMMARY
-          bun audit --production 2>&1 | tee audit.log || true
-          AUDIT_STATUS=$?
-
-          if [ $AUDIT_STATUS -eq 0 ]; then
-            echo "✅ No security vulnerabilities" >> $GITHUB_STEP_SUMMARY
+          if bun audit --production > audit.log 2>&1; then
+            echo "status=clean" >> "$GITHUB_OUTPUT"
           else
-            echo "⚠️ Vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+            echo "status=advisories" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Generate health report
-        id: report
-        if: always()
+      - name: Health report
+        if: ${{ !cancelled() }}
         env:
-          BUILD_OK: ${{ env.BUILD_STATUS == '0' }}
-          TEST_OK: ${{ env.TEST_STATUS == '0' }}
-          LINT_OK: ${{ env.LINT_STATUS == '0' }}
+          BUILD: ${{ steps.build.outcome }}
+          TEST: ${{ steps.test.outcome }}
+          LINT: ${{ steps.lint.outcome }}
+          AUDIT: ${{ steps.audit.outputs.status }}
         run: |
           {
-            echo "## 🏥 Project Health Report"
+            echo "## Project health report"
             echo ""
-            echo "**Generated:** $(date -u +'%Y-%m-%d %H:%M UTC')"
+            echo "Generated: $(date -u +'%Y-%m-%d %H:%M UTC')"
             echo ""
-            echo "### Status Summary"
-            echo "| Check | Status |"
+            echo "| Check | Result |"
             echo "|-------|--------|"
-            echo "| Build | $([ '${{ env.BUILD_OK }}' = 'true' ] && echo '✅ Healthy' || echo '❌ Failed') |"
-            echo "| Tests | $([ '${{ env.TEST_OK }}' = 'true' ] && echo '✅ Passing' || echo '❌ Failing') |"
-            echo "| Linting | $([ '${{ env.LINT_OK }}' = 'true' ] && echo '✅ Clean' || echo '❌ Issues') |"
-            echo ""
-            echo "### Build Log"
-            echo "\`\`\`"
-            if [ -f build.log ]; then tail -20 build.log; else echo "No build log available"; fi
-            echo "\`\`\`"
-            echo ""
-            echo "### Lint Log"
-            echo "\`\`\`"
-            if [ -f lint.log ]; then tail -20 lint.log; else echo "No lint log available"; fi
-            echo "\`\`\`"
+            echo "| Build | ${BUILD} |"
+            echo "| Tests | ${TEST} |"
+            echo "| Lint | ${LINT} |"
+            echo "| Audit | ${AUDIT:-not run} |"
+            for log in build test lint audit; do
+              if [ -f "${log}.log" ]; then
+                echo ""
+                echo "### ${log} log (last 20 lines)"
+                echo '```'
+                tail -20 "${log}.log"
+                echo '```'
+              fi
+            done
           } > health-report.md
-
-          cat health-report.md >> $GITHUB_STEP_SUMMARY
+          cat health-report.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload health report
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
-        if: always()
         with:
           name: health-report
-          path: health-report.md
+          path: |
+            health-report.md
+            *.log
           retention-days: 90
 
-      - name: Comment on existing health check issue
-        if: always() && github.event_name != 'workflow_dispatch'
-        uses: actions/github-script@v6
+      - name: Comment on the health-check issue
+        if: ${{ !cancelled() && github.event_name != 'workflow_dispatch' }}
+        uses: actions/github-script@v9
         with:
           script: |
-            const fs = require('fs');
-
+            const fs = require('node:fs');
             if (!fs.existsSync('health-report.md')) {
-              console.log('Health report not found, skipping issue comment');
+              core.info('Health report not found, skipping the issue comment');
               return;
             }
-
-            const report = fs.readFileSync('health-report.md', 'utf8');
-
-            const issues = await github.rest.issues.listForRepo({
+            const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
               labels: 'health-check',
-              state: 'open'
+              state: 'open',
             });
-
-            if (issues.data.length > 0) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issues.data[0].number,
-                body: '## Updated Health Check\n\n' + report
-              });
+            if (issues.length === 0) {
+              return;
             }
-
-      - name: Report results
-        if: failure()
-        run: |
-          echo "❌ Health check failed. See artifacts and step summary for details."
-          exit 1
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issues[0].number,
+              body: `## Updated health check\n\n${fs.readFileSync('health-report.md', 'utf8')}`,
+            });

@@ -1,69 +1,51 @@
+# Labels for `actions/labeler@v7` (used by `.github/workflows/pr_triage.yml`). Each label applies when any of its
+# match objects matches; `reviewers.yml` maps the same labels to reviewers.
 infra:
   - changed-files:
-      - any-glob-to-any-file: [
-        '!.github/workflows/**',
-        '.github/**',
-        '.editorconfig',
-        '.env*',
-        'bun.lock',
-        'eslint*.js',
-        'tsconfig*.json',
-        'vite.config.*',
-      ]
+      - any-glob-to-any-file:
+          - '.editorconfig'
+          - '.env*'
+          - '.husky/**'
+          - 'biome.json'
+          - 'bun.lock'
+          - 'bunfig.toml'
+          - 'Makefile'
+          - 'tsconfig*.json'
+          - 'vite.config.*'
+          - 'packages/*/vite*.config.*'
+          - 'packages/*/tsconfig*.json'
+  # Everything under .github except the workflows (those are `ci-cd`).
+  - changed-files:
+      - all-globs-to-any-file: ['.github/**', '!.github/workflows/**']
 
 dependencies:
   - changed-files:
-      - any-glob-to-any-file: [
-        'bun.lock',
-        'package.json',
-        'packages/*/package.json',
-      ]
+      - any-glob-to-any-file: ['bun.lock', 'package.json', 'packages/*/package.json']
 
 ci-cd:
   - changed-files:
-      - any-glob-to-any-file: [
-        '.github/workflows/**',
-      ]
+      - any-glob-to-any-file: ['.github/workflows/**', 'pipelines/**']
 
 library:
   - changed-files:
-      - any-glob-to-any-file: [
-        'packages/manifest-generator/**',
-      ]
+      - any-glob-to-any-file: ['packages/manifest-generator/**']
 
 helper:
   - changed-files:
-      - any-glob-to-any-file: [
-        'packages/.helper/**',
-      ]
+      - any-glob-to-any-file: ['packages/.helper/**']
 
 demo:
   - changed-files:
-      - any-glob-to-any-file: [
-        'demo/**',
-      ]
+      - any-glob-to-any-file: ['demo/**']
 
 styles:
   - changed-files:
-      - any-glob-to-any-file: [
-        '**/*.scss',
-        '**/*.css',
-      ]
+      - any-glob-to-any-file: ['**/*.scss', '**/*.css']
 
 tests:
   - changed-files:
-      - any-glob-to-any-file: [
-        '**/spec/**',
-        '**/*.test.*',
-        '**/*.spec.*',
-        'scripts/test-all-packages.ts',
-      ]
+      - any-glob-to-any-file: ['**/spec/**', '**/*.test.*', '**/*.spec.*', 'packages/.helper/utils/scripts/**']
 
 documentation:
   - changed-files:
-      - any-glob-to-any-file: [
-        'docs/**',
-        'AGENTS.md',
-        'README.md',
-        'LICENSE',
-      ]
+      - any-glob-to-any-file: ['docs/**', 'AGENTS.md', 'README.md', 'LICENSE']

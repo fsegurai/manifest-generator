@@ -1,137 +1,104 @@
-name: Performance Monitor
+# Performance monitor: builds the package (`bun run build:packages`) on the base branch and on the pull request
+# and compares the size of `packages/manifest-generator/dist`; the job fails when it grows by more than 10%. Runs on
+# pull requests to main that touch the package or its build configuration, and on demand (against main).
+# This repository is the public GitHub mirror of the Azure DevOps repository: the ADO build pipeline
+# (`pipelines/.ado/build-pipeline.yml`, MIRROR stage) pushes `main` here, so a merge on GitHub is overwritten by the
+# next push. ADO has no bundle size check; this one is GitHub only.
+name: Performance monitor
 
 on:
   pull_request:
-    branches: ['main']
+    branches: [main]
     paths:
       - 'packages/*/src/**'
-      - '../../vite.config.ts'
+      - 'packages/*/vite*.config.ts'
+      - 'packages/*/package.json'
+      - 'vite.config.ts'
+      - 'bun.lock'
       - '.github/workflows/perf-monitor.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
-  pull-requests: write
+
+concurrency:
+  group: bundle-size-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   bundle-size:
-    name: Monitor Bundle Sizes
+    name: Compare bundle size
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout base branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
-          ref: ${{ github.base_ref }}
+          ref: ${{ github.base_ref || 'main' }}
           path: base
+          persist-credentials: false
 
-      - name: Checkout PR branch
-        uses: actions/checkout@v6
+      - name: Checkout pull request
+        uses: actions/checkout@v7
         with:
           path: pr
+          persist-credentials: false
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: ${{ vars.BUN_VERSION || '1.4.3' }}
 
       - name: Build base branch
         working-directory: base
         run: |
-          bun install
+          bun install --frozen-lockfile --ignore-scripts
           bun run build:packages
-          mkdir -p /tmp/base-dist
-          cp -r packages/manifest-generator/dist /tmp/base-dist/manifest-generator 2>/dev/null || true
 
-      - name: Build PR branch
+      - name: Build pull request
         working-directory: pr
         run: |
-          bun install
+          bun install --frozen-lockfile --ignore-scripts
           bun run build:packages
-          mkdir -p /tmp/pr-dist
-          cp -r packages/manifest-generator/dist /tmp/pr-dist/manifest-generator 2>/dev/null || true
 
-      - name: Calculate size differences
+      - name: Compare sizes
         id: sizes
         run: |
-          echo "=== Base Branch ===" > /tmp/sizes.txt
-          du -sh /tmp/base-dist/* >> /tmp/sizes.txt 2>&1
-          echo "" >> /tmp/sizes.txt
-          echo "=== PR Branch ===" >> /tmp/sizes.txt
-          du -sh /tmp/pr-dist/* >> /tmp/sizes.txt 2>&1
-
-          BASE_SIZE=$(du -sb /tmp/base-dist 2>/dev/null | awk '{print $1}' || echo 0)
-          PR_SIZE=$(du -sb /tmp/pr-dist 2>/dev/null | awk '{print $1}' || echo 0)
-
-          if [ "$BASE_SIZE" -gt 0 ]; then
-            DIFF=$((PR_SIZE - BASE_SIZE))
-            PERCENT=$(( (DIFF * 100) / BASE_SIZE ))
-
-            echo "BASE_SIZE=$BASE_SIZE" >> $GITHUB_ENV
-            echo "PR_SIZE=$PR_SIZE" >> $GITHUB_ENV
-            echo "DIFF=$DIFF" >> $GITHUB_ENV
-            echo "PERCENT=$PERCENT" >> $GITHUB_ENV
-          fi
-
-      - name: Format bundle report
-        id: report
-        run: |
+          dist=packages/manifest-generator/dist
+          base_size=$(du -sb "base/$dist" | awk '{print $1}')
+          pr_size=$(du -sb "pr/$dist" | awk '{print $1}')
+          diff=$((pr_size - base_size))
+          percent=$(( (diff * 100) / base_size ))
+          echo "percent=$percent" >> "$GITHUB_OUTPUT"
           {
-            echo "REPORT<<EOF"
-            echo "## 📦 Bundle Size Analysis"
+            echo "## Bundle size (${dist})"
             echo ""
-            echo "| Metric | Size |"
-            echo "|--------|------|"
-
-            if [ ! -z "${{ env.BASE_SIZE }}" ] && [ "${{ env.BASE_SIZE }}" != "0" ]; then
-              BASE_MB=$(echo "scale=2; ${{ env.BASE_SIZE }} / 1024 / 1024" | bc)
-              PR_MB=$(echo "scale=2; ${{ env.PR_SIZE }} / 1024 / 1024" | bc)
-
-              echo "| Base Branch | ${BASE_MB} MB |"
-              echo "| PR Branch | ${PR_MB} MB |"
-
-              DIFF_MB=$(echo "scale=2; ${{ env.DIFF }} / 1024 / 1024" | bc)
-              if [ "${{ env.DIFF }}" -gt 0 ]; then
-                echo "| **Change** | **+${DIFF_MB} MB (${{ env.PERCENT }}%)** ⚠️ |"
-              elif [ "${{ env.DIFF }}" -lt 0 ]; then
-                echo "| **Change** | **${DIFF_MB} MB (${{ env.PERCENT }}%)** ✅ |"
-              else
-                echo "| **Change** | **No change** |"
-              fi
-            else
-              echo "| Status | Unable to calculate (fresh build) |"
-            fi
-
+            echo "| Metric | Bytes |"
+            echo "|--------|-------|"
+            echo "| Base | ${base_size} |"
+            echo "| Pull request | ${pr_size} |"
+            echo "| Change | ${diff} (${percent}%) |"
             echo ""
-            echo "### Detailed Breakdown"
-            echo "\`\`\`"
-            cat /tmp/sizes.txt
-            echo "\`\`\`"
-            echo "EOF"
-          } >> $GITHUB_ENV
+            echo '```'
+            echo "Base:"
+            (cd "base/$dist" && du -ab . | sort -k2)
+            echo ""
+            echo "Pull request:"
+            (cd "pr/$dist" && du -ab . | sort -k2)
+            echo '```'
+          } | tee sizes.md >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Comment on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: process.env.REPORT
-            })
-
-      - name: Check for size regression
-        if: env.PERCENT != '' && env.PERCENT > 10
-        run: |
-          echo "⚠️ Bundle size increased by more than 10% (${{ env.PERCENT }}%)"
-          exit 1
-
-      - name: Save bundle report
-        if: always()
+      - name: Upload bundle report
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: bundle-size-report
-          path: /tmp/sizes.txt
+          path: sizes.md
           retention-days: 30
+
+      - name: Fail on a size regression above 10%
+        if: ${{ fromJSON(steps.sizes.outputs.percent) > 10 }}
+        env:
+          PERCENT: ${{ steps.sizes.outputs.percent }}
+        run: |
+          echo "::error::The bundle grew by ${PERCENT}% (limit 10%)"
+          exit 1
