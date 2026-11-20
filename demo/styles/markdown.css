@@ -121,7 +121,7 @@
   }
 
   & p.intro > img[alt*="Manifest Generator Logo"] {
-    border-radius: 12px;
+    border-radius: 50%;
     max-width: 200px;
   }
 

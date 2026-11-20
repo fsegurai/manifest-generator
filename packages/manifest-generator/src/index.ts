@@ -1,196 +1,68 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import * as yaml from 'js-yaml';
+import {
+  ALLOWED_FRONTMATTER_KEYS,
+  applyFrontmatterAliases,
+  applyPrevNext,
+  cleanItem,
+  dedupeHeadings,
+  diceSimilarity,
+  extractHeadings,
+  extractSections,
+  formatTitle,
+  generateManifestFromFiles,
+  isExcluded as isExcludedPosix,
+  isMarkdownFile,
+  makeBreadcrumb,
+  makeExcerpt,
+  parseFrontmatter,
+  slugifyHeading,
+  sortItems,
+  walkTree,
+} from './core.js';
 import type {
   BreadcrumbSegment,
   DiscoveredProject,
   DiscoveryOptions,
+  DocsReader,
   Frontmatter,
   ManifestGenerationOptions,
+  ManifestOptions,
   ManifestResult,
   NavigationItem,
   ProcessingResult,
   ProjectConfig,
   SearchEntry,
+  ValidateOptions,
   ValidateResult,
+  WalkOptions,
 } from './types.js';
 
 export { defineConfig } from './config.js';
 
-function formatTitle(name: string): string {
-  return name
-    .replace(/\.(md|mdx)$/, '')
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function parseFrontmatter<T = Record<string, unknown>>(content: string): T {
-  const match = content.match(/^---\s*\n([\s\S]*?)\n\s*---/);
-  if (!match) return {} as T;
-
-  try {
-    const doc = yaml.load(match[1], { schema: yaml.JSON_SCHEMA }) as Record<string, unknown> | null;
-    return (doc || {}) as T;
-  } catch {
-    return {} as T;
-  }
-}
-
-function cleanItem(item: NavigationItem): NavigationItem {
-  const cleaned: NavigationItem = { label: item.label };
-  const keys = Object.keys(item) as (keyof NavigationItem)[];
-  for (const key of keys) {
-    const value = item[key];
-    if (value !== null && value !== false && value !== '' && value !== undefined) {
-      if (key === 'children' && Array.isArray(value)) {
-        cleaned.children = (value as NavigationItem[]).map(cleanItem);
-      } else if (key !== 'children') {
-        cleaned[key] = value as never;
-      }
-    }
-  }
-  return cleaned;
-}
-
-function sortItems(items: NavigationItem[]): NavigationItem[] {
-  const sorted = [...items].sort((a, b) => {
-    const orderA = a.order ?? 999;
-    const orderB = b.order ?? 999;
-    if (orderA !== orderB) return orderA - orderB;
-    return a.label.localeCompare(b.label);
-  });
-  for (const item of sorted) {
-    if (item.children) {
-      item.children = sortItems(item.children);
-    }
-  }
-  return sorted;
-}
-
-function getBody(content: string): string {
-  const match = content.match(/^---\s*\n[\s\S]*?\n\s*---\n*/);
-  return match ? content.slice(match[0].length) : content;
-}
-
-function diceSimilarity(a: string, b: string): number {
-  const bigramsA = new Set<string>();
-  const bigramsB = new Set<string>();
-  for (let i = 0; i < a.length - 1; i++) {
-    bigramsA.add(a.slice(i, i + 2).toLowerCase());
-  }
-  for (let i = 0; i < b.length - 1; i++) {
-    bigramsB.add(b.slice(i, i + 2).toLowerCase());
-  }
-  let intersection = 0;
-  for (const bg of bigramsA) {
-    if (bigramsB.has(bg)) intersection++;
-  }
-  return (2 * intersection) / (bigramsA.size + bigramsB.size);
-}
-
-function dedupeHeadings(headings: string[], threshold = 0.7): string[] {
-  const result: string[] = [];
-  for (const h of headings) {
-    if (!result.some((existing) => diceSimilarity(existing, h) > threshold)) result.push(h);
-  }
-  return result;
-}
-
-function extractHeadings(body: string): string[] {
-  const headings: string[] = [];
-  const regex = /^#{2,3}\s+(.+)$/gm;
-  let match: RegExpExecArray | null = regex.exec(body);
-  while (match !== null) {
-    headings.push(match[1].trim());
-    match = regex.exec(body);
-  }
-  return dedupeHeadings(headings);
-}
-
-function stripMarkdown(text: string): string {
-  return text
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/`[^`]*`/g, ' ')
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/__([^_]+)__/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/_([^_]+)_/g, '$1')
-    .replace(/~~([^~]+)~~/g, '$1')
-    .replace(/^>\s+/gm, '')
-    .replace(/^[-*+]\s+/gm, '')
-    .replace(/^\d+\.\s+/gm, '')
-    .replace(/^[-*_]{3,}\s*$/gm, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .replace(/[ \t]+/g, ' ')
-    .trim();
-}
-
-function makeExcerpt(body: string, maxLength = 150): string {
-  const text = stripMarkdown(body);
-  if (!text || text.length <= maxLength) return text;
-
-  const truncated = text.slice(0, maxLength);
-  const lastSentence = truncated.match(/.*[.!?]/);
-  if (lastSentence && lastSentence[0].length > 30) {
-    return lastSentence[0];
-  }
-
-  const lastSpace = truncated.lastIndexOf(' ');
-  if (lastSpace > 30) {
-    return `${truncated.slice(0, lastSpace)}...`;
-  }
-
-  return `${truncated}...`;
-}
-
-function makeBreadcrumb(chain: BreadcrumbSegment[], self: BreadcrumbSegment): BreadcrumbSegment[] {
-  return [...chain, self];
-}
-
-const FOLDER_LABEL_SOURCES = ['README.md', 'README.mdx', 'index.md', 'index.mdx'];
-
-function resolveFolderLabel(dirFullPath: string, folderName: string): string {
-  const targetPath = FOLDER_LABEL_SOURCES.map((name) => path.join(dirFullPath, name)).find((candidate) =>
-    fs.existsSync(candidate),
-  );
-
-  if (!targetPath) return formatTitle(folderName);
-
-  try {
-    const content = fs.readFileSync(targetPath, 'utf8');
-    const meta = parseFrontmatter<Frontmatter>(content);
-    return meta.breadcrumbTitle || meta.label || formatTitle(folderName);
-  } catch {
-    return formatTitle(folderName);
-  }
-}
-
-const VALID_MARKDOWN_EXTENSIONS = ['.md', '.mdx'];
-
-function isMarkdownFile(name: string): boolean {
-  return VALID_MARKDOWN_EXTENSIONS.some((ext) => name.endsWith(ext));
-}
-
-function globToRegExp(pattern: string): RegExp {
-  const placeholder = '\u0000';
-  const escaped = pattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*/g, placeholder)
-    .replace(/\*/g, '[^/]*')
-    .split(placeholder)
-    .join('.*');
-  return new RegExp(`^${escaped}$`);
-}
-
 function isExcluded(relPath: string, patterns: string[]): boolean {
-  if (!patterns || patterns.length === 0) return false;
-  const normalized = relPath.split(path.sep).join('/');
-  return patterns.some((pattern) => globToRegExp(pattern).test(normalized));
+  return isExcludedPosix(relPath.split(path.sep).join('/'), patterns);
 }
+
+/** `DocsReader` over the Node file system. */
+const nodeReader: DocsReader = {
+  list(dir) {
+    return fs.readdirSync(dir, { withFileTypes: true }).map((entry) => ({
+      name: entry.name,
+      isDirectory: entry.isDirectory(),
+      isFile: entry.isFile(),
+    }));
+  },
+  read(file) {
+    return fs.readFileSync(file, 'utf8');
+  },
+  exists(file) {
+    return fs.existsSync(file);
+  },
+  join(...parts) {
+    return path.join(...parts);
+  },
+};
 
 function computeRoutePrefix(outputDir: string, sourceDir: string): string {
   const rel = path.relative(path.resolve(outputDir), path.resolve(sourceDir));
@@ -228,117 +100,23 @@ function walkDocs(
   searchIndex: SearchEntry[] = [],
   exclude: string[] = [],
   chain: BreadcrumbSegment[] = [],
+  options: WalkOptions = {},
 ): NavigationItem[] {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  // `path.join` used to normalize `relative` ('guides/', './guides' → 'guides'); keep that for direct callers.
+  const normalized = relative ? path.normalize(relative).replace(/[\\/]+$/, '') : '';
+  return walkTree(nodeReader, dir, normalized === '.' ? '' : normalized, searchIndex, exclude, chain, options);
+}
 
-  const items = entries
-    .filter((entry) => !entry.name.startsWith('.') && entry.name !== 'manifest.json')
-    .filter((entry) => !isExcluded(path.join(relative, entry.name), exclude))
-    .map((entry) => {
-      const fullPath = path.join(dir, entry.name);
-      const relPath = path.join(relative, entry.name);
-
-      if (entry.isDirectory()) {
-        const folderLabel = resolveFolderLabel(fullPath, entry.name);
-        const folderRoute = relPath.replace(/\\/g, '/');
-        const children = walkDocs(fullPath, relPath, searchIndex, exclude, [
-          ...chain,
-          { label: folderLabel, route: folderRoute },
-        ]);
-        if (children.length === 0) return null;
-
-        const folderItem: NavigationItem = {
-          label: folderLabel,
-          route: folderRoute,
-          isParent: true,
-        };
-        folderItem.breadcrumb = makeBreadcrumb(chain, {
-          label: folderLabel,
-          route: folderItem.route ?? '',
-        });
-
-        const normalizedRelPath = relPath.replace(/\\/g, '/');
-        const readmeMd = children.find((c) => c.route === `${normalizedRelPath}/README`);
-        const indexOnlyMd = children.find((c) => c.route === `${normalizedRelPath}/index`);
-        if (readmeMd && indexOnlyMd) {
-          console.warn(`Warning: both README and index found in ${normalizedRelPath} — README takes precedence`);
-        }
-        const indexMd = readmeMd || indexOnlyMd;
-        if (indexMd) {
-          folderItem.order = (indexMd as NavigationItem & { order?: number }).order;
-          folderItem.icon = (indexMd as NavigationItem & { icon?: string | null }).icon ?? null;
-          folderItem.iconType = (indexMd as NavigationItem & { iconType?: string | null }).iconType ?? null;
-          folderItem.badge = (indexMd as NavigationItem & { badge?: string | null }).badge ?? null;
-          folderItem.badgeColor = (indexMd as NavigationItem & { badgeColor?: string | null }).badgeColor ?? null;
-        }
-
-        folderItem.children = children;
-        return folderItem;
-      }
-
-      if (entry.isFile() && isMarkdownFile(entry.name)) {
-        const content = fs.readFileSync(fullPath, 'utf8');
-        const meta = parseFrontmatter<Frontmatter>(content);
-
-        if (meta.draft || meta.hidden) return null;
-
-        const cleanPath = relPath.replace(/\.(md|mdx)$/, '').replace(/\\/g, '/');
-        const body = getBody(content);
-        const headings = extractHeadings(body);
-        const excerpt = makeExcerpt(body);
-
-        const item: NavigationItem = {
-          label: meta.label || formatTitle(entry.name),
-          description: meta.description || '',
-          route: cleanPath,
-          tags: meta.tags || [],
-          isTitle: meta.isTitle || false,
-          isParent: meta.isParent || false,
-          order: meta.order,
-          redirect: meta.redirect,
-          externalUrl: meta.externalUrl,
-          breadcrumbTitle: meta.breadcrumbTitle,
-          layout: meta.layout,
-          deprecated: meta.deprecated,
-          deprecatedAlternative: meta.deprecatedAlternative,
-          publishedAt: meta.publishedAt,
-          updatedAt: meta.updatedAt,
-          keywords: meta.keywords,
-          icon: meta.icon || null,
-          iconType: meta.iconType || null,
-          badge: meta.badge || null,
-          badgeColor: meta.badgeColor || null,
-        };
-
-        if (meta.isTitle === true) {
-          item.route = '#';
-        }
-
-        item.breadcrumb = makeBreadcrumb(chain, {
-          label: item.breadcrumbTitle || item.label,
-          route: item.route ?? '',
-        });
-
-        if (item.route !== '#' && item.route !== '') {
-          searchIndex.push({
-            label: item.label,
-            description: item.description,
-            route: cleanPath,
-            tags: item.tags,
-            headings: headings.length > 0 ? headings : undefined,
-            excerpt: excerpt || undefined,
-            breadcrumb: item.breadcrumb,
-          });
-        }
-
-        return item;
-      }
-
-      return null;
-    })
-    .filter(Boolean) as NavigationItem[];
-
-  return sortItems(items);
+/** The walker options set in `options`, or `undefined` when none is, so default runs call the walker as before. */
+function walkOptionsOf(options: WalkOptions): WalkOptions | undefined {
+  const { frontmatterAliases, headingAnchors, extraFrontmatter, readingTime } = options;
+  const picked: WalkOptions = {
+    ...(frontmatterAliases ? { frontmatterAliases } : {}),
+    ...(headingAnchors ? { headingAnchors } : {}),
+    ...(extraFrontmatter ? { extraFrontmatter } : {}),
+    ...(readingTime ? { readingTime } : {}),
+  };
+  return Object.keys(picked).length > 0 ? picked : undefined;
 }
 
 function resolveDocsPath(projectPath: string, docsSubfolder: string): string {
@@ -349,23 +127,35 @@ function resolveDocsPath(projectPath: string, docsSubfolder: string): string {
 function generateDocsManifests(
   docsRoot: string,
   optionsOrWalker?:
-    | {
+    | (WalkOptions & {
         docsSubfolder?: string;
         recursive?: boolean;
         exclude?: string[];
         projects?: Record<string, ProjectConfig>;
         dryRun?: boolean;
+        prevNext?: boolean;
         walkerFn?: (
           projectPath: string,
           relative: string,
           searchIndex: SearchEntry[],
           exclude?: string[],
+          chain?: BreadcrumbSegment[],
+          options?: WalkOptions,
         ) => NavigationItem[];
-      }
+      })
     | ((projectPath: string, relative: string, searchIndex: SearchEntry[]) => NavigationItem[]),
 ): ProcessingResult[] {
   const options = typeof optionsOrWalker === 'function' ? { walkerFn: optionsOrWalker } : optionsOrWalker || {};
-  const { docsSubfolder = 'docs', recursive = false, exclude = [], projects = {}, dryRun = false, walkerFn } = options;
+  const {
+    docsSubfolder = 'docs',
+    recursive = false,
+    exclude = [],
+    projects = {},
+    dryRun = false,
+    prevNext = false,
+    walkerFn,
+  } = options;
+  const walkOptions = walkOptionsOf(options);
   const discovered = discoverProjects(docsRoot, { docsSubfolder, recursive, exclude });
   const results: ProcessingResult[] = [];
 
@@ -384,7 +174,9 @@ function generateDocsManifests(
       : project.projectPath;
 
     try {
-      const manifest = walker(docsPath, '', searchIndex, exclude);
+      const manifest = walkOptions
+        ? walker(docsPath, '', searchIndex, exclude, [], walkOptions)
+        : walker(docsPath, '', searchIndex, exclude);
       if (!manifest || !Array.isArray(manifest)) {
         results.push({
           name: project.name,
@@ -409,7 +201,7 @@ function generateDocsManifests(
         }
       }
 
-      const cleaned = manifest.map(cleanItem);
+      const cleaned = (prevNext ? applyPrevNext(manifest) : manifest).map(cleanItem);
 
       const manifestPath = path.join(writeDir, 'manifest.json');
       const searchIndexPath = path.join(writeDir, 'search-index.json');
@@ -435,12 +227,13 @@ function generateDocsManifests(
   return results;
 }
 
-function generateManifest(projectPath: string, exclude: string[] = []): ManifestResult {
+function generateManifest(projectPath: string, exclude: string[] = [], options: ManifestOptions = {}): ManifestResult {
+  const { prevNext = false, ...rest } = options;
   const searchIndex: SearchEntry[] = [];
-  const manifest = walkDocs(projectPath, '', searchIndex, exclude);
+  const manifest = walkDocs(projectPath, '', searchIndex, exclude, [], walkOptionsOf(rest) ?? {});
 
   return {
-    manifest,
+    manifest: prevNext ? applyPrevNext(manifest) : manifest,
     searchIndex,
   };
 }
@@ -511,14 +304,16 @@ function generateManifestsWithDiscovery(rootDir: string, options: ManifestGenera
     exclude = [],
     projects = {},
     dryRun = false,
+    prevNext = false,
   } = options;
+  const walkOptions = walkOptionsOf(options) ?? {};
 
   if (route) {
     if (!fs.existsSync(route)) {
       throw new Error(`Route not found: ${route}`);
     }
 
-    const result = generateManifest(route, exclude);
+    const result = generateManifest(route, exclude, walkOptions);
     const outputPath = outputDir || route;
 
     const prefix = outputDir ? computeRoutePrefix(outputDir, route) : '';
@@ -536,7 +331,7 @@ function generateManifestsWithDiscovery(rootDir: string, options: ManifestGenera
       }
     }
 
-    const cleaned = result.manifest.map(cleanItem);
+    const cleaned = (prevNext ? applyPrevNext(result.manifest) : result.manifest).map(cleanItem);
     const manifestPath = path.join(outputPath, 'manifest.json');
     const searchIndexPath = path.join(outputPath, 'search-index.json');
 
@@ -563,7 +358,7 @@ function generateManifestsWithDiscovery(rootDir: string, options: ManifestGenera
     }
 
     const targetPath = fs.existsSync(docsPath) ? docsPath : projectPath;
-    const result = generateManifest(targetPath, exclude);
+    const result = generateManifest(targetPath, exclude, walkOptions);
     const outputPath2 = outputDir || projectPath;
 
     const prefix = outputDir ? computeRoutePrefix(outputPath2, targetPath) : '';
@@ -581,7 +376,7 @@ function generateManifestsWithDiscovery(rootDir: string, options: ManifestGenera
       }
     }
 
-    const cleaned = result.manifest.map(cleanItem);
+    const cleaned = (prevNext ? applyPrevNext(result.manifest) : result.manifest).map(cleanItem);
     const manifestPath2 = path.join(outputPath2, 'manifest.json');
     const searchIndexPath2 = path.join(outputPath2, 'search-index.json');
 
@@ -600,38 +395,24 @@ function generateManifestsWithDiscovery(rootDir: string, options: ManifestGenera
   }
 
   if (autoDetect) {
-    return generateDocsManifests(rootDir, { docsSubfolder, recursive, exclude, projects, dryRun });
+    return generateDocsManifests(rootDir, {
+      docsSubfolder,
+      recursive,
+      exclude,
+      projects,
+      dryRun,
+      prevNext,
+      ...walkOptions,
+    });
   }
 
   return [];
 }
 
-export const ALLOWED_FRONTMATTER_KEYS: ReadonlySet<string> = new Set([
-  'label',
-  'description',
-  'tags',
-  'keywords',
-  'order',
-  'isTitle',
-  'isParent',
-  'icon',
-  'iconType',
-  'badge',
-  'badgeColor',
-  'breadcrumbTitle',
-  'layout',
-  'redirect',
-  'externalUrl',
-  'deprecated',
-  'deprecatedAlternative',
-  'publishedAt',
-  'updatedAt',
-  'draft',
-  'hidden',
-]);
-
-function validateDocs(rootDir: string): ValidateResult[] {
+function validateDocs(rootDir: string, options: ValidateOptions = {}): ValidateResult[] {
   const results: ValidateResult[] = [];
+  const aliases = options.frontmatterAliases ?? {};
+  const ignoredKeys = new Set(options.ignoreKeys ?? []);
 
   function validateDirectory(dir: string, relative = '') {
     let entries: fs.Dirent[];
@@ -662,7 +443,8 @@ function validateDocs(rootDir: string): ValidateResult[] {
 
         try {
           const content = fs.readFileSync(fullPath, 'utf8');
-          const frontmatter = parseFrontmatter<Frontmatter>(content);
+          const rawFrontmatter = parseFrontmatter<Frontmatter>(content);
+          const frontmatter = applyFrontmatterAliases(rawFrontmatter, aliases);
 
           result.frontmatter = frontmatter;
 
@@ -759,8 +541,8 @@ function validateDocs(rootDir: string): ValidateResult[] {
             );
           }
 
-          for (const key of Object.keys(frontmatter)) {
-            if (!ALLOWED_FRONTMATTER_KEYS.has(key)) {
+          for (const key of Object.keys(rawFrontmatter)) {
+            if (!ALLOWED_FRONTMATTER_KEYS.has(key) && !Object.hasOwn(aliases, key) && !ignoredKeys.has(key)) {
               result.warnings.push(`Unknown frontmatter key "${key}" — possible typo`);
             }
           }
@@ -857,28 +639,43 @@ export type {
   ConfigFile,
   DiscoveredProject,
   DiscoveryOptions,
+  DocsReader,
   Frontmatter,
+  FrontmatterAliases,
+  InMemoryFile,
+  ManifestFromFilesOptions,
   ManifestGenerationOptions,
+  ManifestOptions,
   ManifestResult,
   NavigationItem,
+  PageLink,
+  PageSection,
   ProcessingResult,
   ProjectConfig,
   SearchEntry,
+  ValidateOptions,
   ValidateResult,
+  WalkOptions,
 } from './types.js';
 export {
+  ALLOWED_FRONTMATTER_KEYS,
+  applyFrontmatterAliases,
+  applyPrevNext,
   cleanItem,
   dedupeHeadings,
   diceSimilarity,
   discoverProjects,
   extractHeadings,
+  extractSections,
   formatTitle,
   generateDocsManifests,
   generateManifest,
+  generateManifestFromFiles,
   generateManifestsWithDiscovery,
   makeBreadcrumb,
   makeExcerpt,
   parseFrontmatter,
+  slugifyHeading,
   sortItems,
   validateDocs,
   walkDocs,

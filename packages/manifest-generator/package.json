@@ -1,6 +1,6 @@
 {
   "name": "@fsegurai/manifest-generator",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A simple manifest and search-index generator based on project documentation.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -16,11 +16,24 @@
       "import": "./dist/index.esm.js",
       "require": "./dist/index.cjs"
     },
+    "./core": {
+      "types": "./dist/types/core.d.ts",
+      "import": "./dist/core.esm.js",
+      "require": "./dist/core.cjs"
+    },
+    "./schema": {
+      "types": "./dist/types/schema.d.ts",
+      "import": "./dist/schema.esm.js",
+      "require": "./dist/schema.cjs"
+    },
+    "./schema/manifest.schema.json": "./schema/manifest.schema.json",
+    "./schema/search-index.schema.json": "./schema/search-index.schema.json",
     "./cli": "./dist/cli.js"
   },
   "sideEffects": false,
   "files": [
-    "dist/"
+    "dist/",
+    "schema/"
   ],
   "repository": {
     "type": "git",
@@ -57,7 +70,7 @@
     "npm": ">=11"
   },
   "scripts": {
-    "pkg:build": "vite build && vite build -c vite.cli.config.ts",
+    "pkg:build": "vite build && vite build --mode entries && vite build -c vite.cli.config.ts",
     "pkg:test": "bun test",
     "pkg:test-types": "tsc --noEmit",
     "pkg:test:coverage": "bun test --coverage"

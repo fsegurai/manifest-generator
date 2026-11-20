@@ -47,7 +47,8 @@ Given a directory of Markdown or MDX files with YAML frontmatter, `@fsegurai/man
 
 - **`manifest.json`** — hierarchical navigation tree with sorting, frontmatter metadata, draft/hidden filtering, and
   folder inheritance
-- **`search-index.json`** — flat search entries with headings, excerpts, and structured breadcrumb trails
+- **`search-index.json`** — flat search entries with headings, excerpts, structured breadcrumb trails, and opt-in
+  heading anchors for deep links
 
 Supports 21 frontmatter keys, recursive project discovery, file watching, frontmatter validation, and per-project
 config overrides.
@@ -84,6 +85,11 @@ npx @fsegurai/manifest-generator --help
 --json            Machine-readable JSON output (--discover / --validate)
 --dry-run         Run generation without writing files to disk
 --quiet, -q       Suppress banner/progress output (errors still show)
+--prev-next       Write prev/next page links on each manifest page item
+--heading-anchors Write h2/h3 sections (text, GitHub-style id, level) on search entries
+--extra-frontmatter Copy unknown frontmatter keys into "meta" on page items
+--reading-time    Write wordCount and readingTime (minutes) on page items
+--ignore-keys <k> Comma-separated frontmatter keys --validate must not report as unknown
 ```
 
 `--validate`, `--discover`, `--watch`, and `--init` are mutually exclusive. Exit codes are `0` (success) or `1`
@@ -126,6 +132,16 @@ const watcher = watchDocs('./docs', (changedFile) => {
 watcher.close()
 ```
 
+For browsers and other non-Node runtimes, `@fsegurai/manifest-generator/core` (no `node:*` imports) exposes the pure
+helpers and `generateManifestFromFiles([{ path, content }])`. Consumers that only read the output can use
+`import type { NavigationItem } from '@fsegurai/manifest-generator/schema'` and the JSON Schemas
+`@fsegurai/manifest-generator/schema/manifest.schema.json` / `search-index.schema.json`. Config keys `prevNext`,
+`frontmatterAliases` (e.g. `{ title: 'label' }`), and `ignoreKeys` cover prev/next links and foreign frontmatter;
+`headingAnchors`, `extraFrontmatter` and `readingTime` add heading anchors to search entries, unknown frontmatter
+(`meta`) and reading time to page items. All output options are off by default.
+They are type-checked when the config is loaded: a wrong type, or an alias to a key that is not a known frontmatter
+field, fails with `Error: Invalid config: …` (exit 1).
+
 See [Frontmatter fields](#frontmatter-fields) below for the shape of what gets read, and
 [`packages/manifest-generator/README.md`](./packages/manifest-generator/README.md) for the full type/API reference
 (`NavigationItem`, `SearchEntry`, `ConfigFile`, and every exported function).
@@ -151,13 +167,13 @@ The package reads YAML frontmatter from `.md` and `.mdx` files. Supported keys:
 | `deprecated` / `deprecatedAlternative` | boolean/string | Deprecation status                       |
 | `publishedAt` / `updatedAt`            | date           | Publication metadata                     |
 | `draft`                                | boolean        | Hide from production                     |
-| `hidden`                               | boolean        | Exclude from navigation                  |
+| `hidden`                               | boolean        | Exclude from navigation (stays searchable) |
 
 ## Documentation
 
 For full documentation — including config file schema, output JSON shapes, and a complete API reference — start with:
 
-- [`docs/1.1.0/content/README.md`](./docs/1.1.0/content/README.md) — the versioned docs site source
+- [`docs/1.2.0/content/README.md`](./docs/1.2.0/content/README.md) — the versioned docs site source
 - [`packages/manifest-generator/README.md`](./packages/manifest-generator/README.md) — the package's own README (published to npm)
 
 ## Demo

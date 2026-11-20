@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { ALLOWED_FRONTMATTER_KEYS } from './core.js';
 import type { ConfigFile } from './types.js';
 
 export function defineConfig(config: ConfigFile): ConfigFile {
@@ -20,7 +21,48 @@ function findConfigPath(rootDir: string): string | null {
   return null;
 }
 
+/** Config keys that turn an output option on or off. */
+const BOOLEAN_KEYS = ['prevNext', 'headingAnchors', 'extraFrontmatter', 'readingTime'] as const;
+
+/**
+ * Checks the types of the output option keys (`prevNext`, `headingAnchors`, `extraFrontmatter`, `readingTime`),
+ * `frontmatterAliases` and `ignoreKeys`, and that every alias maps to a known frontmatter key. Throws an `Error` naming
+ * the key; other keys are left as they are.
+ */
+export function validateConsumerKeys(config: Partial<ConfigFile>): Partial<ConfigFile> {
+  const { frontmatterAliases, ignoreKeys } = config as Record<string, unknown>;
+  for (const key of BOOLEAN_KEYS) {
+    const value = (config as Record<string, unknown>)[key];
+    if (value !== undefined && typeof value !== 'boolean') {
+      throw new Error(`Invalid config: "${key}" must be a boolean`);
+    }
+  }
+  if (ignoreKeys !== undefined && !(Array.isArray(ignoreKeys) && ignoreKeys.every((key) => typeof key === 'string'))) {
+    throw new Error('Invalid config: "ignoreKeys" must be an array of strings');
+  }
+  if (frontmatterAliases !== undefined) {
+    const isMapping =
+      typeof frontmatterAliases === 'object' &&
+      frontmatterAliases !== null &&
+      !Array.isArray(frontmatterAliases) &&
+      Object.values(frontmatterAliases).every((target) => typeof target === 'string');
+    if (!isMapping) {
+      throw new Error('Invalid config: "frontmatterAliases" must be an object mapping frontmatter keys to keys');
+    }
+    for (const [from, to] of Object.entries(frontmatterAliases as Record<string, string>)) {
+      if (!ALLOWED_FRONTMATTER_KEYS.has(to)) {
+        throw new Error(`Invalid config: frontmatterAliases: "${from}" maps to unknown frontmatter key "${to}"`);
+      }
+    }
+  }
+  return config;
+}
+
 export function parseConfigFile(configPath: string): Partial<ConfigFile> {
+  return validateConsumerKeys(readConfigFile(configPath));
+}
+
+function readConfigFile(configPath: string): Partial<ConfigFile> {
   const ext = path.extname(configPath);
   if (ext === '.json') {
     return JSON.parse(fs.readFileSync(configPath, 'utf8')) as Partial<ConfigFile>;
