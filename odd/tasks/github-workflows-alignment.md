@@ -48,7 +48,7 @@ zizmor --offline`), plus running every referenced script locally.
 | T6 | S1–S5 | ngx-markdown | delegated (parallel unit) | done (uncommitted) | actionlint 0; zizmor 25 high tag refs (0 with zizmor.yml); all 9 scripts pass |
 | T7 | S1–S5 | ngx-sidenav | delegated (parallel unit) | done (uncommitted) | actionlint 0; zizmor 0 high (zizmor.yml added); all scripts pass; bun audit 20 pre-existing advisories |
 | T8 | S1–S5 | all | independent verifier (Risk item 5: CI) | ran: S1–S3 pass, S4/S5 fail → correction batch T9/T10 | |
-| T9 | S2, S4, S5 | Bun group (codemirror-themes, manifest-generator, marked-extensions, scrollspy) | delegated (correction, parallel) | pending | |
+| T9 | S2, S4, S5 | Bun group (codemirror-themes, manifest-generator, marked-extensions, scrollspy) | delegated (correction, parallel) | done (uncommitted) | one template; only diff = Trivy job (mg, scrollspy); github-package-lists spec 6 pass |
 | T10 | S2, S4, S5 | Angular group (ngx-codemirror, ngx-markdown, ngx-sidenav) | delegated (correction, parallel) | done (uncommitted) | identical layout (only the comment marker differs); actionlint 0, zizmor 0 high/medium; ngx-codemirror build OK |
 
 ## Log
@@ -118,3 +118,11 @@ zizmor --offline`), plus running every referenced script locally.
     only if HEAD also warned.
 - L13: T10 done. Behaviour changes reported: Markdown changes no longer skip `checks.yml` (demos test/bundle README
   and docs); ngx-markdown/ngx-sidenav `test.yml` run `lint:check` (as ADO PR) instead of lint:lib+lint:demo.
+- L14: T9 done. Seam: fixed 2 broken links in docs/1.0.0-beta.1 getting-started.md (examples/README.md,
+  integration/build-systems.md). Recheck limited to L11 items, all 7 repos: actionlint 0, zizmor 0 errors/warnings,
+  Biome clean, every workflow with `run:` has `shell: bash` (B1), Trivy pinned to ed142fd in mg + scrollspy only (A1),
+  manifest-generator Documentation steps all rc=0. S1–S5 met. The user committed manifest-generator 79c38a4 and
+  f0cf2e0 meanwhile.
+- L15: RDD on manifest-generator (current-changes candidate: the beta.1 link fix + this document): consent granted by
+  the user, reliability lens approved, acknowledged (gentle-ai.review-acknowledged/v1, target sha256:b52d5364…).
+  Feature closed; delivery (commits of the other 6 repos) stays with the user.

@@ -488,8 +488,8 @@ Use `--docs-subfolder documentation` to specify custom folder names.
 - 📖 Read the [CLI Usage Guide](../guides/cli-usage.md) for all command options
 - 🔧 Learn about [Configuration](../guides/configuration.md) options
 - 📝 Understand [Frontmatter Support](../guides/frontmatter.md)
-- 🧪 Check out [Examples](../examples/examples.md) for real-world scenarios
-- 🔗 See [Integration](../integration/integration.md) for build system setup
+- 🧪 Check out [Examples](../examples/README.md) for real-world scenarios
+- 🔗 See [Integration](../integration/build-systems.md) for build system setup
 
 ## Common Issues
 
